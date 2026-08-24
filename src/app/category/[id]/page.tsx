@@ -1,8 +1,31 @@
 import { prisma } from "@/lib/prisma";
 import { buildBracketAction } from "@/app/actions";
 import Link from "next/link";
+import type { Metadata } from "next";
+import LiveMatches from "@/components/LiveMatches";
 
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
+  const { id } = await params;
+  const category = await prisma.category.findUnique({ where: { id }, include: { event: true } });
+  if (!category) return { title: "Категория не найдена" };
+  const weight = category.isAbsolute
+    ? "абсолютка"
+    : category.isOpenTop
+      ? `свыше ${category.weightMin} кг`
+      : `до ${category.weightMax} кг`;
+  const sex = category.sex === "M" ? "муж" : "жен";
+  const dateStr = new Date(category.event.date).toLocaleDateString("ru-RU");
+  const title = `${category.ageGroupLabel} · ${sex} · ${category.discipline} · ${weight} — ${category.event.name}`;
+  const description = `Сетка категории ${category.ageGroupLabel} (${sex}, ${category.discipline}, ${weight}) на турнире «${category.event.name}» · ${category.event.city} · ${dateStr}.`;
+  return {
+    title,
+    description,
+    openGraph: { title, description, type: "website", locale: "ru_RU" },
+    twitter: { card: "summary", title, description },
+  };
+}
 
 export default async function CategoryPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -54,6 +77,12 @@ export default async function CategoryPage({ params }: { params: Promise<{ id: s
           ))}
         </ol>
       </section>
+
+      {matches.length > 0 && (
+        <section className="mt-6">
+          <LiveMatches categoryId={id} />
+        </section>
+      )}
 
       {matches.length > 0 && (
         <section className="mt-6">
