@@ -12,9 +12,45 @@
   5 ревью (UX / web-dev / marketer / QA / security-152ФЗ). Все отчёты получены и сведены ниже.
 - Идёт фаза исправлений: сперва security+correctness core (я), затем additive-поверхности (агенты).
 
-## Следующий шаг
-Дождаться 4 фоновых агентов (organizer-flows / participant-public / admin / infra),
-интегрировать, прогнать tsc+vitest+build, коммит. Затем WS-5: integration+e2e тесты.
+## Следующий шаг (для следующей сессии)
+Hardening до go-live на reg.ru (см. «Осталось» ниже). Ближайшее: Postgres-провайдер +
+миграции, интеграционные тесты с БД (закоммитить smoke как тест), Playwright e2e, rate-limit,
+152-ФЗ ops (уведомление РКН + политика), referee-коррекция результата (supersededById).
+
+## СТАТУС: платформа собрана и проверена локально ✅
+- Ветка `fix/review-security-correctness`, 7 коммитов поверх scaffold. НЕ смёржено в main, НЕ запушено.
+- `npx tsc --noEmit` чисто; `vitest` 24/24 (18 доменных + 6 placement); `next build` 22 роута;
+  seed создаёт событие + 255 категорий; `next start` поднимается.
+- E2E доменный smoke (scratchpad/ugp-smoke.ts): build→play→advance→бронза(0 null)→места(1/2/3)→
+  командный зачёт — OK на сид-данных.
+- HTTP smoke (next start :3123): все публичные роуты 200; под admin-cookie все ролевые роуты 200;
+  без куки /admin,/coach → 307 на логин; поддельная кука → 307 (отклонена);
+  POST /api/{result,build} без auth → 401; GET /api/result → 405.
+
+## Реализовано в этой сессии
+- Security core: подписанная HMAC-сессия+TTL+secure; requireRole; RBAC на actions и API;
+  судья из сессии; /api/{build,result} POST-only+роль; togglePaid IDOR; registerGroup роль+REG_OPEN+дедуп.
+- Correctness: advanceWinner в транзакции + guard null-фидера (бронза); buildBracket в транзакции
+  + запрет пересборки поверх finalized; P2002→идемпотентно; play-up только ближайшая старшая +
+  fallback для перевеса; standings final по кругу (не по positionInRound).
+- Organizer: взвешивание→допуск→рекатегоризация, WEIGH-IN LOCK (REG_CLOSED→LIVE), applyMerge
+  (инвариант до генерации), placement + публичный командный зачёт с призами 30/20/10к, консоль.
+- Admin: preset-билдер (seed на нём), CRUD событий/тиров/категорий, пользователи/роли,
+  назначение судей на ковры, forward-only статусы.
+- Participant/public: self-registration + согласие 152-ФЗ (+родительское для <18), /me с ETA,
+  поиск, live-polling, SEO/OG lang=ru, лендинг+countdown, страницы тренеров/спонсоров.
+- Infra: индексы, next.config standalone+CSP/HSTS, Dockerfile+entrypoint, .env.example, CI.
+
+## Осталось (backlog до go-live) — приоритет
+- Postgres provider + `prisma migrate` (сейчас sqlite; Float веса→Decimal), бэкапы в РФ.
+- Интеграционные тесты (Prisma) + Playwright e2e happy-path (закоммитить).
+- Rate-limit (логин, мутации) + security-заголовки уже есть.
+- 152-ФЗ ops: уведомление РКН, публичная политика обработки ПДн, резидентность логов/бэкапов.
+- Referee: коррекция результата гл. судьёй (supersededById), confirm+undo, офлайн-очередь,
+  overtime/пенальти при ничьей.
+- Абсолютка on-site (добор + отдельная кнопка генерации), ручная правка сетки (развести братьев),
+  xlsx-импорт группы, маскирование ФИО несовершеннолетних на публичных страницах.
+- Merge/weigh-in UI отшлифовать; мобильный «путь атлета»; loading/error состояния.
 
 ## Core-фиксы — СДЕЛАНО (ветка fix/review-security-correctness, коммит 63d773f)
 - Подписанная HMAC-сессия (SESSION_SECRET, TTL, secure) + requireRole guard.
