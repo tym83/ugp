@@ -1,0 +1,315 @@
+// Underground Grappling Platform — доменная модель.
+// Провайдер SQLite для локали; в проде — PostgreSQL (сменить provider + DATABASE_URL).
+// Enum'ы моделируются строками (SQLite), валидация — на уровне приложения (Zod).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ---------- Пользователи и роли ----------
+model User {
+  id           String       @id @default(cuid())
+  fullName     String
+  email        String       @unique
+  passwordHash String
+  createdAt    DateTime     @default(now())
+
+  memberships     Membership[]
+  ownedClubs      Club[]     @relation("ClubOwner")
+  refereedResults Result[]   @relation("RefereeResults")
+  athleteProfile  Athlete?   @relation("AthleteUser")
+  auditLogs       AuditLog[]
+}
+
+// role: ADMIN | ORGANIZER | COACH | ATHLETE | REFEREE | MAT_COORDINATOR
+// scope: PLATFORM | EVENT | CLUB
+model Membership {
+  id        String  @id @default(cuid())
+  user      User    @relation(fields: [userId], references: [id])
+  userId    String
+  role      String
+  scope     String  @default("PLATFORM")
+  eventId   String?
+  clubId    String?
+  matNumber Int?
+
+  @@index([userId])
+  @@index([eventId])
+}
+
+// ---------- Клубы ----------
+model Club {
+  id        String    @id @default(cuid())
+  name      String
+  city      String?
+  owner     User?     @relation("ClubOwner", fields: [ownerId], references: [id])
+  ownerId   String?
+  athletes  Athlete[]
+  createdAt DateTime  @default(now())
+}
+
+// ---------- Событие ----------
+model Event {
+  id                   String   @id @default(cuid())
+  name                 String
+  series               String?
+  city                 String
+  venue                String?
+  address              String?
+  date                 DateTime
+  disciplines          String   @default("gi,nogi")
+  matsCount            Int      @default(3)
+  timings              String?
+  registrationOpensAt  DateTime?
+  registrationClosesAt DateTime?
+  status               String   @default("DRAFT")
+  positionPublished    Boolean  @default(false)
+  coachCommission      Int      @default(200)
+
+  categories Category[]
+  priceTiers PriceTier[]
+  entries    EventEntry[]
+  mats       Mat[]
+  teamScores TeamScore[]
+  createdAt  DateTime @default(now())
+}
+
+model PriceTier {
+  id                 String   @id @default(cuid())
+  event              Event    @relation(fields: [eventId], references: [id])
+  eventId            String
+  name               String
+  startsAt           DateTime
+  priceOneDivision   Int
+  priceBothDivisions Int
+  absoluteSurcharge  Int      @default(0)
+  order              Int      @default(0)
+
+  @@index([eventId])
+}
+
+// ---------- Категория ----------
+model Category {
+  id              String   @id @default(cuid())
+  event           Event    @relation(fields: [eventId], references: [id])
+  eventId         String
+  ageGroupCode    String
+  ageGroupLabel   String
+  birthYearFrom   Int
+  birthYearTo     Int
+  sex             String
+  weightMin       Float?
+  weightMax       Float?
+  isOpenTop       Boolean  @default(false)
+  discipline      String
+  level           String   @default("all")
+  ruleFormat      String   @default("SUBMISSION_ONLY")
+  bracketType     String   @default("SINGLE_ELIM")
+  bronzeMode      String   @default("SINGLE_MATCH_3RD")
+  boutSeconds     Int      @default(300)
+  isAbsolute      Boolean  @default(false)
+  minParticipants Int      @default(3)
+  order           Int      @default(0)
+  status          String   @default("OPEN")
+  bracketVersion  Int      @default(0)
+  frozenAt        DateTime?
+
+  mergedInto   Category?  @relation("CategoryMerge", fields: [mergedIntoId], references: [id])
+  mergedIntoId String?
+  mergedFrom   Category[] @relation("CategoryMerge")
+
+  registrations Registration[]
+  matches       Match[]
+
+  @@index([eventId])
+}
+
+// ---------- Атлет ----------
+model Athlete {
+  id            String   @id @default(cuid())
+  fullName      String
+  birthDate     DateTime
+  sex           String
+  city          String?
+  club          Club?    @relation(fields: [clubId], references: [id])
+  clubId        String?
+  coachUserId   String?
+  belt          String?
+  level         String?
+  rank          String?
+  parentName    String?
+  parentConsent Boolean  @default(false)
+  user          User?    @relation("AthleteUser", fields: [userId], references: [id])
+  userId        String?  @unique
+
+  entries       EventEntry[]
+  registrations Registration[]
+  consents      Consent[]
+  createdAt     DateTime @default(now())
+}
+
+model EventEntry {
+  id                 String   @id @default(cuid())
+  athlete            Athlete  @relation(fields: [athleteId], references: [id])
+  athleteId          String
+  event              Event    @relation(fields: [eventId], references: [id])
+  eventId            String
+  source             String   @default("self")
+  coachUserId        String?
+  tierName           String?
+  disciplines        String   @default("")
+  absoluteAdded      Boolean  @default(false)
+  priceTotal         Int      @default(0)
+  paidToCoach        Boolean  @default(false)
+  includedInTransfer Boolean  @default(false)
+  createdAt          DateTime @default(now())
+
+  registrations Registration[]
+
+  @@unique([athleteId, eventId])
+  @@index([eventId])
+  @@index([coachUserId])
+}
+
+model Registration {
+  id                  String   @id @default(cuid())
+  entry               EventEntry @relation(fields: [entryId], references: [id])
+  entryId             String
+  athlete             Athlete  @relation(fields: [athleteId], references: [id])
+  athleteId           String
+  category            Category @relation(fields: [categoryId], references: [id])
+  categoryId          String
+  effectiveCategoryId String?
+  declaredWeight      Float?
+  actualWeight        Float?
+  weighedAt           DateTime?
+  status              String   @default("ENTERED")
+  admittedAt          DateTime?
+  withdrawnAt         DateTime?
+  withdrawReason      String?
+  seed                Int?
+  createdAt           DateTime @default(now())
+
+  weighInAttempts WeighInAttempt[]
+
+  @@index([categoryId])
+  @@index([athleteId])
+  @@index([entryId])
+}
+
+model WeighInAttempt {
+  id             String   @id @default(cuid())
+  registration   Registration @relation(fields: [registrationId], references: [id])
+  registrationId String
+  weight         Float
+  at             DateTime @default(now())
+  ok             Boolean
+}
+
+model Mat {
+  id      String  @id @default(cuid())
+  event   Event   @relation(fields: [eventId], references: [id])
+  eventId String
+  number  Int
+  matches Match[]
+
+  @@index([eventId])
+}
+
+model Match {
+  id               String   @id @default(cuid())
+  category         Category @relation(fields: [categoryId], references: [id])
+  categoryId       String
+  roundNumber      Int
+  positionInRound  Int
+  isBronzeMatch    Boolean  @default(false)
+  isRoundRobin     Boolean  @default(false)
+  mat              Mat?     @relation(fields: [matId], references: [id])
+  matId            String?
+  matNumber        Int?
+  orderOnMat       Int?
+  scheduledAt      DateTime?
+  startedAt        DateTime?
+  endedAt          DateTime?
+  status           String   @default("PENDING")
+  version          Int      @default(0)
+
+  slotAAthleteId   String?
+  slotBAthleteId   String?
+  slotAFromMatchId String?
+  slotBFromMatchId String?
+  slotAWinner      Boolean  @default(true)
+  slotBWinner      Boolean  @default(true)
+
+  winnerAthleteId  String?
+  loserAthleteId   String?
+
+  result Result?
+
+  @@index([categoryId])
+  @@index([matNumber])
+}
+
+model Result {
+  id               String   @id @default(cuid())
+  match            Match    @relation(fields: [matchId], references: [id])
+  matchId          String   @unique
+  winnerAthleteId  String
+  winType          String
+  scoreA           Int      @default(0)
+  scoreB           Int      @default(0)
+  details          String?
+  referee          User?    @relation("RefereeResults", fields: [refereeUserId], references: [id])
+  refereeUserId    String?
+  clientMutationId String   @unique
+  submittedAt      DateTime @default(now())
+  finalized        Boolean  @default(false)
+  supersededById   String?
+}
+
+model TeamScore {
+  id       String @id @default(cuid())
+  event    Event  @relation(fields: [eventId], references: [id])
+  eventId  String
+  clubId   String
+  clubName String
+  points   Int    @default(0)
+  place    Int?
+
+  @@unique([eventId, clubId])
+  @@index([eventId])
+}
+
+model Consent {
+  id          String   @id @default(cuid())
+  athlete     Athlete  @relation(fields: [athleteId], references: [id])
+  athleteId   String
+  type        String
+  version     String
+  grantedAt   DateTime @default(now())
+  withdrawnAt DateTime?
+  pdfHash     String?
+
+  @@index([athleteId])
+}
+
+model AuditLog {
+  id       String   @id @default(cuid())
+  actor    User?    @relation(fields: [actorId], references: [id])
+  actorId  String?
+  action   String
+  entity   String
+  entityId String?
+  before   String?
+  after    String?
+  ts       DateTime @default(now())
+  prevHash String?
+  hash     String
+
+  @@index([entity, entityId])
+}
