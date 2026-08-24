@@ -1,6 +1,6 @@
 "use server";
 import { prisma } from "@/lib/prisma";
-import { getCurrentUser } from "@/lib/auth/session";
+import { requireRole } from "@/lib/auth/session";
 import { nativeCategory, type Cat } from "@/lib/domain/eligibility";
 import { selectTier, priceEntry, type Tier } from "@/lib/domain/pricing";
 import { revalidatePath } from "next/cache";
@@ -9,13 +9,13 @@ export type GroupRow = { fullName: string; birthDate: string; sex: "M" | "F"; we
 export type RowResult = { name: string; ok: boolean; msg: string };
 
 export async function registerGroup(rowsJson: string, eventId: string): Promise<RowResult[]> {
-  const user = await getCurrentUser();
-  if (!user) throw new Error("Не авторизован");
+  const user = await requireRole("COACH", "ORGANIZER", "ADMIN");
   const clubId = user.memberships.find((m) => m.role === "COACH")?.clubId ?? null;
   const rows: GroupRow[] = JSON.parse(rowsJson || "[]");
 
   const event = await prisma.event.findUnique({ where: { id: eventId }, include: { priceTiers: true } });
   if (!event) throw new Error("Событие не найдено");
+  if (event.status !== "REG_OPEN") throw new Error("Регистрация на это событие закрыта");
   const cats = await prisma.category.findMany({ where: { eventId, isAbsolute: false } });
   const catMap: Cat[] = cats.map((c) => ({
     id: c.id, sex: c.sex as "M" | "F", discipline: c.discipline as "gi" | "nogi",
@@ -39,24 +39,45 @@ export async function registerGroup(rowsJson: string, eventId: string): Promise<
       const birthYear = new Date(row.birthDate).getFullYear();
       const ainfo = { sex: row.sex, birthYear, weight: Number(row.weight) };
       const chosen: { disc: "gi" | "nogi"; catId: string }[] = [];
+      const notes: string[] = [];
       for (const disc of disciplines) {
-        const nc = nativeCategory(ainfo, disc, catMap);
-        if (!nc) throw new Error(`нет категории ${disc} для ${row.sex}, ${birthYear} г.р., ${row.weight} кг`);
+        let nc = nativeCategory(ainfo, disc, catMap);
+        if (!nc) {
+          // перевес/нет своей → предлагаем ближайшую старшую (play-up) вместо hard-error
+          nc = nativeCategory(ainfo, disc, catMap, { allowPlayUp: true });
+          if (nc) notes.push(`${disc}: перевес/нет своей → старшая группа`);
+        }
+        if (!nc) throw new Error(`нет категории ${disc} для ${row.sex}, ${birthYear} г.р., ${row.weight} кг (проверьте вес/возраст)`);
         chosen.push({ disc, catId: nc.id });
       }
-      const ath = await prisma.athlete.create({
-        data: { fullName: row.fullName.trim(), birthDate: new Date(row.birthDate), sex: row.sex, clubId, coachUserId: user.id },
+      // дедуп: тот же атлет (ФИО+дата+клуб), уже заявленный на событие — не плодим дубликат
+      const existingAth = await prisma.athlete.findFirst({
+        where: { fullName: row.fullName.trim(), birthDate: new Date(row.birthDate), clubId },
       });
+      let athleteId: string;
+      if (existingAth) {
+        const dupEntry = await prisma.eventEntry.findUnique({
+          where: { athleteId_eventId: { athleteId: existingAth.id, eventId } },
+        });
+        if (dupEntry) throw new Error("уже заявлен на это событие");
+        athleteId = existingAth.id;
+      } else {
+        const ath = await prisma.athlete.create({
+          data: { fullName: row.fullName.trim(), birthDate: new Date(row.birthDate), sex: row.sex, clubId, coachUserId: user.id },
+        });
+        athleteId = ath.id;
+      }
       const price = priceEntry(tier, { disciplines, absoluteAdded: false });
       const entry = await prisma.eventEntry.create({
-        data: { athleteId: ath.id, eventId, source: "coach", coachUserId: user.id, tierName: tier.name, disciplines: disciplines.join(","), priceTotal: price },
+        data: { athleteId, eventId, source: "coach", coachUserId: user.id, tierName: tier.name, disciplines: disciplines.join(","), priceTotal: price },
       });
       for (const ch of chosen) {
         await prisma.registration.create({
-          data: { entryId: entry.id, athleteId: ath.id, categoryId: ch.catId, declaredWeight: Number(row.weight), status: "ENTERED" },
+          data: { entryId: entry.id, athleteId, categoryId: ch.catId, declaredWeight: Number(row.weight), status: "ENTERED" },
         });
       }
-      results.push({ name: row.fullName, ok: true, msg: `${disciplines.join("+")} · ${price} ₽` });
+      const note = notes.length ? ` · ${notes.join("; ")}` : "";
+      results.push({ name: row.fullName, ok: true, msg: `${disciplines.join("+")} · ${price} ₽${note}` });
     } catch (err) {
       results.push({ name: row.fullName || "(без имени)", ok: false, msg: String((err as Error).message) });
     }
@@ -66,6 +87,12 @@ export async function registerGroup(rowsJson: string, eventId: string): Promise<
 }
 
 export async function togglePaidAction(entryId: string, paid: boolean) {
-  await prisma.eventEntry.update({ where: { id: entryId }, data: { paidToCoach: paid } });
+  const user = await requireRole("COACH", "ORGANIZER", "ADMIN");
+  // IDOR-guard: тренер меняет только свои заявки
+  const res = await prisma.eventEntry.updateMany({
+    where: { id: entryId, coachUserId: user.id },
+    data: { paidToCoach: paid },
+  });
+  if (res.count === 0) throw new Error("Заявка не найдена или не ваша");
   revalidatePath("/coach");
 }
