@@ -1,0 +1,38 @@
+# Dependencies & build artifacts
+node_modules
+.next
+out
+build
+coverage
+
+# Local databases (SQLite) — prod uses Postgres
+*.db
+*.db-journal
+prisma/dev.db
+prisma/*.db
+
+# Env & secrets — never bake into the image
+.env
+.env.*
+!.env.example
+
+# VCS & tooling
+.git
+.gitignore
+.github
+
+# Editor / agent state
+.agents
+.claude
+.windsurf
+SESSION_LOG.md
+skills-lock.json
+*.tsbuildinfo
+
+# OS
+.DS_Store
+
+# Docs
+README.md
+AGENTS.md
+CLAUDE.md

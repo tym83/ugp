@@ -2,21 +2,27 @@
 import { revalidatePath } from "next/cache";
 import { buildBracketForCategory } from "@/lib/domain/persistBracket";
 import { submitResult, type SubmitResultInput } from "@/lib/domain/results";
+import { requireRole } from "@/lib/auth/session";
 
 export async function buildBracketAction(categoryId: string) {
+  await requireRole("ORGANIZER", "ADMIN", "MAT_COORDINATOR");
   await buildBracketForCategory(categoryId);
   revalidatePath(`/category/${categoryId}`);
   revalidatePath(`/judge/${categoryId}`);
 }
 
 export async function submitResultAction(formData: FormData) {
+  // судья берётся из сессии, а не из формы — иначе audit-trail недостоверен
+  const user = await requireRole("REFEREE", "MAT_COORDINATOR", "ORGANIZER", "ADMIN");
   const categoryId = String(formData.get("categoryId"));
   const input: SubmitResultInput = {
     matchId: String(formData.get("matchId")),
     winnerAthleteId: String(formData.get("winnerAthleteId")),
     winType: String(formData.get("winType")) as SubmitResultInput["winType"],
+    scoreA: formData.get("scoreA") ? Number(formData.get("scoreA")) : undefined,
+    scoreB: formData.get("scoreB") ? Number(formData.get("scoreB")) : undefined,
     clientMutationId: String(formData.get("clientMutationId")),
-    refereeUserId: formData.get("refereeUserId") ? String(formData.get("refereeUserId")) : undefined,
+    refereeUserId: user.id,
   };
   await submitResult(input);
   revalidatePath(`/judge/${categoryId}`);

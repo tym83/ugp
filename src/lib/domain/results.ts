@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
 import { appendAudit } from "./audit";
 import { advanceWinner } from "./persistBracket";
 
@@ -28,45 +29,54 @@ export async function submitResult(input: SubmitResultInput) {
   if (!inA && !inB) throw new Error("Победитель не участник этого матча");
   const loserAthleteId = inA ? match.slotBAthleteId : match.slotAAthleteId;
 
-  await prisma.$transaction(async (tx) => {
-    // optimistic lock: обновляем только если версия не изменилась
-    const upd = await tx.match.updateMany({
-      where: { id: match.id, version: match.version, status: { not: "COMPLETED" } },
-      data: {
-        status: "COMPLETED",
-        endedAt: new Date(),
-        winnerAthleteId: input.winnerAthleteId,
-        loserAthleteId: loserAthleteId ?? undefined,
-        version: match.version + 1,
-      },
-    });
-    if (upd.count === 0) throw new Error("Конфликт версии матча — обновите и повторите");
+  try {
+    await prisma.$transaction(async (tx) => {
+      // optimistic lock: обновляем только если версия не изменилась
+      const upd = await tx.match.updateMany({
+        where: { id: match.id, version: match.version, status: { not: "COMPLETED" } },
+        data: {
+          status: "COMPLETED",
+          endedAt: new Date(),
+          winnerAthleteId: input.winnerAthleteId,
+          loserAthleteId: loserAthleteId ?? undefined,
+          version: match.version + 1,
+        },
+      });
+      if (upd.count === 0) throw new Error("Конфликт версии матча — обновите и повторите");
 
-    await tx.result.create({
-      data: {
-        matchId: match.id,
-        winnerAthleteId: input.winnerAthleteId,
-        winType: input.winType,
-        scoreA: input.scoreA ?? 0,
-        scoreB: input.scoreB ?? 0,
-        details: input.details ?? null,
-        refereeUserId: input.refereeUserId ?? null,
-        clientMutationId: input.clientMutationId,
-        finalized: true,
-      },
-    });
+      await tx.result.create({
+        data: {
+          matchId: match.id,
+          winnerAthleteId: input.winnerAthleteId,
+          winType: input.winType,
+          scoreA: input.scoreA ?? 0,
+          scoreB: input.scoreB ?? 0,
+          details: input.details ?? null,
+          refereeUserId: input.refereeUserId ?? null,
+          clientMutationId: input.clientMutationId,
+          finalized: true,
+        },
+      });
 
-    await appendAudit(tx, {
-      actorId: input.refereeUserId ?? null,
-      action: "RESULT_SUBMIT",
-      entity: "Match",
-      entityId: match.id,
-      after: { winner: input.winnerAthleteId, winType: input.winType, score: [input.scoreA ?? 0, input.scoreB ?? 0] },
-    });
-  });
+      await appendAudit(tx, {
+        actorId: input.refereeUserId ?? null,
+        action: "RESULT_SUBMIT",
+        entity: "Match",
+        entityId: match.id,
+        after: { winner: input.winnerAthleteId, winType: input.winType, score: [input.scoreA ?? 0, input.scoreB ?? 0] },
+      });
 
-  // продвижение победителя по сетке (вне транзакции, отдельные апдейты зависимых матчей)
-  await advanceWinner(match.id);
+      // продвижение победителя (и проигравшего в бронзу) — в той же транзакции
+      await advanceWinner(tx, match.id);
+    });
+  } catch (err) {
+    // гонка одинакового clientMutationId: уникальный конфликт → трактуем как идемпотентный успех
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
+      const existing = await prisma.result.findUnique({ where: { clientMutationId: input.clientMutationId } });
+      if (existing) return { ok: true, idempotent: true, resultId: existing.id };
+    }
+    throw err;
+  }
 
   return { ok: true, idempotent: false };
 }

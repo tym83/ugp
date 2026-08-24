@@ -1,12 +1,28 @@
 import { prisma } from "@/lib/prisma";
 import { submitResultAction } from "@/app/actions";
+import { getCurrentUser, hasRole } from "@/lib/auth/session";
 import { randomUUID } from "crypto";
+import { redirect } from "next/navigation";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
+const WIN_TYPES: { v: string; ru: string }[] = [
+  { v: "SUBMISSION", ru: "Сдача" },
+  { v: "POINTS", ru: "По очкам" },
+  { v: "DECISION", ru: "Решением" },
+  { v: "DQ", ru: "Дисквалификация" },
+  { v: "NO_SHOW", ru: "Неявка" },
+  { v: "INJURY", ru: "Травма" },
+];
+
 export default async function JudgePage({ params }: { params: Promise<{ categoryId: string }> }) {
   const { categoryId } = await params;
+  const user = await getCurrentUser();
+  if (!user) redirect("/login");
+  if (!hasRole(user, "REFEREE", "MAT_COORDINATOR", "ORGANIZER", "ADMIN")) {
+    return <main className="p-8">Нужна роль судьи или организатора.</main>;
+  }
   const category = await prisma.category.findUnique({ where: { id: categoryId } });
   if (!category) return <main className="p-8">Категория не найдена</main>;
 
@@ -16,7 +32,6 @@ export default async function JudgePage({ params }: { params: Promise<{ category
 
   const ready = matches.filter((m) => m.slotAAthleteId && m.slotBAthleteId && m.status !== "COMPLETED");
   const done = matches.filter((m) => m.status === "COMPLETED");
-  const winTypes = ["SUBMISSION", "POINTS", "DECISION", "DQ", "NO_SHOW", "INJURY"] as const;
 
   return (
     <main className="mx-auto max-w-2xl p-6">
@@ -43,10 +58,12 @@ export default async function JudgePage({ params }: { params: Promise<{ category
                   <input type="radio" name="winnerAthleteId" value={b} /> <span className="font-medium">{nameById.get(b)}</span>
                 </label>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <select name="winType" className="border rounded px-2 py-1 text-sm" defaultValue="SUBMISSION">
-                  {winTypes.map((w) => <option key={w} value={w}>{w}</option>)}
+                  {WIN_TYPES.map((w) => <option key={w.v} value={w.v}>{w.ru}</option>)}
                 </select>
+                <input type="number" name="scoreA" placeholder="очки A" className="w-20 border rounded px-2 py-1 text-sm" aria-label={`очки ${nameById.get(a)}`} />
+                <input type="number" name="scoreB" placeholder="очки B" className="w-20 border rounded px-2 py-1 text-sm" aria-label={`очки ${nameById.get(b)}`} />
                 <button className="rounded bg-green-600 px-4 py-2 text-white text-sm">Записать результат</button>
               </div>
             </form>

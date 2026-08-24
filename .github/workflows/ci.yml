@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    env:
+      # Tests run against local SQLite — never Postgres in CI.
+      DATABASE_URL: "file:./ci.db"
+      # Dummy secret (>=16 chars) so the app's prod-only guard is satisfied
+      # if any test path touches session signing. Not a real secret.
+      SESSION_SECRET: "ci-dummy-session-secret-not-real"
+      NEXT_TELEMETRY_DISABLED: "1"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma client
+        run: npx prisma generate
+
+      - name: Sync database schema (SQLite)
+        run: npx prisma db push
+
+      - name: Generate Next types
+        run: npx next typegen
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Test
+        run: npx vitest run

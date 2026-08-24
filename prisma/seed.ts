@@ -1,6 +1,6 @@
 import { PrismaClient } from "@prisma/client";
 import { hashPassword } from "../src/lib/auth/password";
-import { tankogradCategories, TANKOGRAD_EVENT, TANKOGRAD_TIERS } from "../src/lib/data/tankograd";
+import { createEventFromPreset, tankogradPreset } from "../src/lib/data/preset";
 
 const prisma = new PrismaClient();
 
@@ -36,9 +36,11 @@ async function main() {
   const athleteUser = await prisma.user.create({ data: { fullName: "Спортсмен", email: "athlete@ugp.local", passwordHash: pass } });
   await prisma.club.update({ where: { id: club.id }, data: { ownerId: coach.id } });
 
-  // Событие
-  const event = await prisma.event.create({
-    data: { ...TANKOGRAD_EVENT, status: "REG_OPEN", registrationOpensAt: new Date("2026-09-01"), registrationClosesAt: new Date("2026-11-20") },
+  // Событие + категории + тиры + ковры (из пресета)
+  const event = await createEventFromPreset(prisma, tankogradPreset(), {
+    status: "REG_OPEN",
+    registrationOpensAt: new Date("2026-09-01"),
+    registrationClosesAt: new Date("2026-11-20"),
   });
 
   await prisma.membership.createMany({
@@ -50,34 +52,6 @@ async function main() {
       { userId: athleteUser.id, role: "ATHLETE", scope: "PLATFORM" },
     ],
   });
-
-  // Тиры цен
-  for (const t of TANKOGRAD_TIERS) await prisma.priceTier.create({ data: { ...t, eventId: event.id } });
-
-  // Ковры
-  for (let i = 1; i <= event.matsCount; i++) await prisma.mat.create({ data: { eventId: event.id, number: i } });
-
-  // Категории (пресет)
-  const specs = tankogradCategories();
-  for (const s of specs) {
-    await prisma.category.create({
-      data: {
-        eventId: event.id,
-        ageGroupCode: s.ageGroupCode,
-        ageGroupLabel: s.ageGroupLabel,
-        birthYearFrom: s.birthYearFrom,
-        birthYearTo: s.birthYearTo,
-        sex: s.sex,
-        weightMin: s.weightMin,
-        weightMax: s.weightMax,
-        isOpenTop: s.isOpenTop,
-        discipline: s.discipline,
-        ruleFormat: s.ruleFormat,
-        boutSeconds: s.boutSeconds,
-        order: s.order,
-      },
-    });
-  }
 
   // Абсолютка (взрослые M, gi) — демо on-site
   const absolute = await prisma.category.create({

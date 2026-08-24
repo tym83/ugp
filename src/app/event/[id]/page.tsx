@@ -1,7 +1,24 @@
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
+import type { Metadata } from "next";
+import EventSearch from "@/components/EventSearch";
 
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
+  const { id } = await params;
+  const event = await prisma.event.findUnique({ where: { id } });
+  if (!event) return { title: "Событие не найдено" };
+  const dateStr = new Date(event.date).toLocaleDateString("ru-RU");
+  const title = `${event.name} — ${event.city}, ${dateStr}`;
+  const description = `Турнир по грэпплингу «${event.name}» · ${event.city}${event.venue ? `, ${event.venue}` : ""} · ${dateStr}. Онлайн-регистрация, категории, сетки и результаты.`;
+  return {
+    title,
+    description,
+    openGraph: { title, description, type: "website", locale: "ru_RU" },
+    twitter: { card: "summary", title, description },
+  };
+}
 
 export default async function EventPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -23,6 +40,19 @@ export default async function EventPage({ params }: { params: Promise<{ id: stri
         {new Date(event.date).toLocaleDateString("ru-RU")} · {event.city} · {event.venue}, {event.address} · {event.matsCount} ковра
       </p>
       <div className="mt-2 inline-block rounded bg-gray-100 px-2 py-1 text-xs">Статус: {event.status}</div>
+
+      <div className="mt-4 flex flex-wrap gap-2">
+        {event.status === "REG_OPEN" && (
+          <Link href={`/register/${event.id}`} className="rounded bg-blue-600 px-4 py-2 text-sm text-white">Зарегистрироваться</Link>
+        )}
+        <Link href={`/standings/${event.id}`} className="rounded border px-4 py-2 text-sm">Командный зачёт</Link>
+        <Link href="/me/search" className="rounded border px-4 py-2 text-sm">Найти свою сетку</Link>
+      </div>
+
+      <section className="mt-6">
+        <h2 className="text-lg font-semibold mb-2">Поиск участника / клуба</h2>
+        <EventSearch eventId={event.id} />
+      </section>
 
       <section className="mt-6">
         <h2 className="text-lg font-semibold mb-2">Программа дня</h2>

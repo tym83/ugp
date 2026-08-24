@@ -39,7 +39,9 @@ export type AthleteInfo = {
   weight: number;
 };
 
-/** Категории (не-абсолютные), в которые атлет может заявиться в конкретной дисциплине. */
+/** Категории (не-абсолютные), в которые атлет может заявиться в конкретной дисциплине.
+ *  Своя возрастная группа приоритетна; play-up — только в БЛИЖАЙШУЮ старшую группу,
+ *  не «в любую старшую» (иначе ребёнок 2016 попал бы во взрослых). */
 export function eligibleCategories(
   a: AthleteInfo,
   discipline: "gi" | "nogi",
@@ -47,19 +49,27 @@ export function eligibleCategories(
   opts: { allowPlayUp?: boolean } = {}
 ): Cat[] {
   const playUp = opts.allowPlayUp ?? false;
-  return cats.filter(
-    (c) =>
-      !c.isAbsolute &&
-      c.discipline === discipline &&
-      c.sex === a.sex &&
-      ageEligible(a.birthYear, c, playUp) &&
-      weightFits(a.weight, c)
+  const pool = cats.filter(
+    (c) => !c.isAbsolute && c.discipline === discipline && c.sex === a.sex && weightFits(a.weight, c)
   );
+  const own = pool.filter((c) => ageEligible(a.birthYear, c, false));
+  if (own.length || !playUp) return own;
+  // play-up: только ближайшая старшая группа (максимальный birthYearTo среди тех, что старше нас)
+  const older = pool.filter((c) => c.birthYearTo < a.birthYear);
+  if (!older.length) return [];
+  const nearestTo = Math.max(...older.map((c) => c.birthYearTo));
+  return older.filter((c) => c.birthYearTo === nearestTo);
 }
 
-/** «Родная» категория (своя возрастная группа + подходящий вес) — приоритетно одна. */
-export function nativeCategory(a: AthleteInfo, discipline: "gi" | "nogi", cats: Cat[]): Cat | null {
-  const own = eligibleCategories(a, discipline, cats, { allowPlayUp: false });
-  // если несколько по весу (не должно) — берём с минимальным подходящим weightMax
-  return own.sort((x, y) => (x.weightMax ?? 1e9) - (y.weightMax ?? 1e9))[0] ?? null;
+/** «Родная» категория (своя возрастная группа + подходящий вес) — приоритетно одна.
+ *  При allowPlayUp и отсутствии своей — ближайшая старшая (для перевесов у юниоров без openTop). */
+export function nativeCategory(
+  a: AthleteInfo,
+  discipline: "gi" | "nogi",
+  cats: Cat[],
+  opts: { allowPlayUp?: boolean } = {}
+): Cat | null {
+  const el = eligibleCategories(a, discipline, cats, opts);
+  // если несколько по весу — берём с минимальным подходящим weightMax
+  return el.sort((x, y) => (x.weightMax ?? 1e9) - (y.weightMax ?? 1e9))[0] ?? null;
 }
