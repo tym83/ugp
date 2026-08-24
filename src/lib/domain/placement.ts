@@ -66,8 +66,10 @@ export function placementsFromCategory(
   const nonBronze = matches.filter((m) => !m.isBronzeMatch);
   if (!nonBronze.length) return [];
   const finalRound = Math.max(...nonBronze.map((m) => m.roundNumber));
+  // в single-elim в финальном круге ровно один не-бронзовый матч — это финал;
+  // не завязываемся на positionInRound (генератор может нумеровать иначе)
   const final = nonBronze.find(
-    (m) => m.roundNumber === finalRound && m.positionInRound === 0 && m.status === "COMPLETED"
+    (m) => m.roundNumber === finalRound && m.status === "COMPLETED"
   );
   const bronze = matches.find((m) => m.isBronzeMatch && m.status === "COMPLETED");
 

@@ -54,6 +54,19 @@ describe("placementsFromCategory: single elimination", () => {
     const matches = [m({ roundNumber: 2, positionInRound: 0, status: "PENDING" })];
     expect(placementsFromCategory(elim, matches, clubOf)).toEqual([]);
   });
+
+  it("финал определяется по кругу, а не по positionInRound (regression)", () => {
+    // генератор нумерует финал не с pos 0 — место всё равно должно извлекаться
+    const matches = [
+      m({ roundNumber: 2, positionInRound: 3, slotAAthleteId: "a1", slotBAthleteId: "a2", winnerAthleteId: "a1", loserAthleteId: "a2" }),
+      m({ roundNumber: 2, positionInRound: 7, isBronzeMatch: true, slotAAthleteId: "a3", slotBAthleteId: "a4", winnerAthleteId: "a3", loserAthleteId: "a4" }),
+    ];
+    const pl = placementsFromCategory(elim, matches, clubOf);
+    expect(pl.find((p) => p.place === 1)?.clubId).toBe("c1");
+    expect(pl.find((p) => p.place === 2)?.clubId).toBe("c2");
+    expect(pl.find((p) => p.place === 3)?.clubId).toBe("c3");
+    expect(pl.length).toBe(3);
+  });
 });
 
 describe("placementsFromCategory: round robin", () => {
