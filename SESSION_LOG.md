@@ -13,8 +13,27 @@
 - Идёт фаза исправлений: сперва security+correctness core (я), затем additive-поверхности (агенты).
 
 ## Следующий шаг
-Чинить core: (1) подписанная сессия, (2) RBAC на actions+API, (3) BYE→бронза null,
-(4) advanceWinner в транзакции + guard пересборки, (5) eligibility play-up. Потом — сценарные фичи.
+Дождаться 4 фоновых агентов (organizer-flows / participant-public / admin / infra),
+интегрировать, прогнать tsc+vitest+build, коммит. Затем WS-5: integration+e2e тесты.
+
+## Core-фиксы — СДЕЛАНО (ветка fix/review-security-correctness, коммит 63d773f)
+- Подписанная HMAC-сессия (SESSION_SECRET, TTL, secure) + requireRole guard.
+- RBAC на server actions; refereeUserId из сессии; /api/{build,result} → POST+роль.
+- togglePaid IDOR (updateMany where coachUserId); registerGroup: роль+REG_OPEN+дедуп.
+- advanceWinner в транзакции + guard null-фидера (BYE→бронза больше не null).
+- buildBracket в транзакции + запрет пересборки поверх finalized.
+- submitResult: P2002 → идемпотентный успех.
+- eligibility play-up только в ближайшую старшую; nativeCategory fallback (перевес юниоров).
+- judge page role-guard + RU-лейблы winType + score-поля; package.json scripts + prisma.seed.
+- tsc чисто, 18/18 unit-тестов зелёные.
+
+## Файловые владения фоновых агентов (без пересечений)
+- WS-1 organizer-flows: src/app/organizer-actions.ts, organizer/**, standings/**, lib/domain/placement*.
+- WS-2 participant-public: layout, page, event/[id], category/[id], register/**, me/**,
+  athlete-actions.ts, coaches/**, sponsors/**, sitemap/robots, components/**.
+- WS-3 admin: src/app/admin/**, admin-actions.ts, lib/data/preset.ts, tankograd.ts, prisma/seed.ts.
+- WS-4 infra: prisma/schema.prisma (indexes only), next.config.ts, Dockerfile, .dockerignore,
+  .env.example, .github/workflows/ci.yml.
 
 ## Консолидированный бэклог (из 10 агентов), по приоритету
 
