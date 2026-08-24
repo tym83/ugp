@@ -1,6 +1,20 @@
 // Underground Grappling Platform — доменная модель.
 // Провайдер SQLite для локали; в проде — PostgreSQL (сменить provider + DATABASE_URL).
 // Enum'ы моделируются строками (SQLite), валидация — на уровне приложения (Zod).
+//
+// ─────────────────────────────────────────────────────────────────────────────
+// PROD: переход на PostgreSQL (reg.ru / 152-ФЗ, данные в РФ)
+// ─────────────────────────────────────────────────────────────────────────────
+// Локально проект остаётся на SQLite (`prisma db push`). Для продакшена:
+//   1. datasource db { provider = "postgresql" }   (сменить "sqlite" → "postgresql")
+//   2. DATABASE_URL="postgresql://user:pass@host:5432/ugp?schema=public&sslmode=require"
+//   3. Веса — Float. На Postgres рассмотреть Decimal @db.Decimal(5,2)
+//      (Category.weightMin/weightMax, Registration.declaredWeight/actualWeight,
+//       WeighInAttempt.weight) для точных сравнений и отсутствия ошибок округления.
+//   4. Первый деплой: создать миграции из текущей схемы (`prisma migrate dev`),
+//      затем в проде — `prisma migrate deploy` (см. Dockerfile entrypoint).
+//   5. Индексы ниже безопасны и на SQLite, и на Postgres — портируются как есть.
+// ─────────────────────────────────────────────────────────────────────────────
 
 generator client {
   provider = "prisma-client-js"
@@ -77,6 +91,8 @@ model Event {
   mats       Mat[]
   teamScores TeamScore[]
   createdAt  DateTime @default(now())
+
+  @@index([status])
 }
 
 model PriceTier {
@@ -127,6 +143,7 @@ model Category {
   matches       Match[]
 
   @@index([eventId])
+  @@index([eventId, status])
 }
 
 // ---------- Атлет ----------
@@ -198,6 +215,7 @@ model Registration {
   weighInAttempts WeighInAttempt[]
 
   @@index([categoryId])
+  @@index([categoryId, status])
   @@index([athleteId])
   @@index([entryId])
 }
@@ -252,6 +270,7 @@ model Match {
   result Result?
 
   @@index([categoryId])
+  @@index([categoryId, status])
   @@index([matNumber])
 }
 
