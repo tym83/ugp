@@ -4,10 +4,8 @@
 # (PostgreSQL + приложение + Caddy c авто-HTTPS), выполняет первичный сид админа.
 #
 # Запуск из корня репозитория после git clone:
-#   DOMAIN=app.grappling74.ru \
-#   ADMIN_EMAIL=admin@grappling74.ru \
-#   ADMIN_PASSWORD='СильныйПароль' \
-#   bash deploy/bootstrap.sh
+#   DOMAIN=grappling74.ru bash deploy/bootstrap.sh
+# Первичный сид создаёт демо-аккаунты (пароль demo) + событие Танкоград, если БД пустая.
 #
 # Повторный запуск безопасен: существующий .env не перезаписывается
 # (секреты и пароль БД сохраняются), стек пересобирается и обновляется.
@@ -21,8 +19,6 @@ COMPOSE_FILE="deploy/docker-compose.prod.yml"
 # ---- проверка обязательных параметров (нужны только при первой генерации .env)
 if [ ! -f .env ]; then
   : "${DOMAIN:?нужно передать DOMAIN=...}"
-  : "${ADMIN_EMAIL:?нужно передать ADMIN_EMAIL=...}"
-  : "${ADMIN_PASSWORD:?нужно передать ADMIN_PASSWORD=...}"
 fi
 
 # ---- Docker + compose plugin -------------------------------------------------
@@ -47,8 +43,6 @@ POSTGRES_PASSWORD=${PG_PASS}
 POSTGRES_DB=ugp
 DATABASE_URL=postgresql://ugp:${PG_PASS}@db:5432/ugp?schema=public
 SESSION_SECRET=${SESSION_SECRET}
-ADMIN_EMAIL=${ADMIN_EMAIL}
-ADMIN_PASSWORD=${ADMIN_PASSWORD}
 EOF
   chmod 600 .env
   echo "[bootstrap] .env создан (chmod 600)."
