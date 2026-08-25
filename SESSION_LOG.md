@@ -41,16 +41,26 @@ Hardening до go-live на reg.ru (см. «Осталось» ниже). Бли
   поиск, live-polling, SEO/OG lang=ru, лендинг+countdown, страницы тренеров/спонсоров.
 - Infra: индексы, next.config standalone+CSP/HSTS, Dockerfile+entrypoint, .env.example, CI.
 
+## Доделано в сессии 2026-08-25 (ветка feat/finish-functional)
+- Коррекция результата гл. судьёй (correctResult): supersede-через-аудит, пере-продвижение
+  в PENDING-зависимые, запрет если зависимый матч уже сыгран; confirm-before-submit в пульте.
+- Ручная правка сетки: swapSeeds/moveAthleteSeed/resolveConflict + поиск конфликтов
+  (одноклубники/однофамильцы в 1 круге), инвариант «только до реального результата».
+- Абсолютка on-site: addToAbsolute (+ surcharge) + отдельная кнопка generateAbsoluteBracket.
+- xlsx-импорт группы в тренерский грид (RU/EN заголовки, xlsx@0.18.5).
+- Интеграционные тесты (Prisma/SQLite, 7 шт.): BYE без null-бронзы, идемпотентность/
+  иммутабельность/guard-участника submitResult, rebuild-guard, correctResult + отказ каскада.
+  Отдельный vitest.integration.config.ts; добавлен шаг в CI.
+- Проверка: tsc чисто · unit 24/24 · integration 7/7 · build 23 роута.
+
 ## Осталось (backlog до go-live) — приоритет
 - Postgres provider + `prisma migrate` (сейчас sqlite; Float веса→Decimal), бэкапы в РФ.
-- Интеграционные тесты (Prisma) + Playwright e2e happy-path (закоммитить).
-- Rate-limit (логин, мутации) + security-заголовки уже есть.
-- 152-ФЗ ops: уведомление РКН, публичная политика обработки ПДн, резидентность логов/бэкапов.
-- Referee: коррекция результата гл. судьёй (supersededById), confirm+undo, офлайн-очередь,
-  overtime/пенальти при ничьей.
-- Абсолютка on-site (добор + отдельная кнопка генерации), ручная правка сетки (развести братьев),
-  xlsx-импорт группы, маскирование ФИО несовершеннолетних на публичных страницах.
-- Merge/weigh-in UI отшлифовать; мобильный «путь атлета»; loading/error состояния.
+- Playwright e2e happy-path (интеграционные Prisma-тесты — сделаны).
+- Rate-limit (логин, мутации); security-заголовки уже есть.
+- 152-ФЗ ops: уведомление РКН, публичная политика обработки ПДн, резидентность логов/бэкапов;
+  маскирование ФИО несовершеннолетних на публичных страницах.
+- Referee: офлайн-очередь ввода, overtime/пенальти при ничьей (коррекция+confirm — сделаны).
+- UI-полировка: merge/weigh-in экраны, мобильный «путь атлета», loading/error состояния.
 
 ## Core-фиксы — СДЕЛАНО (ветка fix/review-security-correctness, коммит 63d773f)
 - Подписанная HMAC-сессия (SESSION_SECRET, TTL, secure) + requireRole guard.

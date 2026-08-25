@@ -5,6 +5,8 @@ import { requireRole } from "@/lib/auth/session";
 import { weightFits, eligibleCategories, type Cat, type AthleteInfo } from "@/lib/domain/eligibility";
 import { canMerge, type MergeCat } from "@/lib/domain/merge";
 import { canTransition } from "@/lib/data/preset";
+import { buildBracketForCategory } from "@/lib/domain/persistBracket";
+import { selectTier, priceEntry, type Tier } from "@/lib/domain/pricing";
 
 const ORG_ROLES = ["ORGANIZER", "ADMIN", "MAT_COORDINATOR"] as const;
 
@@ -222,4 +224,301 @@ export async function applyMerge(
 
   revalidatePath(`/organizer/${source.eventId}`);
   return { ok: true, msg: "Категории объединены" };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// FEATURE 1 — Ручное редактирование сетки (развести братьев/одноклубников)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Инвариант "до реальных схваток": редактирование посева/пересборка разрешены только
+ *  пока не сыграна ни одна настоящая схватка. BYE-матчи автозакрываются resolveByes и
+ *  НЕ имеют Result — поэтому COMPLETED-матч с привязанным Result = реальный сыгранный. */
+async function assertNoRealResults(categoryId: string): Promise<string | null> {
+  const finalized = await prisma.result.count({ where: { match: { categoryId }, finalized: true } });
+  if (finalized > 0) return "В категории есть финализированные результаты — правка сетки запрещена";
+  const played = await prisma.match.count({
+    where: { categoryId, status: "COMPLETED", result: { isNot: null } },
+  });
+  if (played > 0) return "В категории уже сыграны схватки — правка сетки запрещена";
+  return null;
+}
+
+/** Поменять местами посев двух атлетов и пересобрать сетку (с club-separation).
+ *  Безопасный способ ручной правки: переставляем seed на регистрациях и пересобираем. */
+export async function swapSeeds(
+  categoryId: string,
+  athleteId1: string,
+  athleteId2: string
+): Promise<{ ok: boolean; msg: string }> {
+  await requireRole("ORGANIZER", "ADMIN");
+  if (athleteId1 === athleteId2) return { ok: false, msg: "Выбраны одинаковые атлеты" };
+
+  const blocked = await assertNoRealResults(categoryId);
+  if (blocked) return { ok: false, msg: blocked };
+
+  const [r1, r2] = await Promise.all([
+    prisma.registration.findFirst({ where: { categoryId, athleteId: athleteId1, status: "ADMITTED" } }),
+    prisma.registration.findFirst({ where: { categoryId, athleteId: athleteId2, status: "ADMITTED" } }),
+  ]);
+  if (!r1 || !r2) return { ok: false, msg: "Регистрация не найдена" };
+
+  // Если seed не проставлен — берём текущий порядок (индекс) как базовый посев.
+  const ordered = await prisma.registration.findMany({
+    where: { categoryId, status: "ADMITTED" },
+    orderBy: { seed: "asc" },
+  });
+  const seedOf = (id: string) => {
+    const reg = ordered.find((x) => x.id === id)!;
+    return reg.seed ?? ordered.indexOf(reg) + 1;
+  };
+  const s1 = seedOf(r1.id);
+  const s2 = seedOf(r2.id);
+
+  await prisma.$transaction(async (tx) => {
+    await tx.registration.update({ where: { id: r1.id }, data: { seed: s2 } });
+    await tx.registration.update({ where: { id: r2.id }, data: { seed: s1 } });
+  });
+  await buildBracketForCategory(categoryId, { force: true });
+
+  revalidatePath(`/category/${categoryId}`);
+  return { ok: true, msg: "Посев изменён, сетка пересобрана" };
+}
+
+/** Задать конкретный посев атлету и пересобрать сетку. Остальные сдвигаются вокруг. */
+export async function moveAthleteSeed(
+  categoryId: string,
+  athleteId: string,
+  newSeed: number
+): Promise<{ ok: boolean; msg: string }> {
+  await requireRole("ORGANIZER", "ADMIN");
+  if (!Number.isFinite(newSeed) || newSeed < 1) return { ok: false, msg: "Неверный номер посева" };
+
+  const blocked = await assertNoRealResults(categoryId);
+  if (blocked) return { ok: false, msg: blocked };
+
+  const ordered = await prisma.registration.findMany({
+    where: { categoryId, status: "ADMITTED" },
+    orderBy: { seed: "asc" },
+  });
+  const target = ordered.find((r) => r.athleteId === athleteId);
+  if (!target) return { ok: false, msg: "Регистрация не найдена" };
+
+  // Собираем список без target, вставляем target на позицию newSeed, перенумеровываем 1..N.
+  const rest = ordered.filter((r) => r.id !== target.id);
+  const pos = Math.min(Math.max(1, Math.trunc(newSeed)), ordered.length);
+  rest.splice(pos - 1, 0, target);
+
+  await prisma.$transaction(async (tx) => {
+    for (let i = 0; i < rest.length; i++) {
+      await tx.registration.update({ where: { id: rest[i].id }, data: { seed: i + 1 } });
+    }
+  });
+  await buildBracketForCategory(categoryId, { force: true });
+
+  revalidatePath(`/category/${categoryId}`);
+  return { ok: true, msg: "Посев изменён, сетка пересобрана" };
+}
+
+export type SeedRow = { athleteId: string; fullName: string; clubId: string | null; clubName: string | null; seed: number };
+export type Conflict = { matchLabel: string; kind: "club" | "surname"; a: SeedRow; b: SeedRow };
+
+/** Первый токен ФИО — используем как «фамилию» для эвристики родственников. */
+function surnameToken(fullName: string): string {
+  return (fullName.trim().split(/\s+/)[0] ?? "").toLowerCase();
+}
+
+/** Найти конфликтные пары 1-го круга: оба атлета из одного клуба ИЛИ с одной фамилией.
+ *  Это «братья/одноклубники», которых по регламенту надо развести. */
+export async function findBracketConflicts(
+  categoryId: string
+): Promise<{ seeds: SeedRow[]; conflicts: Conflict[] }> {
+  await requireRole("ORGANIZER", "ADMIN");
+
+  const regs = await prisma.registration.findMany({
+    where: { categoryId, status: "ADMITTED" },
+    include: { athlete: { include: { club: true } } },
+    orderBy: { seed: "asc" },
+  });
+  const seeds: SeedRow[] = regs.map((r, i) => ({
+    athleteId: r.athleteId,
+    fullName: r.athlete.fullName,
+    clubId: r.athlete.clubId,
+    clubName: r.athlete.club?.name ?? null,
+    seed: r.seed ?? i + 1,
+  }));
+  const byAthlete = new Map(seeds.map((s) => [s.athleteId, s]));
+
+  // Реальные пары 1-го круга берём из сгенерированной сетки (учитывает BYE).
+  const firstRound = await prisma.match.findMany({
+    where: { categoryId, isBronzeMatch: false, roundNumber: 1 },
+    orderBy: { positionInRound: "asc" },
+  });
+  const conflicts: Conflict[] = [];
+  for (const m of firstRound) {
+    if (!m.slotAAthleteId || !m.slotBAthleteId) continue;
+    const a = byAthlete.get(m.slotAAthleteId);
+    const b = byAthlete.get(m.slotBAthleteId);
+    if (!a || !b) continue;
+    const sameClub = !!a.clubId && a.clubId === b.clubId;
+    const sameSurname = !!surnameToken(a.fullName) && surnameToken(a.fullName) === surnameToken(b.fullName);
+    if (sameClub || sameSurname) {
+      conflicts.push({
+        matchLabel: `Круг 1 · пара ${m.positionInRound}`,
+        kind: sameClub ? "club" : "surname",
+        a,
+        b,
+      });
+    }
+  }
+  return { seeds, conflicts };
+}
+
+/** «Развести» конфликт в один клик: меняем посев атлета b на посев нейтрального атлета
+ *  (не из его клуба и не однофамильца), затем пересобираем сетку. */
+export async function resolveConflict(
+  categoryId: string,
+  athleteId: string
+): Promise<{ ok: boolean; msg: string }> {
+  await requireRole("ORGANIZER", "ADMIN");
+
+  const blocked = await assertNoRealResults(categoryId);
+  if (blocked) return { ok: false, msg: blocked };
+
+  const { seeds } = await findBracketConflicts(categoryId);
+  const me = seeds.find((s) => s.athleteId === athleteId);
+  if (!me) return { ok: false, msg: "Атлет не найден в категории" };
+
+  // Нейтральный кандидат для обмена: другой клуб и другая фамилия.
+  const neutral = seeds.find(
+    (s) =>
+      s.athleteId !== me.athleteId &&
+      (!me.clubId || s.clubId !== me.clubId) &&
+      surnameToken(s.fullName) !== surnameToken(me.fullName)
+  );
+  if (!neutral) return { ok: false, msg: "Нет нейтрального атлета для развода — правьте посев вручную" };
+
+  return swapSeeds(categoryId, athleteId, neutral.athleteId);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// FEATURE 2 — Абсолютка на месте (регистрация по ходу события + отдельная генерация)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export type AbsoluteRosterRow = { registrationId: string; athleteId: string; fullName: string; clubName: string | null; status: string };
+export type AbsoluteCandidate = { athleteId: string; fullName: string; clubName: string | null };
+
+/** Ростер абсолютки + список атлетов события, которых можно добавить (поиск по имени). */
+export async function absoluteRoster(
+  absoluteCategoryId: string,
+  query = ""
+): Promise<{ roster: AbsoluteRosterRow[]; candidates: AbsoluteCandidate[] }> {
+  await requireRole("ORGANIZER", "ADMIN");
+
+  const category = await prisma.category.findUnique({ where: { id: absoluteCategoryId } });
+  if (!category || !category.isAbsolute) return { roster: [], candidates: [] };
+
+  const regs = await prisma.registration.findMany({
+    where: { categoryId: absoluteCategoryId },
+    include: { athlete: { include: { club: true } } },
+    orderBy: { createdAt: "asc" },
+  });
+  const roster: AbsoluteRosterRow[] = regs.map((r) => ({
+    registrationId: r.id,
+    athleteId: r.athleteId,
+    fullName: r.athlete.fullName,
+    clubName: r.athlete.club?.name ?? null,
+    status: r.status,
+  }));
+  const inAbsolute = new Set(regs.map((r) => r.athleteId));
+
+  const q = query.trim().toLowerCase();
+  const entries = await prisma.eventEntry.findMany({
+    where: {
+      eventId: category.eventId,
+      ...(q ? { athlete: { fullName: { contains: q } } } : {}),
+    },
+    include: { athlete: { include: { club: true } } },
+    orderBy: { athlete: { fullName: "asc" } },
+    take: 50,
+  });
+  const candidates: AbsoluteCandidate[] = entries
+    .filter((e) => !inAbsolute.has(e.athleteId))
+    .map((e) => ({ athleteId: e.athleteId, fullName: e.athlete.fullName, clubName: e.athlete.club?.name ?? null }));
+
+  return { roster, candidates };
+}
+
+/** Добавить атлета события в абсолютку: Registration(ADMITTED), пометить EventEntry.absoluteAdded,
+ *  доплата за абсолютку по активному тиру. Запрещено, если сетка абсолютки уже сыграна. */
+export async function addToAbsolute(
+  absoluteCategoryId: string,
+  athleteId: string
+): Promise<{ ok: boolean; msg: string }> {
+  await requireRole("ORGANIZER", "ADMIN");
+
+  const category = await prisma.category.findUnique({ where: { id: absoluteCategoryId } });
+  if (!category) return { ok: false, msg: "Категория не найдена" };
+  if (!category.isAbsolute) return { ok: false, msg: "Это не абсолютная категория" };
+
+  const blocked = await assertNoRealResults(absoluteCategoryId);
+  if (blocked) return { ok: false, msg: blocked };
+
+  const entry = await prisma.eventEntry.findUnique({
+    where: { athleteId_eventId: { athleteId, eventId: category.eventId } },
+  });
+  if (!entry) return { ok: false, msg: "Атлет не заявлен на событие" };
+
+  const exists = await prisma.registration.findFirst({
+    where: { categoryId: absoluteCategoryId, athleteId },
+  });
+  if (exists) return { ok: false, msg: "Атлет уже в абсолютке" };
+
+  // Активный тир и его доплата за абсолютку (как в coach-actions).
+  const event = await prisma.event.findUnique({ where: { id: category.eventId }, include: { priceTiers: true } });
+  const tiers: Tier[] = (event?.priceTiers ?? []).map((t) => ({
+    name: t.name, startsAt: t.startsAt, priceOneDivision: t.priceOneDivision,
+    priceBothDivisions: t.priceBothDivisions, absoluteSurcharge: t.absoluteSurcharge,
+  }));
+  const tier = selectTier(tiers, new Date()) ?? tiers[0] ?? null;
+  const surcharge = tier ? priceEntry(tier, { disciplines: [], absoluteAdded: true }) : 0;
+
+  await prisma.$transaction(async (tx) => {
+    await tx.registration.create({
+      data: {
+        entryId: entry.id,
+        athleteId,
+        categoryId: absoluteCategoryId,
+        status: "ADMITTED",
+        admittedAt: new Date(),
+      },
+    });
+    // Доплату начисляем только если ещё не была начислена ранее.
+    await tx.eventEntry.update({
+      where: { id: entry.id },
+      data: {
+        absoluteAdded: true,
+        ...(entry.absoluteAdded ? {} : { priceTotal: { increment: surcharge } }),
+      },
+    });
+  });
+
+  revalidatePath(`/organizer/${category.eventId}`);
+  revalidatePath(`/category/${absoluteCategoryId}`);
+  return { ok: true, msg: surcharge ? `Добавлен в абсолютку (+${surcharge} ₽)` : "Добавлен в абсолютку" };
+}
+
+/** Отдельная кнопка «Сверстать сетку абсолютки» — тонкая обёртка над buildBracketForCategory. */
+export async function generateAbsoluteBracket(
+  absoluteCategoryId: string
+): Promise<{ ok: boolean; msg: string }> {
+  await requireRole("ORGANIZER", "ADMIN");
+
+  const category = await prisma.category.findUnique({ where: { id: absoluteCategoryId } });
+  if (!category) return { ok: false, msg: "Категория не найдена" };
+  if (!category.isAbsolute) return { ok: false, msg: "Это не абсолютная категория" };
+
+  await buildBracketForCategory(absoluteCategoryId, { force: true });
+  revalidatePath(`/organizer/${category.eventId}`);
+  revalidatePath(`/category/${absoluteCategoryId}`);
+  return { ok: true, msg: "Сетка абсолютки сверстана" };
 }
