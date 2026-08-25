@@ -95,6 +95,10 @@ export default async function EventPage({ params }: { params: Promise<{ id: stri
           ))}
         </ul>
       </section>
+
+      <footer className="mt-10 border-t pt-4 text-xs text-gray-500">
+        <Link href="/privacy" className="text-blue-600">Политика обработки ПДн</Link>
+      </footer>
     </main>
   );
 }

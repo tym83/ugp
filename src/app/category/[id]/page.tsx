@@ -3,6 +3,7 @@ import { buildBracketAction } from "@/app/actions";
 import Link from "next/link";
 import type { Metadata } from "next";
 import LiveMatches from "@/components/LiveMatches";
+import { isMinor, maskName } from "@/lib/privacy";
 
 export const dynamic = "force-dynamic";
 
@@ -41,7 +42,9 @@ export default async function CategoryPage({ params }: { params: Promise<{ id: s
     where: { categoryId: id },
     orderBy: [{ isBronzeMatch: "asc" }, { roundNumber: "asc" }, { positionInRound: "asc" }],
   });
-  const nameById = new Map(regs.map((r) => [r.athleteId, r.athlete.fullName]));
+  const nameById = new Map(
+    regs.map((r) => [r.athleteId, maskName(r.athlete.fullName, isMinor(r.athlete.birthDate))]),
+  );
   const slotName = (athleteId: string | null, fromId: string | null, winner: boolean) => {
     if (athleteId) return nameById.get(athleteId) ?? "?";
     if (fromId) return winner ? "победитель ▲" : "проигравший ▽";
@@ -73,7 +76,7 @@ export default async function CategoryPage({ params }: { params: Promise<{ id: s
         <h2 className="text-lg font-semibold mb-2">Участники</h2>
         <ol className="list-decimal ml-6 text-sm">
           {regs.map((r) => (
-            <li key={r.id}>{r.athlete.fullName} <span className="text-gray-400">({r.athlete.club?.name ?? "—"}, {r.actualWeight ?? r.declaredWeight} кг)</span></li>
+            <li key={r.id}>{maskName(r.athlete.fullName, isMinor(r.athlete.birthDate))} <span className="text-gray-400">({r.athlete.club?.name ?? "—"}, {r.actualWeight ?? r.declaredWeight} кг)</span></li>
           ))}
         </ol>
       </section>
