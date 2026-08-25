@@ -53,14 +53,22 @@ Hardening до go-live на reg.ru (см. «Осталось» ниже). Бли
   Отдельный vitest.integration.config.ts; добавлен шаг в CI.
 - Проверка: tsc чисто · unit 24/24 · integration 7/7 · build 23 роута.
 
-## Осталось (backlog до go-live) — приоритет
-- Postgres provider + `prisma migrate` (сейчас sqlite; Float веса→Decimal), бэкапы в РФ.
-- Playwright e2e happy-path (интеграционные Prisma-тесты — сделаны).
-- Rate-limit (логин, мутации); security-заголовки уже есть.
-- 152-ФЗ ops: уведомление РКН, публичная политика обработки ПДн, резидентность логов/бэкапов;
-  маскирование ФИО несовершеннолетних на публичных страницах.
-- Referee: офлайн-очередь ввода, overtime/пенальти при ничьей (коррекция+confirm — сделаны).
-- UI-полировка: merge/weigh-in экраны, мобильный «путь атлета», loading/error состояния.
+## Доделано в сессии 2026-08-25 #2 (ветка feat/prod-hardening)
+- Rate-limit: fixed-window, логин 10/5мин (IP+email), API build 30/мин, result 120/мин → 429.
+- 152-ФЗ: маскирование ФИО несовершеннолетних на публичных страницах + /api/matches;
+  страница политики /privacy + ссылки. Staff-страницы — полные имена.
+- Referee/UX: overtime/пенальти в BoutForm (в details, читается сервером), online/offline+sync
+  индикатор; app-level loading/error/not-found; мобильный «путь атлета» на /me.
+- Playwright e2e (4 теста, изолированная e2e.db): публичные страницы, вход тренера/админа,
+  редирект без авторизации. Скрипты test:e2e/test:integration; CI-джоба e2e.
+- Проверка: tsc чисто · unit 24/24 · integration 7/7 · e2e 4/4 · build 24 роута.
+
+## Осталось (до go-live) — приоритет
+- Postgres provider + миграции (решено: deploy-time на reg.ru; локаль остаётся SQLite),
+  Float веса→Decimal, бэкапы/логи в РФ.
+- 152-ФЗ ops (нетехнические): уведомление РКН, наполнение политики контактами оператора.
+- Overtime/пенальти — доменный подсчёт при ничьей (сейчас пишется в details, без авто-решения).
+- Глубокая UI-полировка merge/weigh-in экранов; офлайн-очередь судьи (не только индикатор).
 
 ## Core-фиксы — СДЕЛАНО (ветка fix/review-security-correctness, коммит 63d773f)
 - Подписанная HMAC-сессия (SESSION_SECRET, TTL, secure) + requireRole guard.
