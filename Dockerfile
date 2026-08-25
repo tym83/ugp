@@ -23,6 +23,10 @@ WORKDIR /app
 RUN apk add --no-cache libc6-compat openssl
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+# Prod runs on PostgreSQL. The committed schema is sqlite (for local dev);
+# flip the datasource provider for the image build so the generated client,
+# migrations and runtime db push all target Postgres.
+RUN sed -i 's/provider = "sqlite"/provider = "postgresql"/' prisma/schema.prisma
 # Prisma client must be generated before the Next build.
 RUN npx prisma generate
 # DATABASE_URL is not needed to build; provide a dummy so any import-time reads
