@@ -1,0 +1,73 @@
+# Прод-стек UGP: PostgreSQL + приложение (Next.js standalone) + Caddy (авто-HTTPS).
+# Запуск из корня репозитория:
+#   docker compose --env-file .env -f deploy/docker-compose.prod.yml up -d --build
+# Первичный сид админа/события (один раз):
+#   docker compose --env-file .env -f deploy/docker-compose.prod.yml --profile tools run --rm seed
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - dbdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  app:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      SESSION_SECRET: ${SESSION_SECRET}
+      NODE_ENV: production
+    expose:
+      - "3000"
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      - app
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddydata:/data
+      - caddyconfig:/config
+
+  # Одноразовый сид (profile tools): создаёт админа (ADMIN_EMAIL/ADMIN_PASSWORD)
+  # и событие-заготовку Танкоград (DRAFT). Демо-аккаунты в прод НЕ создаются.
+  seed:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+      target: build
+    profiles: ["tools"]
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      ADMIN_EMAIL: ${ADMIN_EMAIL}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+    # сид сам гарантирует схему (db push идемпотентен), чтобы не зависеть от порядка со app
+    command: ["sh", "-c", "npx prisma db push --skip-generate && npx tsx prisma/prod-seed.ts"]
+
+volumes:
+  dbdata:
+  caddydata:
+  caddyconfig:
