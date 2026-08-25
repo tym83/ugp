@@ -51,3 +51,31 @@ jobs:
 
       - name: Test (integration)
         run: npx vitest run --config vitest.integration.config.ts
+
+  e2e:
+    runs-on: ubuntu-latest
+    env:
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma client
+        run: npx prisma generate
+
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+
+      # Playwright globalSetup создаёт и сидит изолированную e2e.db;
+      # webServer (next dev) поднимается с DATABASE_URL/SESSION_SECRET из playwright.config.ts.
+      - name: E2E
+        run: npx playwright test
