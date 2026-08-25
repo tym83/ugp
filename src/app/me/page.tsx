@@ -104,31 +104,42 @@ export default async function MePage({ searchParams }: { searchParams: Promise<{
   };
 
   return (
-    <main className="mx-auto max-w-lg p-8">
+    <main className="mx-auto max-w-lg px-4 py-6 sm:p-8">
       <h1 className="text-2xl font-bold mb-1">Мой кабинет</h1>
-      <p className="text-sm text-gray-500 mb-6">{list.map((a) => a.fullName).join(", ")}</p>
+      <p className="text-sm text-gray-500 mb-6 break-words">{list.map((a) => a.fullName).join(", ")}</p>
 
       <section>
         <h2 className="text-lg font-semibold mb-2">Ближайшие схватки</h2>
         {upcoming.length === 0 ? (
           <p className="text-sm text-gray-500">Пока нет назначенных схваток.</p>
         ) : (
-          <ul className="space-y-3">
+          <ul className="space-y-4">
             {upcoming.map((m) => {
               const ahead = eta(m);
               return (
-                <li key={m.id} className="rounded border p-3">
-                  <div className="font-semibold">{oppOf(m)}</div>
-                  <div className="text-sm text-gray-600">
-                    {m.category.event.name} · {matchLabel(m.roundNumber, m.isBronzeMatch)}
-                    {m.matNumber != null ? ` · ковёр ${m.matNumber}` : ""}
-                  </div>
-                  {ahead != null && (
-                    <div className="mt-1 text-xs text-amber-700">
-                      {ahead === 0 ? "вы следующий на ковре" : `примерно через ${ahead} ${schvatok(ahead)} на ковре`}
+                <li key={m.id} className="rounded-lg border p-4">
+                  <div className="flex items-start gap-4">
+                    {m.matNumber != null && (
+                      <div className="flex shrink-0 flex-col items-center justify-center rounded-lg bg-gray-100 px-3 py-2 text-center">
+                        <span className="text-3xl font-extrabold leading-none tabular-nums">{m.matNumber}</span>
+                        <span className="text-[10px] uppercase tracking-wide text-gray-500">ковёр</span>
+                      </div>
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <div className="text-lg font-semibold break-words">{oppOf(m)}</div>
+                      <div className="text-sm text-gray-600 break-words">
+                        {m.category.event.name} · {matchLabel(m.roundNumber, m.isBronzeMatch)}
+                      </div>
+                      {ahead != null && (
+                        <div className="mt-1 text-sm font-medium text-amber-700">
+                          {ahead === 0 ? "вы следующий на ковре" : `примерно через ${ahead} ${schvatok(ahead)} на ковре`}
+                        </div>
+                      )}
                     </div>
-                  )}
-                  <Link href={`/category/${m.categoryId}`} className="mt-1 inline-block text-xs text-blue-600">сетка →</Link>
+                  </div>
+                  <Link href={`/category/${m.categoryId}`} className="mt-3 block rounded-md border py-2 text-center text-sm text-blue-600">
+                    открыть сетку →
+                  </Link>
                 </li>
               );
             })}
@@ -141,13 +152,17 @@ export default async function MePage({ searchParams }: { searchParams: Promise<{
         {past.length === 0 ? (
           <p className="text-sm text-gray-500">Пока нет завершённых схваток.</p>
         ) : (
-          <ul className="space-y-2 text-sm">
+          <ul className="space-y-3 text-sm">
             {past.map((m) => {
               const won = m.winnerAthleteId && athleteIds.includes(m.winnerAthleteId);
               return (
-                <li key={m.id} className="rounded border p-2 flex justify-between">
-                  <span>{oppOf(m)} <span className="text-gray-400">· {m.category.event.name}</span></span>
-                  <span className={won ? "text-green-700 font-semibold" : "text-red-600"}>{won ? "победа" : "поражение"}</span>
+                <li key={m.id} className="flex flex-col gap-1 rounded-lg border p-3 sm:flex-row sm:items-center sm:justify-between">
+                  <span className="min-w-0 break-words">
+                    {oppOf(m)} <span className="text-gray-400">· {m.category.event.name}</span>
+                  </span>
+                  <span className={"shrink-0 font-semibold " + (won ? "text-green-700" : "text-red-600")}>
+                    {won ? "победа" : "поражение"}
+                  </span>
                 </li>
               );
             })}

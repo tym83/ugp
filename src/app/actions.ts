@@ -21,6 +21,7 @@ export async function submitResultAction(formData: FormData) {
     winType: String(formData.get("winType")) as SubmitResultInput["winType"],
     scoreA: formData.get("scoreA") ? Number(formData.get("scoreA")) : undefined,
     scoreB: formData.get("scoreB") ? Number(formData.get("scoreB")) : undefined,
+    details: formData.get("details") ? String(formData.get("details")) : undefined,
     clientMutationId: String(formData.get("clientMutationId")),
     refereeUserId: user.id,
   };
