@@ -46,5 +46,8 @@ jobs:
       - name: Typecheck
         run: npx tsc --noEmit
 
-      - name: Test
+      - name: Test (unit)
         run: npx vitest run
+
+      - name: Test (integration)
+        run: npx vitest run --config vitest.integration.config.ts
