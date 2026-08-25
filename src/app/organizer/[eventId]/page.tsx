@@ -5,6 +5,8 @@ import { needsMerge, suggestMergeTarget, type MergeCat } from "@/lib/domain/merg
 import Link from "next/link";
 import WeighInForm from "./WeighInForm";
 import { MergeButton, LockButton } from "./OrganizerButtons";
+import AbsolutePanel from "./AbsolutePanel";
+import { absoluteRoster } from "@/app/organizer-actions";
 
 export const dynamic = "force-dynamic";
 
@@ -56,6 +58,17 @@ export default async function OrganizerConsole({ params }: { params: Promise<{ e
 
   const locked = !WEIGH_IN_OPEN_STATUSES.includes(event.status);
 
+  // Абсолютки: ростер + кандидаты для регистрации на месте.
+  const absoluteCats = categories.filter((c) => c.isAbsolute);
+  const absoluteData = await Promise.all(
+    absoluteCats.map(async (c) => ({
+      id: c.id,
+      label: catLabel(c),
+      hasBracket: c._count.matches > 0,
+      ...(await absoluteRoster(c.id, "")),
+    }))
+  );
+
   return (
     <main className="mx-auto max-w-5xl p-6">
       <div className="flex items-center justify-between">
@@ -86,6 +99,22 @@ export default async function OrganizerConsole({ params }: { params: Promise<{ e
         </section>
       )}
 
+      {absoluteData.length > 0 && (
+        <section className="mt-8 space-y-4">
+          <h2 className="text-lg font-semibold">Абсолютка</h2>
+          {absoluteData.map((a) => (
+            <AbsolutePanel
+              key={a.id}
+              categoryId={a.id}
+              label={a.label}
+              roster={a.roster}
+              candidates={a.candidates}
+              hasBracket={a.hasBracket}
+            />
+          ))}
+        </section>
+      )}
+
       <section className="mt-8 space-y-6">
         <h2 className="text-lg font-semibold">Категории и взвешивание</h2>
         {categories.map((c) => {
@@ -101,11 +130,21 @@ export default async function OrganizerConsole({ params }: { params: Promise<{ e
                     {c._count.matches > 0 ? " · сетка есть" : ""}
                   </span>
                 </div>
-                <form action={generate}>
-                  <button className="rounded bg-blue-600 px-3 py-1 text-xs text-white">
-                    {c._count.matches ? "Пересобрать сетку" : "Сгенерировать сетку"}
-                  </button>
-                </form>
+                <div className="flex items-center gap-2">
+                  {c._count.matches > 0 && (
+                    <Link
+                      href={`/organizer/${eventId}/bracket/${c.id}`}
+                      className="rounded border px-3 py-1 text-xs text-blue-700"
+                    >
+                      Правка сетки
+                    </Link>
+                  )}
+                  <form action={generate}>
+                    <button className="rounded bg-blue-600 px-3 py-1 text-xs text-white">
+                      {c._count.matches ? "Пересобрать сетку" : "Сгенерировать сетку"}
+                    </button>
+                  </form>
+                </div>
               </div>
 
               {queue.length > 0 && (
