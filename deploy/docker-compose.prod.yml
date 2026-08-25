@@ -49,8 +49,8 @@ services:
       - caddydata:/data
       - caddyconfig:/config
 
-  # Одноразовый сид (profile tools): создаёт админа (ADMIN_EMAIL/ADMIN_PASSWORD)
-  # и событие-заготовку Танкоград (DRAFT). Демо-аккаунты в прод НЕ создаются.
+  # Одноразовый сид (profile tools): наполняет ПУСТУЮ БД демо-данными (аккаунты admin@/org@/
+  # coach@/ref@/athlete@ugp.local, пароль demo) + событие Танкоград (REG_OPEN). На непустой БД — пропуск.
   seed:
     build:
       context: ..
@@ -62,8 +62,6 @@ services:
         condition: service_healthy
     environment:
       DATABASE_URL: ${DATABASE_URL}
-      ADMIN_EMAIL: ${ADMIN_EMAIL}
-      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
     # сид сам гарантирует схему (db push идемпотентен), чтобы не зависеть от порядка со app
     command: ["sh", "-c", "npx prisma db push --skip-generate && npx tsx prisma/prod-seed.ts"]
 
