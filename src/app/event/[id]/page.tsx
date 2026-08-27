@@ -49,31 +49,31 @@ export default async function EventPage({ params }: { params: Promise<{ id: stri
   const st = STATUS[event.status] ?? { text: event.status, cls: "bg-gray-200 text-gray-700" };
 
   return (
-    <main>
+    <main className="bg-[#0d0b08] text-[#f4f0e8]">
       {/* Hero события */}
-      <section className="bg-gray-900 text-white">
+      <section className="border-b border-white/10 bg-cover bg-center" style={{ backgroundImage: "linear-gradient(to top, #0d0b08, rgba(13,11,8,0.7)), url(/brand/concrete-dark.jpg)" }}>
         <div className="mx-auto max-w-5xl px-6 py-12">
-          <Link href="/" className="text-sm text-gray-400 hover:text-white">← все события</Link>
+          <Link href="/" className="text-sm text-[#8a8378] hover:text-[#e3863d]">← все события</Link>
           <div className="mt-3 flex flex-wrap items-center gap-3">
             <h1 className="text-3xl font-bold sm:text-4xl">{event.name}</h1>
             <span className={`rounded-full px-3 py-1 text-xs font-semibold ${st.cls}`}>{st.text}</span>
           </div>
-          <p className="mt-3 text-lg text-gray-300">
+          <p className="mt-3 text-lg text-[#dcd7ce]">
             {new Date(event.date).toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" })}
             {" · "}{event.city}{event.venue ? ` · ${event.venue}` : ""}{event.address ? `, ${event.address}` : ""}
             {" · "}{event.matsCount} ковра
           </p>
           {event.status === "REG_OPEN" && event.registrationClosesAt && (
-            <div className="mt-3 text-gray-300"><Countdown target={new Date(event.registrationClosesAt).toISOString()} /></div>
+            <div className="mt-3 text-[#dcd7ce]"><Countdown target={new Date(event.registrationClosesAt).toISOString()} /></div>
           )}
           <div className="mt-6 flex flex-wrap gap-3">
             {event.status === "REG_OPEN" && (
-              <Link href={`/register/${event.id}`} className="rounded-lg bg-blue-600 px-5 py-2.5 font-semibold hover:bg-blue-500">
+              <Link href={`/register/${event.id}`} className="rounded bg-[#e3863d] px-6 py-2.5 font-bold uppercase tracking-wide text-black hover:brightness-110">
                 Зарегистрироваться
               </Link>
             )}
-            <a href="#divisions" className="rounded-lg border border-gray-600 px-5 py-2.5 hover:bg-white/10">Сетки и категории</a>
-            <Link href={`/standings/${event.id}`} className="rounded-lg border border-gray-600 px-5 py-2.5 hover:bg-white/10">Командный зачёт</Link>
+            <a href="#divisions" className="rounded border border-white/25 px-6 py-2.5 font-semibold hover:bg-white/10">Сетки и категории</a>
+            <Link href={`/standings/${event.id}`} className="rounded border border-white/25 px-6 py-2.5 font-semibold hover:bg-white/10">Командный зачёт</Link>
           </div>
         </div>
       </section>
@@ -81,8 +81,8 @@ export default async function EventPage({ params }: { params: Promise<{ id: stri
       <div className="mx-auto max-w-5xl px-6 py-10">
         {/* Сетки и категории — главный блок */}
         <section id="divisions" className="scroll-mt-4">
-          <h2 className="mb-1 text-2xl font-bold">Сетки и категории</h2>
-          <p className="mb-4 text-sm text-gray-500">
+          <h2 className="mb-1 text-2xl font-black uppercase tracking-tight">Сетки и категории</h2>
+          <p className="mb-4 text-sm text-[#cec8bc]">
             Выбери категорию, чтобы открыть полную сетку. Фильтруй по разделу, полу и весу. Поиск по имени — ниже.
           </p>
           <DivisionsBrowser divisions={divisions} />
@@ -90,7 +90,7 @@ export default async function EventPage({ params }: { params: Promise<{ id: stri
 
         {/* Поиск участника/клуба — вторично */}
         <section className="mt-10">
-          <h2 className="mb-2 text-lg font-semibold">Найти спортсмена или клуб</h2>
+          <h2 className="mb-2 text-sm font-bold uppercase tracking-[0.25em] text-[#e3863d]">Найти спортсмена или клуб</h2>
           <EventSearch eventId={event.id} />
         </section>
 
@@ -98,10 +98,10 @@ export default async function EventPage({ params }: { params: Promise<{ id: stri
           {/* Программа */}
           {timings.length > 0 && (
             <section>
-              <h2 className="mb-2 text-lg font-semibold">Программа дня</h2>
+              <h2 className="mb-2 text-sm font-bold uppercase tracking-[0.25em] text-[#e3863d]">Программа дня</h2>
               <ul className="space-y-1 text-sm">
                 {timings.map((x, i) => (
-                  <li key={i}><span className="font-mono text-gray-500">{x.t}</span> — {x.what}</li>
+                  <li key={i}><span className="font-mono text-[#e3863d]">{x.t}</span> — {x.what}</li>
                 ))}
               </ul>
             </section>
@@ -109,31 +109,31 @@ export default async function EventPage({ params }: { params: Promise<{ id: stri
 
           {/* Стоимость */}
           <section>
-            <h2 className="mb-2 text-lg font-semibold">Стоимость</h2>
-            <table className="w-full border text-sm">
+            <h2 className="mb-2 text-sm font-bold uppercase tracking-[0.25em] text-[#e3863d]">Стоимость</h2>
+            <table className="w-full border border-white/10 text-sm">
               <thead>
-                <tr className="bg-gray-50">
-                  <th className="border px-3 py-1 text-left">Тир</th>
-                  <th className="border px-3 py-1">1 раздел</th>
-                  <th className="border px-3 py-1">Оба</th>
+                <tr className="bg-white/5 text-[#cec8bc]">
+                  <th className="border border-white/10 px-3 py-1 text-left">Тир</th>
+                  <th className="border border-white/10 px-3 py-1">1 раздел</th>
+                  <th className="border border-white/10 px-3 py-1">Оба</th>
                 </tr>
               </thead>
               <tbody>
                 {event.priceTiers.map((t) => (
                   <tr key={t.id}>
-                    <td className="border px-3 py-1">{t.name} <span className="text-gray-400">с {new Date(t.startsAt).toLocaleDateString("ru-RU")}</span></td>
-                    <td className="border px-3 py-1 text-center">{t.priceOneDivision} ₽</td>
-                    <td className="border px-3 py-1 text-center">{t.priceBothDivisions} ₽</td>
+                    <td className="border border-white/10 px-3 py-1">{t.name} <span className="text-[#8a8378]">с {new Date(t.startsAt).toLocaleDateString("ru-RU")}</span></td>
+                    <td className="border border-white/10 px-3 py-1 text-center">{t.priceOneDivision} ₽</td>
+                    <td className="border border-white/10 px-3 py-1 text-center">{t.priceBothDivisions} ₽</td>
                   </tr>
                 ))}
               </tbody>
             </table>
-            <p className="mt-1 text-xs text-gray-500">Комиссия клубу: {event.coachCommission} ₽ с регистрации.</p>
+            <p className="mt-1 text-xs text-[#8a8378]">Комиссия клубу: {event.coachCommission} ₽ с регистрации.</p>
           </section>
         </div>
 
-        <footer className="mt-10 border-t pt-4 text-xs text-gray-500">
-          <Link href="/privacy" className="text-blue-600">Политика обработки ПДн</Link>
+        <footer className="mt-10 border-t border-white/10 pt-4 text-xs text-[#8a8378]">
+          <Link href="/privacy" className="hover:text-[#e3863d]">Политика обработки ПДн</Link>
         </footer>
       </div>
     </main>

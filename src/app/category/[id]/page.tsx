@@ -59,13 +59,14 @@ export default async function CategoryPage({ params }: { params: Promise<{ id: s
   const generate = buildBracketAction.bind(null, id);
 
   return (
-    <main className="mx-auto max-w-4xl p-8">
-      <Link href={`/event/${category.eventId}`} className="text-sm text-blue-600">← {category.event.name}</Link>
-      <h1 className="text-2xl font-bold mt-2">
+    <main className="min-h-screen bg-[#0d0b08] text-[#f4f0e8]">
+    <div className="mx-auto max-w-4xl px-6 py-8">
+      <Link href={`/event/${category.eventId}`} className="text-sm text-[#e3863d] hover:brightness-125">← {category.event.name}</Link>
+      <h1 className="mt-2 text-2xl font-black uppercase tracking-tight">
         {category.ageGroupLabel} · {category.sex === "M" ? "муж" : "жен"} · {category.discipline} ·{" "}
         {category.isAbsolute ? "абсолютка" : category.isOpenTop ? `свыше ${category.weightMin}` : `до ${category.weightMax}`} кг
       </h1>
-      <p className="text-sm text-gray-500">
+      <p className="text-sm text-[#cec8bc]">
         Формат: {category.bracketType === "SINGLE_ELIM" ? "олимпийка" : "круговая"} · правила: {category.ruleFormat} ·
         схватка {category.boutSeconds}s · допущено: {regs.length}
       </p>
@@ -74,22 +75,22 @@ export default async function CategoryPage({ params }: { params: Promise<{ id: s
         <div className="mt-4 flex flex-wrap gap-2">
           {isStaff && (
             <form action={generate}>
-              <button className="rounded bg-blue-600 px-4 py-2 text-white text-sm">
+              <button className="rounded bg-[#e3863d] px-4 py-2 text-sm font-bold uppercase tracking-wide text-black hover:brightness-110">
                 {matches.length ? "Пересобрать сетку" : "Сгенерировать сетку"}
               </button>
             </form>
           )}
           {isReferee && matches.length > 0 && (
-            <Link href={`/judge/${id}`} className="rounded border px-4 py-2 text-sm">Судейский пульт</Link>
+            <Link href={`/judge/${id}`} className="rounded border border-white/25 px-4 py-2 text-sm hover:bg-white/10">Судейский пульт</Link>
           )}
         </div>
       )}
 
       <section className="mt-6">
-        <h2 className="text-lg font-semibold mb-2">Участники</h2>
-        <ol className="list-decimal ml-6 text-sm">
+        <h2 className="mb-2 text-sm font-bold uppercase tracking-[0.25em] text-[#e3863d]">Участники</h2>
+        <ol className="ml-6 list-decimal text-sm">
           {regs.map((r) => (
-            <li key={r.id}>{maskName(r.athlete.fullName, isMinor(r.athlete.birthDate))} <span className="text-gray-400">({r.athlete.club?.name ?? "—"}, {r.actualWeight ?? r.declaredWeight} кг)</span></li>
+            <li key={r.id}>{maskName(r.athlete.fullName, isMinor(r.athlete.birthDate))} <span className="text-[#8a8378]">({r.athlete.club?.name ?? "—"}, {r.actualWeight ?? r.declaredWeight} кг)</span></li>
           ))}
         </ol>
       </section>
@@ -102,21 +103,21 @@ export default async function CategoryPage({ params }: { params: Promise<{ id: s
 
       {matches.length > 0 && (
         <section className="mt-6">
-          <h2 className="text-lg font-semibold mb-3">Сетка</h2>
-          <div className="flex gap-6 overflow-x-auto">
+          <h2 className="mb-3 text-sm font-bold uppercase tracking-[0.25em] text-[#e3863d]">Сетка</h2>
+          <div className="flex gap-6 overflow-x-auto pb-2">
             {rounds.map((rn) => (
               <div key={rn} className="min-w-[220px]">
-                <div className="text-xs font-semibold text-gray-500 mb-2">Круг {rn}</div>
+                <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-[#cec8bc]">Круг {rn}</div>
                 <div className="space-y-3">
                   {matches.filter((m) => m.roundNumber === rn && !m.isBronzeMatch).map((m) => (
-                    <div key={m.id} className="rounded border text-sm">
-                      <div className={`px-2 py-1 border-b ${m.winnerAthleteId && m.winnerAthleteId === m.slotAAthleteId ? "font-bold" : ""}`}>
+                    <div key={m.id} className="rounded border border-white/10 bg-white/5 text-sm">
+                      <div className={`border-b border-white/10 px-2 py-1 ${m.winnerAthleteId && m.winnerAthleteId === m.slotAAthleteId ? "font-bold text-[#e3863d]" : ""}`}>
                         {slotName(m.slotAAthleteId, m.slotAFromMatchId, m.slotAWinner)}
                       </div>
-                      <div className={`px-2 py-1 ${m.winnerAthleteId && m.winnerAthleteId === m.slotBAthleteId ? "font-bold" : ""}`}>
+                      <div className={`px-2 py-1 ${m.winnerAthleteId && m.winnerAthleteId === m.slotBAthleteId ? "font-bold text-[#e3863d]" : ""}`}>
                         {slotName(m.slotBAthleteId, m.slotBFromMatchId, m.slotBWinner)}
                       </div>
-                      <div className="px-2 py-0.5 text-[10px] text-gray-400 border-t">{m.status}{m.matNumber ? ` · ковёр ${m.matNumber}` : ""}</div>
+                      <div className="border-t border-white/10 px-2 py-0.5 text-[10px] text-[#8a8378]">{m.status}{m.matNumber ? ` · ковёр ${m.matNumber}` : ""}</div>
                     </div>
                   ))}
                 </div>
@@ -124,10 +125,10 @@ export default async function CategoryPage({ params }: { params: Promise<{ id: s
             ))}
             {matches.some((m) => m.isBronzeMatch) && (
               <div className="min-w-[220px]">
-                <div className="text-xs font-semibold text-amber-600 mb-2">За 3-е место</div>
+                <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-[#e3863d]">За 3-е место</div>
                 {matches.filter((m) => m.isBronzeMatch).map((m) => (
-                  <div key={m.id} className="rounded border border-amber-300 text-sm">
-                    <div className="px-2 py-1 border-b">{slotName(m.slotAAthleteId, m.slotAFromMatchId, m.slotAWinner)}</div>
+                  <div key={m.id} className="rounded border border-[#e3863d]/40 bg-white/5 text-sm">
+                    <div className="border-b border-white/10 px-2 py-1">{slotName(m.slotAAthleteId, m.slotAFromMatchId, m.slotAWinner)}</div>
                     <div className="px-2 py-1">{slotName(m.slotBAthleteId, m.slotBFromMatchId, m.slotBWinner)}</div>
                   </div>
                 ))}
@@ -136,6 +137,7 @@ export default async function CategoryPage({ params }: { params: Promise<{ id: s
           </div>
         </section>
       )}
+    </div>
     </main>
   );
 }

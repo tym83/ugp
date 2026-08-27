@@ -57,17 +57,17 @@ export default function DivisionsBrowser({ divisions }: { divisions: Division[] 
   }, [filtered]);
 
   const chip = (active: boolean) =>
-    `rounded-full px-3 py-1 text-sm border transition ${active ? "bg-gray-900 text-white border-gray-900" : "bg-white text-gray-700 hover:bg-gray-100"}`;
+    `rounded-full px-3 py-1 text-sm border transition ${active ? "bg-[#e3863d] text-black border-[#e3863d] font-semibold" : "border-white/15 text-[#cec8bc] hover:bg-white/10"}`;
 
   return (
-    <div>
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-500 mb-3">
-        <span><b className="text-gray-900">{total}</b> категорий</span>
-        <span><b className="text-gray-900">{withReg}</b> с заявками</span>
-        <span><b className="text-gray-900">{athletes}</b> спортсменов</span>
+    <div className="text-[#f4f0e8]">
+      <div className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-[#cec8bc]">
+        <span><b className="text-[#f4f0e8]">{total}</b> категорий</span>
+        <span><b className="text-[#f4f0e8]">{withReg}</b> с заявками</span>
+        <span><b className="text-[#f4f0e8]">{athletes}</b> спортсменов</span>
       </div>
 
-      <div className="sticky top-0 z-10 -mx-1 mb-4 flex flex-wrap items-center gap-2 bg-white/90 px-1 py-2 backdrop-blur">
+      <div className="sticky top-14 z-10 -mx-1 mb-4 flex flex-wrap items-center gap-2 bg-[#0d0b08]/95 px-1 py-2 backdrop-blur">
         <div className="flex gap-1">
           {(["all", "gi", "nogi"] as const).map((v) => (
             <button key={v} onClick={() => setDiscipline(v)} className={chip(discipline === v)}>
@@ -87,36 +87,36 @@ export default function DivisionsBrowser({ divisions }: { divisions: Division[] 
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder="возраст / вес…"
-          className="ml-auto w-40 rounded-full border px-3 py-1 text-sm"
+          className="ml-auto w-40 rounded-full border border-white/15 bg-white/5 px-3 py-1 text-sm text-[#f4f0e8] placeholder:text-[#8a8378]"
         />
       </div>
 
       <div className="space-y-6">
         {groups.map(([label, items]) => (
           <div key={label}>
-            <h3 className="mb-2 text-sm font-bold uppercase tracking-wide text-gray-500">{label}</h3>
+            <h3 className="mb-2 text-sm font-bold uppercase tracking-[0.2em] text-[#e3863d]">{label}</h3>
             <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
               {items.map((d) => {
                 const clickable = d.count > 0;
                 const inner = (
                   <div
                     className={`flex items-center justify-between rounded-lg border p-3 ${
-                      clickable ? "bg-white hover:border-gray-900 hover:shadow-sm" : "bg-gray-50 text-gray-400"
+                      clickable ? "border-white/10 bg-white/5 hover:border-[#e3863d]/60" : "border-white/5 bg-white/[0.02] text-[#8a8378]"
                     }`}
                   >
                     <div className="min-w-0">
-                      <div className="truncate font-medium">
+                      <div className="truncate font-semibold">
                         {d.sex === "M" ? "Муж" : "Жен"} · {disciplineLabel(d.discipline)}
                       </div>
-                      <div className="text-sm text-gray-500">{weightLabel(d)}</div>
+                      <div className="text-sm text-[#cec8bc]">{weightLabel(d)}</div>
                     </div>
                     <span
                       className={`ml-2 shrink-0 rounded-full px-2 py-0.5 text-xs ${
                         d.count === 0
-                          ? "bg-gray-100 text-gray-400"
+                          ? "bg-white/5 text-[#8a8378]"
                           : d.hasBracket
-                            ? "bg-green-100 text-green-700"
-                            : "bg-blue-100 text-blue-700"
+                            ? "bg-[#e3863d]/20 text-[#e3863d]"
+                            : "bg-white/10 text-[#f4f0e8]"
                       }`}
                     >
                       {d.count === 0 ? "нет заявок" : d.hasBracket ? `сетка · ${d.count}` : `${d.count} заявок`}
@@ -132,7 +132,7 @@ export default function DivisionsBrowser({ divisions }: { divisions: Division[] 
             </div>
           </div>
         ))}
-        {groups.length === 0 && <p className="text-sm text-gray-500">Ничего не найдено по фильтрам.</p>}
+        {groups.length === 0 && <p className="text-sm text-[#cec8bc]">Ничего не найдено по фильтрам.</p>}
       </div>
     </div>
   );
