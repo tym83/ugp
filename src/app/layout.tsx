@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Oswald } from "next/font/google";
+import { Geist, Geist_Mono, Unbounded } from "next/font/google";
 import "./globals.css";
 import BrandHeader from "@/components/BrandHeader";
 
@@ -13,11 +13,11 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-// Заголовочный шрифт — кондесед-гротеск с характером (кириллица есть).
-const oswald = Oswald({
-  variable: "--font-oswald",
+// Заголовочный шрифт — тяжёлый дерзкий дисплей (кириллица есть).
+const heading = Unbounded({
+  variable: "--font-heading",
   subsets: ["latin", "cyrillic"],
-  weight: ["500", "600", "700"],
+  weight: ["600", "700", "800"],
 });
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
@@ -51,7 +51,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="ru"
-      className={`${geistSans.variable} ${geistMono.variable} ${oswald.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} ${heading.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
         <BrandHeader />

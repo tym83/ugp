@@ -25,11 +25,11 @@ body {
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
 }
 
-/* Заголовки — Oswald (кондесед, спортивный характер). */
+/* Заголовки — Unbounded (тяжёлый дерзкий дисплей). */
 h1, h2, h3, h4, .font-display {
-  font-family: var(--font-oswald), var(--font-geist-sans), sans-serif;
-  letter-spacing: 0.01em;
+  font-family: var(--font-heading), var(--font-geist-sans), sans-serif;
+  letter-spacing: -0.02em;
 }
 h1, h2 {
-  font-weight: 700;
+  font-weight: 800;
 }
