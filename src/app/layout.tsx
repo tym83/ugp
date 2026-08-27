@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import BrandHeader from "@/components/BrandHeader";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -24,11 +25,18 @@ export const metadata: Metadata = {
     "Регистрация и проведение турниров по грэпплингу и BJJ: онлайн-заявки, сетки, живой прогресс схваток и командный зачёт.",
   openGraph: {
     type: "website",
-    siteName: "Underground Grappling Platform",
+    siteName: "Underground Grappling",
     locale: "ru_RU",
-    title: "Underground Grappling Platform",
+    title: "Underground Grappling — турниры по грэпплингу",
     description:
       "Регистрация и проведение турниров по грэпплингу и BJJ: онлайн-заявки, сетки, живой прогресс схваток.",
+    images: ["/brand/hero-cover.jpg"],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Underground Grappling",
+    description: "Турниры по грэпплингу и BJJ: заявки, сетки, живой прогресс схваток.",
+    images: ["/brand/hero-cover.jpg"],
   },
 };
 
@@ -38,7 +46,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="ru"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        <BrandHeader />
+        <div className="flex-1">{children}</div>
+      </body>
     </html>
   );
 }
