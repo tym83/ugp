@@ -31,6 +31,11 @@ services:
       DATABASE_URL: ${DATABASE_URL}
       SESSION_SECRET: ${SESSION_SECRET}
       NODE_ENV: production
+    # Схему применяет одноразовый seed-сервис (полный build-образ с prisma CLI).
+    # Приложение просто запускает standalone-сервер — без prisma на старте
+    # (в облегчённом образе CLI не хватает wasm, а миграция здесь и не нужна).
+    entrypoint: ["node"]
+    command: ["server.js"]
     expose:
       - "3000"
 
