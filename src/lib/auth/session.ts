@@ -80,6 +80,20 @@ export async function requireRole(...roles: string[]): Promise<SessionUser> {
   return user;
 }
 
+/** Гард с привязкой к событию: у пользователя должна быть роль ИМЕННО для этого события
+ *  (scope=PLATFORM или eventId совпадает). ADMIN — всегда. Не даёт организатору события A
+ *  управлять событием B. */
+export async function requireEventRole(eventId: string, ...roles: string[]): Promise<SessionUser> {
+  const user = await getCurrentUser();
+  if (!user) throw new Error("Не авторизован");
+  if (hasRole(user, "ADMIN")) return user;
+  const ok = user.memberships.some(
+    (m) => roles.includes(m.role) && (m.scope === "PLATFORM" || m.eventId === eventId),
+  );
+  if (!ok) throw new Error("Недостаточно прав для этого события");
+  return user;
+}
+
 /** Гард для страниц: аноним → на логин, не та роль → на логин с флагом. Никогда не отдаёт 200-«нет прав». */
 export async function requirePageRole(...roles: string[]): Promise<SessionUser> {
   const user = await getCurrentUser();

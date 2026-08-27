@@ -1,6 +1,6 @@
 "use server";
 import { prisma } from "@/lib/prisma";
-import { requireRole } from "@/lib/auth/session";
+import { requireRole, requireEventRole } from "@/lib/auth/session";
 import { hashPassword } from "@/lib/auth/password";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -77,7 +77,7 @@ export async function createEvent(formData: FormData): Promise<void> {
 const eventPatchSchema = eventSchema.partial();
 
 export async function updateEvent(id: string, formData: FormData): Promise<void> {
-  await requireRole("ADMIN", "ORGANIZER");
+  await requireEventRole(id, "ADMIN", "ORGANIZER");
   const d = parseOrThrow(eventPatchSchema, Object.fromEntries(formData));
 
   await prisma.event.update({
@@ -101,7 +101,7 @@ export async function updateEvent(id: string, formData: FormData): Promise<void>
 }
 
 export async function setEventStatus(eventId: string, status: string): Promise<void> {
-  await requireRole("ADMIN", "ORGANIZER");
+  await requireEventRole(eventId, "ADMIN", "ORGANIZER");
   const event = await prisma.event.findUnique({ where: { id: eventId } });
   if (!event) throw new Error("событие не найдено");
   if (event.status === status) throw new Error("статус уже установлен");
@@ -124,7 +124,7 @@ const tierSchema = z.object({
 });
 
 export async function addPriceTier(eventId: string, formData: FormData): Promise<void> {
-  await requireRole("ADMIN", "ORGANIZER");
+  await requireEventRole(eventId, "ADMIN", "ORGANIZER");
   const d = parseOrThrow(tierSchema, Object.fromEntries(formData));
   const startsAt = toDate(d.startsAt);
   if (!startsAt) throw new Error("неверная дата старта тира");
@@ -160,7 +160,7 @@ const categorySchema = z.object({
 });
 
 export async function addCategory(eventId: string, formData: FormData): Promise<void> {
-  await requireRole("ADMIN", "ORGANIZER");
+  await requireEventRole(eventId, "ADMIN", "ORGANIZER");
   const raw = Object.fromEntries(formData);
   const d = parseOrThrow(categorySchema, raw);
   const hasMin = typeof raw.weightMin === "string" && raw.weightMin.trim() !== "";
@@ -248,7 +248,7 @@ export async function revokeMembership(membershipId: string): Promise<void> {
 // ---------- Судья → ковёр ----------
 // Создаёт/обновляет REFEREE-membership с matNumber (scope=EVENT).
 export async function assignRefereeToMat(userId: string, eventId: string, matNumber: number): Promise<void> {
-  await requireRole("ADMIN", "ORGANIZER");
+  await requireEventRole(eventId, "ADMIN", "ORGANIZER");
   if (!userId || !eventId) throw new Error("userId и eventId обязательны");
   const n = Number(matNumber);
   if (!Number.isInteger(n) || n < 1) throw new Error("неверный номер ковра");
