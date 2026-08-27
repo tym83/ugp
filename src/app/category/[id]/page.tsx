@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { buildBracketAction } from "@/app/actions";
+import { getCurrentUser, hasRole } from "@/lib/auth/session";
 import Link from "next/link";
 import type { Metadata } from "next";
 import LiveMatches from "@/components/LiveMatches";
@@ -52,6 +53,9 @@ export default async function CategoryPage({ params }: { params: Promise<{ id: s
   };
   const rounds = [...new Set(matches.filter((m) => !m.isBronzeMatch).map((m) => m.roundNumber))].sort((a, b) => a - b);
 
+  const user = await getCurrentUser();
+  const isStaff = hasRole(user, "ORGANIZER", "ADMIN", "MAT_COORDINATOR");
+  const isReferee = hasRole(user, "REFEREE", "MAT_COORDINATOR", "ORGANIZER", "ADMIN");
   const generate = buildBracketAction.bind(null, id);
 
   return (
@@ -66,11 +70,20 @@ export default async function CategoryPage({ params }: { params: Promise<{ id: s
         схватка {category.boutSeconds}s · допущено: {regs.length}
       </p>
 
-      <form action={generate} className="mt-4">
-        <button className="rounded bg-blue-600 px-4 py-2 text-white text-sm">
-          {matches.length ? "Пересобрать сетку" : "Сгенерировать сетку"}
-        </button>
-      </form>
+      {(isStaff || isReferee) && (
+        <div className="mt-4 flex flex-wrap gap-2">
+          {isStaff && (
+            <form action={generate}>
+              <button className="rounded bg-blue-600 px-4 py-2 text-white text-sm">
+                {matches.length ? "Пересобрать сетку" : "Сгенерировать сетку"}
+              </button>
+            </form>
+          )}
+          {isReferee && matches.length > 0 && (
+            <Link href={`/judge/${id}`} className="rounded border px-4 py-2 text-sm">Судейский пульт</Link>
+          )}
+        </div>
+      )}
 
       <section className="mt-6">
         <h2 className="text-lg font-semibold mb-2">Участники</h2>
