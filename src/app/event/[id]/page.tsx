@@ -2,8 +2,18 @@ import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import type { Metadata } from "next";
 import EventSearch from "@/components/EventSearch";
+import DivisionsBrowser, { type Division } from "@/components/DivisionsBrowser";
+import Countdown from "@/components/Countdown";
 
 export const dynamic = "force-dynamic";
+
+const STATUS: Record<string, { text: string; cls: string }> = {
+  DRAFT: { text: "черновик", cls: "bg-gray-200 text-gray-700" },
+  REG_OPEN: { text: "регистрация открыта", cls: "bg-green-500 text-white" },
+  REG_CLOSED: { text: "регистрация закрыта", cls: "bg-amber-500 text-white" },
+  LIVE: { text: "идёт сейчас", cls: "bg-red-600 text-white" },
+  COMPLETED: { text: "завершён", cls: "bg-gray-300 text-gray-700" },
+};
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params;
@@ -26,79 +36,106 @@ export default async function EventPage({ params }: { params: Promise<{ id: stri
   if (!event) return <main className="p-8">Событие не найдено</main>;
   const timings: { t: string; what: string }[] = event.timings ? JSON.parse(event.timings) : [];
   const cats = await prisma.category.findMany({
-    where: { eventId: id },
-    include: { _count: { select: { registrations: true } } },
+    where: { eventId: id, mergedIntoId: null },
+    include: { _count: { select: { registrations: true, matches: true } } },
     orderBy: { order: "asc" },
   });
-  const withReg = cats.filter((c) => c._count.registrations > 0);
+  const divisions: Division[] = cats.map((c) => ({
+    id: c.id, ageGroupLabel: c.ageGroupLabel, ageGroupCode: c.ageGroupCode, order: c.order,
+    sex: c.sex as "M" | "F", discipline: c.discipline as "gi" | "nogi",
+    weightMin: c.weightMin, weightMax: c.weightMax, isOpenTop: c.isOpenTop, isAbsolute: c.isAbsolute,
+    count: c._count.registrations, hasBracket: c._count.matches > 0,
+  }));
+  const st = STATUS[event.status] ?? { text: event.status, cls: "bg-gray-200 text-gray-700" };
 
   return (
-    <main className="mx-auto max-w-3xl p-8">
-      <Link href="/" className="text-sm text-blue-600">← события</Link>
-      <h1 className="text-3xl font-bold mt-2">{event.name}</h1>
-      <p className="text-gray-600">
-        {new Date(event.date).toLocaleDateString("ru-RU")} · {event.city} · {event.venue}, {event.address} · {event.matsCount} ковра
-      </p>
-      <div className="mt-2 inline-block rounded bg-gray-100 px-2 py-1 text-xs">Статус: {event.status}</div>
-
-      <div className="mt-4 flex flex-wrap gap-2">
-        {event.status === "REG_OPEN" && (
-          <Link href={`/register/${event.id}`} className="rounded bg-blue-600 px-4 py-2 text-sm text-white">Зарегистрироваться</Link>
-        )}
-        <Link href={`/standings/${event.id}`} className="rounded border px-4 py-2 text-sm">Командный зачёт</Link>
-        <Link href="/me/search" className="rounded border px-4 py-2 text-sm">Найти свою сетку</Link>
-      </div>
-
-      <section className="mt-6">
-        <h2 className="text-lg font-semibold mb-2">Поиск участника / клуба</h2>
-        <EventSearch eventId={event.id} />
-      </section>
-
-      <section className="mt-6">
-        <h2 className="text-lg font-semibold mb-2">Программа дня</h2>
-        <ul className="text-sm space-y-1">
-          {timings.map((x, i) => (
-            <li key={i}><span className="font-mono text-gray-500">{x.t}</span> — {x.what}</li>
-          ))}
-        </ul>
-      </section>
-
-      <section className="mt-6">
-        <h2 className="text-lg font-semibold mb-2">Стоимость</h2>
-        <table className="text-sm border">
-          <thead><tr className="bg-gray-50"><th className="border px-3 py-1 text-left">Тир</th><th className="border px-3 py-1">1 раздел</th><th className="border px-3 py-1">Оба раздела</th></tr></thead>
-          <tbody>
-            {event.priceTiers.map((t) => (
-              <tr key={t.id}>
-                <td className="border px-3 py-1">{t.name} (с {new Date(t.startsAt).toLocaleDateString("ru-RU")})</td>
-                <td className="border px-3 py-1 text-center">{t.priceOneDivision} ₽</td>
-                <td className="border px-3 py-1 text-center">{t.priceBothDivisions} ₽</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        <p className="text-xs text-gray-500 mt-1">Комиссия клубу: {event.coachCommission} ₽ с регистрации.</p>
-      </section>
-
-      <section className="mt-6">
-        <h2 className="text-lg font-semibold mb-2">Категории: {cats.length}</h2>
-        <p className="text-sm text-gray-500 mb-2">С заявками ({withReg.length}) — можно смотреть сетки:</p>
-        <ul className="space-y-2">
-          {withReg.map((c) => (
-            <li key={c.id} className="rounded border p-3 hover:bg-gray-50">
-              <Link href={`/category/${c.id}`}>
-                {c.ageGroupLabel} · {c.sex === "M" ? "муж" : "жен"} · {c.discipline} ·{" "}
-                {c.isAbsolute ? "абсолютка" : c.isOpenTop ? `свыше ${c.weightMin}` : `до ${c.weightMax}`} кг
-                <span className="ml-2 text-xs text-gray-500">заявок: {c._count.registrations}</span>
+    <main>
+      {/* Hero события */}
+      <section className="bg-gray-900 text-white">
+        <div className="mx-auto max-w-5xl px-6 py-12">
+          <Link href="/" className="text-sm text-gray-400 hover:text-white">← все события</Link>
+          <div className="mt-3 flex flex-wrap items-center gap-3">
+            <h1 className="text-3xl font-bold sm:text-4xl">{event.name}</h1>
+            <span className={`rounded-full px-3 py-1 text-xs font-semibold ${st.cls}`}>{st.text}</span>
+          </div>
+          <p className="mt-3 text-lg text-gray-300">
+            {new Date(event.date).toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" })}
+            {" · "}{event.city}{event.venue ? ` · ${event.venue}` : ""}{event.address ? `, ${event.address}` : ""}
+            {" · "}{event.matsCount} ковра
+          </p>
+          {event.status === "REG_OPEN" && event.registrationClosesAt && (
+            <div className="mt-3 text-gray-300"><Countdown target={new Date(event.registrationClosesAt).toISOString()} /></div>
+          )}
+          <div className="mt-6 flex flex-wrap gap-3">
+            {event.status === "REG_OPEN" && (
+              <Link href={`/register/${event.id}`} className="rounded-lg bg-blue-600 px-5 py-2.5 font-semibold hover:bg-blue-500">
+                Зарегистрироваться
               </Link>
-            </li>
-          ))}
-        </ul>
+            )}
+            <a href="#divisions" className="rounded-lg border border-gray-600 px-5 py-2.5 hover:bg-white/10">Сетки и категории</a>
+            <Link href={`/standings/${event.id}`} className="rounded-lg border border-gray-600 px-5 py-2.5 hover:bg-white/10">Командный зачёт</Link>
+          </div>
+        </div>
       </section>
 
-      <footer className="mt-10 border-t pt-4 text-xs text-gray-500">
-        <Link href="/privacy" className="text-blue-600">Политика обработки ПДн</Link>
-      </footer>
+      <div className="mx-auto max-w-5xl px-6 py-10">
+        {/* Сетки и категории — главный блок */}
+        <section id="divisions" className="scroll-mt-4">
+          <h2 className="mb-1 text-2xl font-bold">Сетки и категории</h2>
+          <p className="mb-4 text-sm text-gray-500">
+            Выбери категорию, чтобы открыть полную сетку. Фильтруй по разделу, полу и весу. Поиск по имени — ниже.
+          </p>
+          <DivisionsBrowser divisions={divisions} />
+        </section>
+
+        {/* Поиск участника/клуба — вторично */}
+        <section className="mt-10">
+          <h2 className="mb-2 text-lg font-semibold">Найти спортсмена или клуб</h2>
+          <EventSearch eventId={event.id} />
+        </section>
+
+        <div className="mt-10 grid gap-8 sm:grid-cols-2">
+          {/* Программа */}
+          {timings.length > 0 && (
+            <section>
+              <h2 className="mb-2 text-lg font-semibold">Программа дня</h2>
+              <ul className="space-y-1 text-sm">
+                {timings.map((x, i) => (
+                  <li key={i}><span className="font-mono text-gray-500">{x.t}</span> — {x.what}</li>
+                ))}
+              </ul>
+            </section>
+          )}
+
+          {/* Стоимость */}
+          <section>
+            <h2 className="mb-2 text-lg font-semibold">Стоимость</h2>
+            <table className="w-full border text-sm">
+              <thead>
+                <tr className="bg-gray-50">
+                  <th className="border px-3 py-1 text-left">Тир</th>
+                  <th className="border px-3 py-1">1 раздел</th>
+                  <th className="border px-3 py-1">Оба</th>
+                </tr>
+              </thead>
+              <tbody>
+                {event.priceTiers.map((t) => (
+                  <tr key={t.id}>
+                    <td className="border px-3 py-1">{t.name} <span className="text-gray-400">с {new Date(t.startsAt).toLocaleDateString("ru-RU")}</span></td>
+                    <td className="border px-3 py-1 text-center">{t.priceOneDivision} ₽</td>
+                    <td className="border px-3 py-1 text-center">{t.priceBothDivisions} ₽</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <p className="mt-1 text-xs text-gray-500">Комиссия клубу: {event.coachCommission} ₽ с регистрации.</p>
+          </section>
+        </div>
+
+        <footer className="mt-10 border-t pt-4 text-xs text-gray-500">
+          <Link href="/privacy" className="text-blue-600">Политика обработки ПДн</Link>
+        </footer>
+      </div>
     </main>
   );
 }
