@@ -37,7 +37,14 @@ export type AthleteInfo = {
   sex: "M" | "F";
   birthYear: number;
   weight: number;
+  level?: string | null; // пояс/уровень (gi belt или novice/…); null → только категории «all»
 };
+
+/** Категория подходит по уровню: без уровня/«all», либо совпадает с уровнем атлета. */
+function levelFits(cat: Cat, level: string | null | undefined): boolean {
+  if (!cat.level || cat.level === "all") return true;
+  return cat.level === level;
+}
 
 /** Категории (не-абсолютные), в которые атлет может заявиться в конкретной дисциплине.
  *  Своя возрастная группа приоритетна; play-up — только в БЛИЖАЙШУЮ старшую группу,
@@ -50,7 +57,7 @@ export function eligibleCategories(
 ): Cat[] {
   const playUp = opts.allowPlayUp ?? false;
   const pool = cats.filter(
-    (c) => !c.isAbsolute && c.discipline === discipline && c.sex === a.sex && weightFits(a.weight, c)
+    (c) => !c.isAbsolute && c.discipline === discipline && c.sex === a.sex && weightFits(a.weight, c) && levelFits(c, a.level)
   );
   const own = pool.filter((c) => ageEligible(a.birthYear, c, false));
   if (own.length || !playUp) return own;
