@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { prisma } from "@/lib/prisma";
 
@@ -77,4 +78,37 @@ export async function requireRole(...roles: string[]): Promise<SessionUser> {
   if (!user) throw new Error("Не авторизован");
   if (roles.length && !hasRole(user, ...roles)) throw new Error("Недостаточно прав");
   return user;
+}
+
+/** Гард для страниц: аноним → на логин, не та роль → на логин с флагом. Никогда не отдаёт 200-«нет прав». */
+export async function requirePageRole(...roles: string[]): Promise<SessionUser> {
+  const user = await getCurrentUser();
+  if (!user) redirect("/login");
+  if (roles.length && !hasRole(user, ...roles)) redirect("/login?forbidden=1");
+  return user;
+}
+
+// Маршрутизация по ролям — единый источник истины для входа и шапки.
+const ROLE_ORDER = ["ADMIN", "ORGANIZER", "REFEREE", "MAT_COORDINATOR", "COACH", "ATHLETE"] as const;
+const ROLE_HOME: Record<string, string> = {
+  ADMIN: "/admin", ORGANIZER: "/organizer", REFEREE: "/referee",
+  MAT_COORDINATOR: "/referee", COACH: "/coach", ATHLETE: "/me",
+};
+export const ROLE_LABEL: Record<string, string> = {
+  ADMIN: "Админ", ORGANIZER: "Организатор", REFEREE: "Судья",
+  MAT_COORDINATOR: "Координатор ковра", COACH: "Тренер", ATHLETE: "Участник",
+};
+
+/** Приоритетная роль пользователя (для бейджа). */
+export function primaryRole(roles: string[]): string | null {
+  return ROLE_ORDER.find((r) => roles.includes(r)) ?? null;
+}
+
+/** Куда вести после входа: одна область → её дом, несколько → /dashboard. */
+export function homeForRoles(roles: string[]): string {
+  const areas = new Set(roles.map((r) => ROLE_HOME[r]).filter(Boolean));
+  if (areas.size === 0) return "/";
+  if (areas.size > 1) return "/dashboard";
+  const r = primaryRole(roles);
+  return (r && ROLE_HOME[r]) || "/";
 }

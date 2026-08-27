@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { verifyPassword } from "@/lib/auth/password";
-import { signIn, signOut } from "@/lib/auth/session";
+import { signIn, signOut, homeForRoles } from "@/lib/auth/session";
 import { rateLimit } from "@/lib/rate-limit";
 
 // Клиентский IP за реверс-прокси (nginx на reg.ru): первый адрес из x-forwarded-for,
@@ -32,8 +32,7 @@ export async function signInAction(formData: FormData) {
   if (!user || !verifyPassword(password, user.passwordHash)) redirect("/login?e=1");
   await signIn(user!.id);
   const roles = user!.memberships.map((m) => m.role);
-  if (roles.includes("COACH")) redirect("/coach");
-  redirect("/");
+  redirect(homeForRoles(roles));
 }
 
 export async function signOutAction() {

@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { getCurrentUser, hasRole } from "@/lib/auth/session";
+import { requirePageRole } from "@/lib/auth/session";
 import { buildBracketAction } from "@/app/actions";
 import { needsMerge, suggestMergeTarget, type MergeCat } from "@/lib/domain/merge";
 import Link from "next/link";
@@ -15,10 +15,7 @@ const WEIGH_IN_OPEN_STATUSES = ["DRAFT", "REG_OPEN", "REG_CLOSED"];
 
 export default async function OrganizerConsole({ params }: { params: Promise<{ eventId: string }> }) {
   const { eventId } = await params;
-  const user = await getCurrentUser();
-  if (!hasRole(user, "ORGANIZER", "ADMIN", "MAT_COORDINATOR")) {
-    return <main className="p-8">Нужна роль организатора. <Link className="text-blue-600" href="/login">Войти</Link></main>;
-  }
+  await requirePageRole("ORGANIZER", "ADMIN", "MAT_COORDINATOR");
 
   const event = await prisma.event.findUnique({ where: { id: eventId } });
   if (!event) return <main className="p-8">Событие не найдено</main>;
