@@ -113,6 +113,6 @@ export const TANKOGRAD_EVENT = {
 };
 
 export const TANKOGRAD_TIERS = [
-  { name: "Ранняя", startsAt: new Date("2026-09-01"), priceOneDivision: 2000, priceBothDivisions: 3000, absoluteSurcharge: 0, order: 0 },
-  { name: "Поздняя", startsAt: new Date("2026-11-01"), priceOneDivision: 3000, priceBothDivisions: 4500, absoluteSurcharge: 0, order: 1 },
+  { name: "Ранняя", startsAt: new Date("2026-09-01"), priceFirstCategory: 2000, priceExtraCategory: 1500, order: 0 },
+  { name: "Поздняя", startsAt: new Date("2026-11-01"), priceFirstCategory: 3000, priceExtraCategory: 2000, order: 1 },
 ];

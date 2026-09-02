@@ -3,9 +3,8 @@
 export type Tier = {
   name: string;
   startsAt: Date;
-  priceOneDivision: number;
-  priceBothDivisions: number;
-  absoluteSurcharge: number;
+  priceFirstCategory: number;
+  priceExtraCategory: number | null; // null → каждая доп. категория = priceFirstCategory
 };
 
 /** Активный тир на дату регистрации: последний тир, чей startsAt <= at. */
@@ -17,16 +16,16 @@ export function selectTier(tiers: Tier[], at: Date): Tier | null {
 }
 
 export type EntryPricing = {
-  disciplines: ("gi" | "nogi")[]; // фактически выбранные разделы (1 или 2)
-  absoluteAdded: boolean;
+  categoryCount: number; // число выбранных категорий (весовые + абсолютка) — каждая = отдельный старт
 };
 
-/** Цена заявки атлета на событие по активному тиру. */
+/** Цена заявки атлета: первая категория по базовой цене, каждая следующая — по priceExtraCategory
+ *  (по умолчанию = базовой). Абсолютка считается обычной доп. категорией. */
 export function priceEntry(tier: Tier, e: EntryPricing): number {
-  const divisions = new Set(e.disciplines).size;
-  const base = divisions >= 2 ? tier.priceBothDivisions : divisions === 1 ? tier.priceOneDivision : 0;
-  const abs = e.absoluteAdded ? tier.absoluteSurcharge : 0;
-  return base + abs;
+  const n = Math.max(0, Math.trunc(e.categoryCount));
+  if (n === 0) return 0;
+  const extra = tier.priceExtraCategory ?? tier.priceFirstCategory;
+  return tier.priceFirstCategory + extra * (n - 1);
 }
 
 /** Итог тренеру «к переводу»: сумма цен по атлетам минус комиссия за каждого. */

@@ -101,9 +101,8 @@ model PriceTier {
   eventId            String
   name               String
   startsAt           DateTime
-  priceOneDivision   Int
-  priceBothDivisions Int
-  absoluteSurcharge  Int      @default(0)
+  priceFirstCategory Int
+  priceExtraCategory Int?     // цена каждой доп. категории; null → берётся priceFirstCategory
   order              Int      @default(0)
 
   @@index([eventId])

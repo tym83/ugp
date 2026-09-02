@@ -19,16 +19,36 @@ export default async function RegisterPage({ params }: { params: Promise<{ event
   const { eventId } = await params;
   const event = await prisma.event.findUnique({
     where: { id: eventId },
-    include: { priceTiers: { orderBy: { order: "asc" } } },
+    include: {
+      priceTiers: { orderBy: { order: "asc" } },
+      categories: { where: { mergedIntoId: null }, orderBy: { order: "asc" } },
+    },
   });
   if (!event) return <main className="p-8">Событие не найдено</main>;
 
   const tiers = event.priceTiers.map((t) => ({
     name: t.name,
     startsAt: t.startsAt.toISOString(),
-    priceOneDivision: t.priceOneDivision,
-    priceBothDivisions: t.priceBothDivisions,
-    absoluteSurcharge: t.absoluteSurcharge,
+    priceFirstCategory: t.priceFirstCategory,
+    priceExtraCategory: t.priceExtraCategory,
+  }));
+
+  const categories = event.categories.map((c) => ({
+    id: c.id,
+    label: `${c.ageGroupLabel} · ${c.sex === "M" ? "муж" : "жен"} · ${c.discipline === "gi" ? "ги" : "ноу-ги"}${
+      c.isAbsolute ? " · АБСОЛЮТКА" : c.isOpenTop ? ` · +${c.weightMin ?? 0} кг` : c.weightMax != null ? ` · до ${c.weightMax} кг` : ""
+    }`,
+    sex: c.sex as "M" | "F",
+    discipline: c.discipline as "gi" | "nogi",
+    ageGroupCode: c.ageGroupCode,
+    ageGroupLabel: c.ageGroupLabel,
+    birthYearFrom: c.birthYearFrom,
+    birthYearTo: c.birthYearTo,
+    weightMin: c.weightMin,
+    weightMax: c.weightMax,
+    isOpenTop: c.isOpenTop,
+    isAbsolute: c.isAbsolute,
+    level: c.level,
   }));
 
   return (
@@ -44,7 +64,7 @@ export default async function RegisterPage({ params }: { params: Promise<{ event
           Регистрация на это событие сейчас закрыта (статус: {event.status}).
         </div>
       ) : (
-        <SelfRegisterForm eventId={eventId} tiers={tiers} />
+        <SelfRegisterForm eventId={eventId} tiers={tiers} categories={categories} />
       )}
 
       <footer className="mt-10 border-t pt-4 text-xs text-gray-500">

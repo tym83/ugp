@@ -117,25 +117,26 @@ export async function setEventStatus(eventId: string, status: string): Promise<v
 const tierSchema = z.object({
   name: z.string().trim().min(1, "укажите название тира"),
   startsAt: z.string().min(1, "укажите дату старта"),
-  priceOneDivision: z.coerce.number().int().min(0),
-  priceBothDivisions: z.coerce.number().int().min(0),
-  absoluteSurcharge: z.coerce.number().int().min(0).default(0),
+  priceFirstCategory: z.coerce.number().int().min(0),
+  priceExtraCategory: z.coerce.number().int().min(0).optional(),
   order: z.coerce.number().int().default(0),
 });
 
 export async function addPriceTier(eventId: string, formData: FormData): Promise<void> {
   await requireEventRole(eventId, "ADMIN", "ORGANIZER");
-  const d = parseOrThrow(tierSchema, Object.fromEntries(formData));
+  const raw = Object.fromEntries(formData);
+  const d = parseOrThrow(tierSchema, raw);
   const startsAt = toDate(d.startsAt);
   if (!startsAt) throw new Error("неверная дата старта тира");
+  // Пусто у «доп. категории» → null (тогда доп. считается по базовой цене).
+  const hasExtra = typeof raw.priceExtraCategory === "string" && raw.priceExtraCategory.trim() !== "";
   await prisma.priceTier.create({
     data: {
       eventId,
       name: d.name,
       startsAt,
-      priceOneDivision: d.priceOneDivision,
-      priceBothDivisions: d.priceBothDivisions,
-      absoluteSurcharge: d.absoluteSurcharge,
+      priceFirstCategory: d.priceFirstCategory,
+      priceExtraCategory: hasExtra ? d.priceExtraCategory ?? null : null,
       order: d.order,
     },
   });

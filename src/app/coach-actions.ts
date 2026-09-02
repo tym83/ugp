@@ -23,8 +23,7 @@ export async function registerGroup(rowsJson: string, eventId: string): Promise<
     isOpenTop: c.isOpenTop, isAbsolute: c.isAbsolute, level: c.level,
   }));
   const tiers: Tier[] = event.priceTiers.map((t) => ({
-    name: t.name, startsAt: t.startsAt, priceOneDivision: t.priceOneDivision,
-    priceBothDivisions: t.priceBothDivisions, absoluteSurcharge: t.absoluteSurcharge,
+    name: t.name, startsAt: t.startsAt, priceFirstCategory: t.priceFirstCategory, priceExtraCategory: t.priceExtraCategory,
   }));
   const tier = selectTier(tiers, new Date()) ?? tiers[0];
 
@@ -67,7 +66,8 @@ export async function registerGroup(rowsJson: string, eventId: string): Promise<
         });
         athleteId = ath.id;
       }
-      const price = priceEntry(tier, { disciplines, absoluteAdded: false });
+      // каждая дисциплина = отдельная категория (старт) → цена по числу категорий
+      const price = priceEntry(tier, { categoryCount: chosen.length });
       const entry = await prisma.eventEntry.create({
         data: { athleteId, eventId, source: "coach", coachUserId: user.id, tierName: tier.name, disciplines: disciplines.join(","), priceTotal: price },
       });
