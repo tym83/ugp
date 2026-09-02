@@ -84,20 +84,20 @@ describe("bracket: round robin", () => {
 
 describe("pricing", () => {
   const tiers: Tier[] = [
-    { name: "Ранняя", startsAt: new Date("2026-09-01"), priceOneDivision: 2000, priceBothDivisions: 3000, absoluteSurcharge: 1000 },
-    { name: "Поздняя", startsAt: new Date("2026-11-01"), priceOneDivision: 3000, priceBothDivisions: 4500, absoluteSurcharge: 1000 },
+    { name: "Ранняя", startsAt: new Date("2026-09-01"), priceFirstCategory: 2000, priceExtraCategory: 1500 },
+    { name: "Поздняя", startsAt: new Date("2026-11-01"), priceFirstCategory: 3000, priceExtraCategory: null },
   ];
   it("selectTier по дате", () => {
     expect(selectTier(tiers, new Date("2026-09-15"))?.name).toBe("Ранняя");
     expect(selectTier(tiers, new Date("2026-11-05"))?.name).toBe("Поздняя");
   });
-  it("priceEntry: разделы и абсолютка", () => {
+  it("priceEntry: первая + доп. категории", () => {
     const early = tiers[0];
-    expect(priceEntry(early, { disciplines: ["gi"], absoluteAdded: false })).toBe(2000);
-    expect(priceEntry(early, { disciplines: ["gi", "nogi"], absoluteAdded: false })).toBe(3000);
-    expect(priceEntry(early, { disciplines: ["gi"], absoluteAdded: true })).toBe(3000);
-    const late = tiers[1];
-    expect(priceEntry(late, { disciplines: ["gi", "nogi"], absoluteAdded: false })).toBe(4500);
+    expect(priceEntry(early, { categoryCount: 1 })).toBe(2000);
+    expect(priceEntry(early, { categoryCount: 2 })).toBe(3500); // 2000 + 1500
+    expect(priceEntry(early, { categoryCount: 3 })).toBe(5000); // 2000 + 1500*2
+    const late = tiers[1]; // extra=null → доп. по базовой
+    expect(priceEntry(late, { categoryCount: 2 })).toBe(6000);
   });
   it("coachTransferTotal: комиссия 200 с каждого", () => {
     const r = coachTransferTotal([2000, 3000, 3000], 200);
