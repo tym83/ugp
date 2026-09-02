@@ -34,7 +34,7 @@ export function nextPow2(n: number): number {
 /** Стандартный порядок посева для позиций сетки: раздвигает топ-сидов по разным половинам.
  * Возвращает массив seed-номеров (1-based) в порядке позиций сетки. */
 export function seedPositions(size: number): number[] {
-  let rounds = Math.log2(size);
+  const rounds = Math.log2(size);
   let pols: number[] = [1, 2];
   for (let r = 1; r < rounds; r++) {
     const next: number[] = [];

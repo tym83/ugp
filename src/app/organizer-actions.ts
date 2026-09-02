@@ -476,11 +476,11 @@ export async function addToAbsolute(
   // Активный тир и его доплата за абсолютку (как в coach-actions).
   const event = await prisma.event.findUnique({ where: { id: category.eventId }, include: { priceTiers: true } });
   const tiers: Tier[] = (event?.priceTiers ?? []).map((t) => ({
-    name: t.name, startsAt: t.startsAt, priceOneDivision: t.priceOneDivision,
-    priceBothDivisions: t.priceBothDivisions, absoluteSurcharge: t.absoluteSurcharge,
+    name: t.name, startsAt: t.startsAt, priceFirstCategory: t.priceFirstCategory, priceExtraCategory: t.priceExtraCategory,
   }));
   const tier = selectTier(tiers, new Date()) ?? tiers[0] ?? null;
-  const surcharge = tier ? priceEntry(tier, { disciplines: [], absoluteAdded: true }) : 0;
+  // абсолютка добавляется как ещё одна категория к уже заявленному атлету → доплата = цена доп. категории
+  const surcharge = tier ? (tier.priceExtraCategory ?? tier.priceFirstCategory) : 0;
 
   await prisma.$transaction(async (tx) => {
     await tx.registration.create({

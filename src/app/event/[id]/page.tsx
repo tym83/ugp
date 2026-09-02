@@ -114,16 +114,16 @@ export default async function EventPage({ params }: { params: Promise<{ id: stri
               <thead>
                 <tr className="bg-white/5 text-[#cec8bc]">
                   <th className="border border-white/10 px-3 py-1 text-left">Тир</th>
-                  <th className="border border-white/10 px-3 py-1">1 раздел</th>
-                  <th className="border border-white/10 px-3 py-1">Оба</th>
+                  <th className="border border-white/10 px-3 py-1">1 категория</th>
+                  <th className="border border-white/10 px-3 py-1">Доп. категория</th>
                 </tr>
               </thead>
               <tbody>
                 {event.priceTiers.map((t) => (
                   <tr key={t.id}>
                     <td className="border border-white/10 px-3 py-1">{t.name} <span className="text-[#8a8378]">с {new Date(t.startsAt).toLocaleDateString("ru-RU")}</span></td>
-                    <td className="border border-white/10 px-3 py-1 text-center">{t.priceOneDivision} ₽</td>
-                    <td className="border border-white/10 px-3 py-1 text-center">{t.priceBothDivisions} ₽</td>
+                    <td className="border border-white/10 px-3 py-1 text-center">{t.priceFirstCategory} ₽</td>
+                    <td className="border border-white/10 px-3 py-1 text-center">{t.priceExtraCategory ?? t.priceFirstCategory} ₽</td>
                   </tr>
                 ))}
               </tbody>

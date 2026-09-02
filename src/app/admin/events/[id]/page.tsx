@@ -112,27 +112,25 @@ export default async function EditEventPage({ params }: { params: Promise<{ id: 
         <table className="text-sm w-full border mb-3">
           <thead className="bg-gray-50"><tr>
             <th className="border px-2 py-1 text-left">Тир</th><th className="border px-2 py-1">С даты</th>
-            <th className="border px-2 py-1">1 раздел</th><th className="border px-2 py-1">2 раздела</th><th className="border px-2 py-1">Абс. доплата</th>
+            <th className="border px-2 py-1">1 категория</th><th className="border px-2 py-1">Доп. категория</th>
           </tr></thead>
           <tbody>
             {event.priceTiers.map((t) => (
               <tr key={t.id}>
                 <td className="border px-2 py-1">{t.name}</td>
                 <td className="border px-2 py-1 text-center">{t.startsAt.toISOString().slice(0, 10)}</td>
-                <td className="border px-2 py-1 text-center">{t.priceOneDivision} ₽</td>
-                <td className="border px-2 py-1 text-center">{t.priceBothDivisions} ₽</td>
-                <td className="border px-2 py-1 text-center">{t.absoluteSurcharge} ₽</td>
+                <td className="border px-2 py-1 text-center">{t.priceFirstCategory} ₽</td>
+                <td className="border px-2 py-1 text-center">{t.priceExtraCategory ?? t.priceFirstCategory} ₽</td>
               </tr>
             ))}
-            {event.priceTiers.length === 0 && <tr><td className="border px-2 py-2 text-gray-400 text-center" colSpan={5}>тиров нет</td></tr>}
+            {event.priceTiers.length === 0 && <tr><td className="border px-2 py-2 text-gray-400 text-center" colSpan={4}>тиров нет</td></tr>}
           </tbody>
         </table>
         <form action={addPriceTier.bind(null, event.id)} className="flex flex-wrap gap-2 items-end">
           <input name="name" placeholder="Название" className="border rounded px-2 py-1 text-sm" required />
           <label className="text-xs text-gray-500">с даты<input name="startsAt" type="date" className="border rounded px-2 py-1 text-sm block" required /></label>
-          <input name="priceOneDivision" type="number" placeholder="1 раздел" className="border rounded px-2 py-1 text-sm w-24" required />
-          <input name="priceBothDivisions" type="number" placeholder="2 раздела" className="border rounded px-2 py-1 text-sm w-24" required />
-          <input name="absoluteSurcharge" type="number" placeholder="абс." defaultValue={0} className="border rounded px-2 py-1 text-sm w-20" />
+          <input name="priceFirstCategory" type="number" placeholder="1 категория" className="border rounded px-2 py-1 text-sm w-28" required />
+          <input name="priceExtraCategory" type="number" placeholder="доп. (= 1-й)" className="border rounded px-2 py-1 text-sm w-28" />
           <input name="order" type="number" placeholder="порядок" defaultValue={event.priceTiers.length} className="border rounded px-2 py-1 text-sm w-20" />
           <button className="rounded bg-gray-800 text-white px-3 py-1 text-sm">+ тир</button>
         </form>

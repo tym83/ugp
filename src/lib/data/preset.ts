@@ -67,9 +67,8 @@ export type EventPresetData = {
 export type PriceTierSpec = {
   name: string;
   startsAt: Date;
-  priceOneDivision: number;
-  priceBothDivisions: number;
-  absoluteSurcharge?: number;
+  priceFirstCategory: number;
+  priceExtraCategory?: number | null;
   order?: number;
 };
 
@@ -135,9 +134,8 @@ export async function createEventFromPreset(
         eventId: event.id,
         name: t.name,
         startsAt: t.startsAt,
-        priceOneDivision: t.priceOneDivision,
-        priceBothDivisions: t.priceBothDivisions,
-        absoluteSurcharge: t.absoluteSurcharge ?? 0,
+        priceFirstCategory: t.priceFirstCategory,
+        priceExtraCategory: t.priceExtraCategory ?? null,
         order: t.order ?? 0,
       },
     });
