@@ -1,6 +1,7 @@
 "use client";
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import { categoryParticipants, type CategoryParticipant } from "@/app/category-actions";
 
 export type Division = {
   id: string;
@@ -27,6 +28,23 @@ export default function DivisionsBrowser({ divisions }: { divisions: Division[] 
   const [sex, setSex] = useState<"all" | "M" | "F">("all");
   const [onlyReg, setOnlyReg] = useState(false);
   const [q, setQ] = useState("");
+  const [open, setOpen] = useState<string | null>(null);
+  const [cache, setCache] = useState<Record<string, CategoryParticipant[]>>({});
+  const [loading, setLoading] = useState<string | null>(null);
+
+  async function toggle(id: string) {
+    if (open === id) { setOpen(null); return; }
+    setOpen(id);
+    if (!cache[id]) {
+      setLoading(id);
+      try {
+        const p = await categoryParticipants(id);
+        setCache((c) => ({ ...c, [id]: p }));
+      } finally {
+        setLoading(null);
+      }
+    }
+  }
 
   const total = divisions.length;
   const withReg = divisions.filter((d) => d.count > 0).length;
@@ -95,38 +113,55 @@ export default function DivisionsBrowser({ divisions }: { divisions: Division[] 
         {groups.map(([label, items]) => (
           <div key={label}>
             <h3 className="mb-2 text-sm font-bold uppercase tracking-[0.2em] text-[#e3863d]">{label}</h3>
-            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="space-y-2">
               {items.map((d) => {
                 const clickable = d.count > 0;
-                const inner = (
-                  <div
-                    className={`flex items-center justify-between rounded-lg border p-3 ${
-                      clickable ? "border-white/10 bg-white/5 hover:border-[#e3863d]/60" : "border-white/5 bg-white/[0.02] text-[#8a8378]"
-                    }`}
-                  >
-                    <div className="min-w-0">
-                      <div className="truncate font-semibold">
-                        {d.sex === "M" ? "Муж" : "Жен"} · {disciplineLabel(d.discipline)}
-                      </div>
-                      <div className="text-sm text-[#cec8bc]">{weightLabel(d)}</div>
-                    </div>
-                    <span
-                      className={`ml-2 shrink-0 rounded-full px-2 py-0.5 text-xs ${
-                        d.count === 0
-                          ? "bg-white/5 text-[#8a8378]"
-                          : d.hasBracket
-                            ? "bg-[#e3863d]/20 text-[#e3863d]"
-                            : "bg-white/10 text-[#f4f0e8]"
-                      }`}
+                const isOpen = open === d.id;
+                const parts = cache[d.id];
+                return (
+                  <div key={d.id} className={`rounded-lg border ${clickable ? "border-white/10 bg-white/5" : "border-white/5 bg-white/[0.02]"}`}>
+                    <button
+                      type="button"
+                      disabled={!clickable}
+                      onClick={() => toggle(d.id)}
+                      className={`flex w-full items-center justify-between p-3 text-left ${clickable ? "hover:bg-white/[0.03]" : "cursor-default text-[#8a8378]"}`}
                     >
-                      {d.count === 0 ? "нет заявок" : d.hasBracket ? `сетка · ${d.count}` : `${d.count} заявок`}
-                    </span>
+                      <div className="min-w-0">
+                        <div className="truncate font-semibold">
+                          {d.sex === "M" ? "Муж" : "Жен"} · {disciplineLabel(d.discipline)} · {weightLabel(d)}
+                        </div>
+                      </div>
+                      <span className="ml-2 flex shrink-0 items-center gap-2">
+                        <span className={`rounded-full px-2 py-0.5 text-xs ${
+                          d.count === 0 ? "bg-white/5 text-[#8a8378]" : d.hasBracket ? "bg-[#e3863d]/20 text-[#e3863d]" : "bg-white/10 text-[#f4f0e8]"
+                        }`}>
+                          {d.count === 0 ? "нет заявок" : d.hasBracket ? `сетка · ${d.count}` : `${d.count} заявок`}
+                        </span>
+                        {clickable && <span className="text-[#8a8378]">{isOpen ? "▲" : "▼"}</span>}
+                      </span>
+                    </button>
+                    {isOpen && (
+                      <div className="border-t border-white/10 px-3 py-2 text-sm">
+                        {loading === d.id && !parts ? (
+                          <p className="text-[#8a8378]">Загрузка участников…</p>
+                        ) : parts && parts.length ? (
+                          <>
+                            <ol className="ml-5 list-decimal space-y-0.5">
+                              {parts.map((p) => (
+                                <li key={p.id}>
+                                  {p.name}
+                                  <span className="text-[#8a8378]"> — {p.club ?? "без клуба"}{p.weight != null ? `, ${p.weight} кг` : ""}{p.admitted ? "" : " · заявлен"}</span>
+                                </li>
+                              ))}
+                            </ol>
+                            <Link href={`/category/${d.id}`} className="mt-2 inline-block text-[#e3863d] hover:brightness-125">Открыть полную сетку →</Link>
+                          </>
+                        ) : (
+                          <p className="text-[#8a8378]">Пока нет участников.</p>
+                        )}
+                      </div>
+                    )}
                   </div>
-                );
-                return clickable ? (
-                  <Link key={d.id} href={`/category/${d.id}`}>{inner}</Link>
-                ) : (
-                  <div key={d.id}>{inner}</div>
                 );
               })}
             </div>

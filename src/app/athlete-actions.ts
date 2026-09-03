@@ -49,15 +49,22 @@ function toSelectable(c: {
 export async function selfRegister(formData: FormData): Promise<SelfRegisterResult> {
   const parsed = schema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) {
-    return { ok: false, msg: parsed.error.issues[0]?.message ?? "неверные данные" };
+    const first = parsed.error.issues[0]?.message ?? "";
+    // Показываем только «человеческие» (кириллические) сообщения; машинные zod-тексты прячем.
+    const friendly = /[а-яё]/i.test(first) ? first : "Проверьте правильность заполнения полей формы";
+    return { ok: false, msg: friendly };
   }
   const d = parsed.data;
   const categoryIds = [...new Set(formData.getAll("categoryIds").map(String).filter(Boolean))];
   const weightRaw = String(formData.get("weight") ?? "").trim();
   const declaredWeight = weightRaw ? Number(weightRaw) : null;
 
-  if (!d.consent) return { ok: false, msg: "нужно согласие на обработку персональных данных" };
-  if (!categoryIds.length) return { ok: false, msg: "выберите хотя бы одну категорию" };
+  // Заявка — только для авторизованных: аккаунт на сайте обязателен.
+  const user = await getCurrentUser();
+  if (!user) return { ok: false, msg: "Войдите в аккаунт, чтобы подать заявку" };
+
+  if (!d.consent) return { ok: false, msg: "Поставьте галочку согласия на обработку персональных данных" };
+  if (!categoryIds.length) return { ok: false, msg: "Выберите хотя бы одну категорию" };
 
   const dob = new Date(d.birthDate);
   if (Number.isNaN(dob.getTime())) return { ok: false, msg: "неверная дата рождения" };
@@ -91,8 +98,6 @@ export async function selfRegister(formData: FormData): Promise<SelfRegisterResu
 
   const disciplines = [...new Set(chosen.map((id) => allowed.get(id)!.discipline))];
   const absoluteAdded = chosen.some((id) => allowed.get(id)!.isAbsolute);
-
-  const user = await getCurrentUser();
 
   try {
     let existingAth = user ? await prisma.athlete.findUnique({ where: { userId: user.id } }) : null;
