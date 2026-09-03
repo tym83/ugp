@@ -1,5 +1,5 @@
 // Сценарии S056–S150 — серверные экшены по ролям (подделка сессии тем же HMAC) + доменные мутации.
-import { vi, describe, it, expect } from "vitest";
+import { vi, describe, it, expect, beforeEach } from "vitest";
 
 // --- Моки Next-инфраструктуры (до импорта экшенов; vitest поднимает vi.mock вверх) ---
 const H = vi.hoisted(() => ({ token: null as string | null }));
@@ -9,6 +9,7 @@ vi.mock("next/headers", () => ({
     set: () => {},
     delete: () => {},
   }),
+  headers: async () => ({ get: () => null }),
 }));
 vi.mock("next/cache", () => ({ revalidatePath: () => {}, revalidateTag: () => {} }));
 vi.mock("next/navigation", () => ({
@@ -24,6 +25,7 @@ import { registerGroup, togglePaidAction } from "@/app/coach-actions";
 import { weighInAndAdmit, setWeighInLock, applyMerge, swapSeeds, moveAthleteSeed, findBracketConflicts, resolveConflict, addToAbsolute, generateAbsoluteBracket } from "@/app/organizer-actions";
 import { createEvent, setEventStatus, addCategory, addPriceTier, createUser, assignRefereeToMat } from "@/app/admin-actions";
 import { buildBracketAction, submitResultAction } from "@/app/actions";
+import { signUpAction } from "@/app/auth-actions";
 import { buildBracketForCategory } from "@/lib/domain/persistBracket";
 import { submitResult, correctResult } from "@/lib/domain/results";
 
@@ -65,6 +67,8 @@ async function regEvent() {
 // ─────────────────────────────────────────────────────────────────────
 describe("Саморегистрация: само-выбор категорий (S056–S073)", () => {
   const adult = { birthDate: "1995-05-05", sex: "M", consent: true };
+  // Заявка теперь только для авторизованных → логиним атлета перед каждым сценарием.
+  beforeEach(async () => { const u = await makeUser(["ATHLETE"]); actAs(u.id); });
   it("S056 взрослый сам выбирает категорию — заявка принята", async () => {
     const { e, light } = await regEvent();
     const r = await selfRegister(selfFd({ eventId: e.id, fullName: "Иван Петров", ...adult }, [light.id]));
@@ -178,6 +182,13 @@ describe("Саморегистрация: само-выбор категорий
     expect(r.ok).toBe(true);
     const ath = await prisma.athlete.findFirst({ where: { fullName: "Синий Пояс" } });
     expect(ath?.belt).toBe("синий");
+  });
+  it("S073b без аккаунта (аноним) заявка отклоняется — регистрация на сайте обязательна", async () => {
+    actAnon();
+    const { e, light } = await regEvent();
+    const r = await selfRegister(selfFd({ eventId: e.id, fullName: "Аноним Гость", ...adult }, [light.id]));
+    expect(r.ok).toBe(false);
+    expect(r.msg).toMatch(/войдите/i);
   });
 });
 
@@ -834,5 +845,31 @@ describe("Контроль доступа: привязка к событию (S
     await assignRefereeToMat(ref.id, e.id, 2);
     const m = await prisma.membership.findFirst({ where: { userId: ref.id, eventId: e.id, role: "REFEREE" } });
     expect(m?.matNumber).toBe(2);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────
+describe("Регистрация аккаунта участника (S157–S159)", () => {
+  const catchRedirect = async (fn: () => Promise<unknown>): Promise<string> => {
+    try { await fn(); return ""; }
+    catch (err) { const m = String((err as Error).message); return m.startsWith("REDIRECT:") ? m.slice("REDIRECT:".length) : (() => { throw err; })(); }
+  };
+  it("S157 signUpAction создаёт аккаунт участника (роль ATHLETE) и логинит", async () => {
+    actAnon();
+    const email = uniq("newath") + "@t.local";
+    const dest = await catchRedirect(() => signUpAction(fd({ fullName: "Новый Участник", email, password: "secret1" })));
+    expect(dest).toBe("/me");
+    const u = await prisma.user.findUnique({ where: { email }, include: { memberships: true } });
+    expect(u?.memberships.some((m) => m.role === "ATHLETE")).toBe(true);
+  });
+  it("S158 signUpAction: занятый email → понятная ошибка (redirect e=dup)", async () => {
+    const email = uniq("dup") + "@t.local";
+    await prisma.user.create({ data: { fullName: "Уже Есть", email, passwordHash: "x" } });
+    const dest = await catchRedirect(() => signUpAction(fd({ fullName: "Дубликат", email, password: "secret1" })));
+    expect(dest).toMatch(/signup\?e=dup/);
+  });
+  it("S159 signUpAction: слабый пароль → e=weak", async () => {
+    const dest = await catchRedirect(() => signUpAction(fd({ fullName: "Слабый Пароль", email: uniq("w") + "@t.local", password: "123" })));
+    expect(dest).toMatch(/signup\?e=weak/);
   });
 });
