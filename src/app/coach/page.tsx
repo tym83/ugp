@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { togglePaidAction } from "@/app/coach-actions";
 import { signOutAction } from "@/app/auth-actions";
 import RegisterGrid from "./RegisterGrid";
+import RefLink from "./RefLink";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
@@ -34,6 +35,10 @@ export default async function CoachPage() {
         <form action={signOutAction}><button className="text-sm text-gray-500">выйти</button></form>
       </div>
       <p className="text-sm text-gray-500">Событие: {event.name}</p>
+
+      <section className="mt-6">
+        <RefLink eventId={event.id} coachId={user.id} />
+      </section>
 
       <section className="mt-6">
         <h2 className="text-lg font-semibold mb-2">Заявить группу</h2>

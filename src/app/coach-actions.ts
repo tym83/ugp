@@ -66,8 +66,9 @@ export async function registerGroup(rowsJson: string, eventId: string): Promise<
         });
         athleteId = ath.id;
       }
-      // каждая дисциплина = отдельная категория (старт) → цена по числу категорий
-      const price = priceEntry(tier, { categoryCount: chosen.length });
+      // каждая дисциплина = отдельная категория (старт) → цена по числу категорий,
+      // со скидкой тренерского списка (как и по реф-ссылке).
+      const price = priceEntry(tier, { categoryCount: chosen.length, discountPerCategory: event.coachReferralDiscount });
       const entry = await prisma.eventEntry.create({
         data: { athleteId, eventId, source: "coach", coachUserId: user.id, tierName: tier.name, disciplines: disciplines.join(","), priceTotal: price },
       });

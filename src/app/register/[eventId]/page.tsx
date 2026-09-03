@@ -16,8 +16,15 @@ export async function generateMetadata({ params }: { params: Promise<{ eventId: 
   };
 }
 
-export default async function RegisterPage({ params }: { params: Promise<{ eventId: string }> }) {
+export default async function RegisterPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ eventId: string }>;
+  searchParams: Promise<{ ref?: string }>;
+}) {
   const { eventId } = await params;
+  const { ref } = await searchParams;
   const event = await prisma.event.findUnique({
     where: { id: eventId },
     include: {
@@ -28,7 +35,14 @@ export default async function RegisterPage({ params }: { params: Promise<{ event
   if (!event) return <main className="p-8">Событие не найдено</main>;
 
   const user = await getCurrentUser();
-  const nextPath = encodeURIComponent(`/register/${eventId}`);
+  // Реф-ссылка тренера: валидируем и берём имя для позиционирования («по ссылке тренера дешевле»).
+  let coach: { id: string; name: string } | null = null;
+  if (ref) {
+    const c = await prisma.user.findUnique({ where: { id: ref }, include: { memberships: true } });
+    if (c?.memberships.some((m) => m.role === "COACH")) coach = { id: c.id, name: c.fullName };
+  }
+  const refDiscount = coach ? event.coachReferralDiscount : 0;
+  const nextPath = encodeURIComponent(`/register/${eventId}${coach ? `?ref=${coach.id}` : ""}`);
 
   const tiers = event.priceTiers.map((t) => ({
     name: t.name,
@@ -77,7 +91,7 @@ export default async function RegisterPage({ params }: { params: Promise<{ event
           </div>
         </div>
       ) : (
-        <SelfRegisterForm eventId={eventId} tiers={tiers} categories={categories} />
+        <SelfRegisterForm eventId={eventId} tiers={tiers} categories={categories} coach={coach} refDiscount={refDiscount} />
       )}
 
       <footer className="mt-10 border-t pt-4 text-xs text-gray-500">

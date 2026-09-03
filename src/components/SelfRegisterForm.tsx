@@ -19,10 +19,14 @@ export default function SelfRegisterForm({
   eventId,
   tiers,
   categories,
+  coach = null,
+  refDiscount = 0,
 }: {
   eventId: string;
   tiers: TierDTO[];
   categories: CatDTO[];
+  coach?: { id: string; name: string } | null;
+  refDiscount?: number;
 }) {
   const [fullName, setFullName] = useState("");
   const [birthDate, setBirthDate] = useState("");
@@ -63,8 +67,10 @@ export default function SelfRegisterForm({
     const parsed: Tier[] = tiers.map((t) => ({ ...t, startsAt: new Date(t.startsAt) }));
     const tier = selectTier(parsed, new Date()) ?? parsed[0];
     if (!tier) return null;
-    return { total: priceEntry(tier, { categoryCount: picked.size }), tierName: tier.name };
-  }, [picked, tiers]);
+    const total = priceEntry(tier, { categoryCount: picked.size, discountPerCategory: refDiscount });
+    const full = priceEntry(tier, { categoryCount: picked.size });
+    return { total, full, tierName: tier.name };
+  }, [picked, tiers, refDiscount]);
 
   const toggle = (id: string) =>
     setPicked((prev) => {
@@ -96,6 +102,13 @@ export default function SelfRegisterForm({
   return (
     <form action={submit} className="space-y-4">
       <input type="hidden" name="eventId" value={eventId} />
+      {coach && <input type="hidden" name="ref" value={coach.id} />}
+
+      {coach && (
+        <div className="rounded border border-green-300 bg-green-50 p-3 text-sm text-green-800">
+          Вы регистрируетесь по приглашению тренера <b>{coach.name}</b> — цена со скидкой{refDiscount ? ` (−${refDiscount} ₽ за каждую категорию)` : ""}.
+        </div>
+      )}
 
       <label className="block">
         <span className="text-sm text-gray-600">ФИО</span>
@@ -161,6 +174,9 @@ export default function SelfRegisterForm({
       {pricePreview && (
         <div className="rounded bg-gray-50 border px-3 py-2 text-sm">
           Стоимость: <span className="font-semibold">{pricePreview.total} ₽</span>
+          {pricePreview.total < pricePreview.full && (
+            <span className="text-gray-400 line-through ml-2">{pricePreview.full} ₽</span>
+          )}
           <span className="text-gray-500"> · тариф «{pricePreview.tierName}» · {picked.size} категор.</span>
         </div>
       )}

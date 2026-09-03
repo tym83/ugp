@@ -89,12 +89,22 @@ export async function selfRegister(formData: FormData): Promise<SelfRegisterResu
   if (!chosen.length) return { ok: false, msg: "выбранные категории недоступны (пол/возраст)" };
   if (rejected.length) return { ok: false, msg: "часть выбранных категорий недоступна вам — обновите список" };
 
+  // Реф-код тренера (?ref=<userId тренера>): привязываем заявку к тренеру для зачёта комиссии
+  // и даём скидку. Валидируем, что это действительно тренер.
+  const refId = String(formData.get("ref") ?? "").trim();
+  let coachUserId: string | null = null;
+  if (refId) {
+    const coach = await prisma.user.findUnique({ where: { id: refId }, include: { memberships: true } });
+    if (coach?.memberships.some((m) => m.role === "COACH")) coachUserId = coach.id;
+  }
+
   const tiers: Tier[] = event.priceTiers.map((t) => ({
     name: t.name, startsAt: t.startsAt, priceFirstCategory: t.priceFirstCategory, priceExtraCategory: t.priceExtraCategory,
   }));
   const tier = selectTier(tiers, new Date()) ?? tiers[0];
   if (!tier) return { ok: false, msg: "цены не настроены для события" };
-  const price = priceEntry(tier, { categoryCount: chosen.length });
+  const discountPerCategory = coachUserId ? event.coachReferralDiscount : 0;
+  const price = priceEntry(tier, { categoryCount: chosen.length, discountPerCategory });
 
   const disciplines = [...new Set(chosen.map((id) => allowed.get(id)!.discipline))];
   const absoluteAdded = chosen.some((id) => allowed.get(id)!.isAbsolute);
@@ -141,7 +151,9 @@ export async function selfRegister(formData: FormData): Promise<SelfRegisterResu
 
     const entry = await prisma.eventEntry.create({
       data: {
-        athleteId, eventId: d.eventId, source: "self",
+        athleteId, eventId: d.eventId,
+        source: coachUserId ? "referral" : "self",
+        coachUserId,
         tierName: tier.name, disciplines: disciplines.join(","),
         absoluteAdded, priceTotal: price,
       },
