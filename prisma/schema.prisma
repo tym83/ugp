@@ -84,6 +84,7 @@ model Event {
   status               String   @default("DRAFT")
   positionPublished    Boolean  @default(false)
   coachCommission      Int      @default(200)
+  coachReferralDiscount Int     @default(200) // ₽ скидки с каждой категории при заявке по ссылке/списку тренера
 
   categories Category[]
   priceTiers PriceTier[]
