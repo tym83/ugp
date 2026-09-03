@@ -249,8 +249,8 @@ describe("Регистрация тренером группы + оплата (S
     await registerGroup(JSON.stringify([{ fullName: "Ценник Ученик", birthDate: "1998-01-01", sex: "M", weight: 70, gi: true, nogi: true }]), e.id);
     const entry = await prisma.eventEntry.findFirst({ where: { athlete: { fullName: "Ценник Ученик" } } });
     expect(entry?.source).toBe("coach");
-    // 2 дисциплины = 2 категории → первая 2000 + доп 1500
-    expect(entry?.priceTotal).toBe(3500);
+    // 2 дисциплины = 2 категории → (2000 + 1500) − скидка тренерского списка 200×2 = 3100
+    expect(entry?.priceTotal).toBe(3100);
   });
   it("S080 регистрации создаются в статусе ENTERED", async () => {
     const { e } = await regEvent();
@@ -871,5 +871,53 @@ describe("Регистрация аккаунта участника (S157–S15
   it("S159 signUpAction: слабый пароль → e=weak", async () => {
     const dest = await catchRedirect(() => signUpAction(fd({ fullName: "Слабый Пароль", email: uniq("w") + "@t.local", password: "123" })));
     expect(dest).toMatch(/signup\?e=weak/);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────
+describe("Тренерские реф-ссылки и скидка (S160–S164)", () => {
+  const adult = { birthDate: "1995-05-05", sex: "M", consent: true };
+  async function athlete() { const u = await makeUser(["ATHLETE"]); actAs(u.id); return u; }
+  it("S160 регистрация по реф-ссылке тренера → привязка coachUserId + source=referral", async () => {
+    await athlete();
+    const coach = await makeUser(["COACH"]);
+    const { e, light } = await regEvent();
+    const r = await selfRegister(selfFd({ eventId: e.id, fullName: "По Ссылке", ...adult, ref: coach.id }, [light.id]));
+    expect(r.ok).toBe(true);
+    const entry = await prisma.eventEntry.findFirst({ where: { athlete: { fullName: "По Ссылке" } } });
+    expect(entry?.coachUserId).toBe(coach.id);
+    expect(entry?.source).toBe("referral");
+  });
+  it("S161 по реф-ссылке цена со скидкой (база − discount×категории)", async () => {
+    await athlete();
+    const coach = await makeUser(["COACH"]);
+    const { e, light } = await regEvent(); // тир 2000, скидка события по умолчанию 200
+    await selfRegister(selfFd({ eventId: e.id, fullName: "Дешевле По Ссылке", ...adult, ref: coach.id }, [light.id]));
+    const entry = await prisma.eventEntry.findFirst({ where: { athlete: { fullName: "Дешевле По Ссылке" } } });
+    expect(entry?.priceTotal).toBe(1800); // 2000 − 200
+  });
+  it("S162 невалидный ref (не тренер) → без привязки, полная цена", async () => {
+    await athlete();
+    const notCoach = await makeUser(["ATHLETE"]);
+    const { e, light } = await regEvent();
+    await selfRegister(selfFd({ eventId: e.id, fullName: "Левый Реф", ...adult, ref: notCoach.id }, [light.id]));
+    const entry = await prisma.eventEntry.findFirst({ where: { athlete: { fullName: "Левый Реф" } } });
+    expect(entry?.coachUserId).toBeNull();
+    expect(entry?.priceTotal).toBe(2000);
+  });
+  it("S163 реф-заявка идёт тренеру в зачёт (видна среди его заявок)", async () => {
+    await athlete();
+    const coach = await makeUser(["COACH"]);
+    const { e, light } = await regEvent();
+    await selfRegister(selfFd({ eventId: e.id, fullName: "В Зачёт Тренеру", ...adult, ref: coach.id }, [light.id]));
+    const coachEntries = await prisma.eventEntry.count({ where: { eventId: e.id, coachUserId: coach.id } });
+    expect(coachEntries).toBe(1);
+  });
+  it("S164 тренерский список (registerGroup) тоже со скидкой", async () => {
+    const { e } = await regEvent();
+    const coach = await makeUser(["COACH"]); actAs(coach.id);
+    await registerGroup(JSON.stringify([{ fullName: "Списком Дешевле", birthDate: "1998-01-01", sex: "M", weight: 70, gi: false, nogi: true }]), e.id);
+    const entry = await prisma.eventEntry.findFirst({ where: { athlete: { fullName: "Списком Дешевле" } } });
+    expect(entry?.priceTotal).toBe(1800); // 1 категория: 2000 − 200
   });
 });
