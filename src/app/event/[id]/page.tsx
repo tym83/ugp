@@ -83,7 +83,7 @@ export default async function EventPage({ params }: { params: Promise<{ id: stri
         <section id="divisions" className="scroll-mt-4">
           <h2 className="mb-1 text-2xl font-black uppercase tracking-tight">Сетки и категории</h2>
           <p className="mb-4 text-sm text-[#cec8bc]">
-            Выбери категорию, чтобы открыть полную сетку. Фильтруй по разделу, полу и весу. Поиск по имени — ниже.
+            Нажми категорию — участники раскроются прямо здесь. Фильтруй по разделу, полу и весу. Поиск по имени — ниже.
           </p>
           <DivisionsBrowser divisions={divisions} />
         </section>

@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import type { Metadata } from "next";
 import SelfRegisterForm from "@/components/SelfRegisterForm";
+import { getCurrentUser } from "@/lib/auth/session";
 
 export const dynamic = "force-dynamic";
 
@@ -25,6 +26,9 @@ export default async function RegisterPage({ params }: { params: Promise<{ event
     },
   });
   if (!event) return <main className="p-8">Событие не найдено</main>;
+
+  const user = await getCurrentUser();
+  const nextPath = encodeURIComponent(`/register/${eventId}`);
 
   const tiers = event.priceTiers.map((t) => ({
     name: t.name,
@@ -62,6 +66,15 @@ export default async function RegisterPage({ params }: { params: Promise<{ event
       {event.status !== "REG_OPEN" ? (
         <div className="rounded border border-amber-300 bg-amber-50 p-4 text-sm text-amber-800">
           Регистрация на это событие сейчас закрыта (статус: {event.status}).
+        </div>
+      ) : !user ? (
+        <div className="rounded border border-blue-200 bg-blue-50 p-4 text-sm">
+          <p className="text-blue-900 font-semibold">Чтобы подать заявку, войдите в аккаунт</p>
+          <p className="text-blue-800 mt-1">Регистрация участника доступна только авторизованным — так вы сможете видеть свои заявки и сетки.</p>
+          <div className="mt-3 flex gap-3">
+            <Link href={`/login?next=${nextPath}`} className="rounded bg-blue-600 px-4 py-2 text-white">Войти</Link>
+            <Link href={`/signup?next=${nextPath}`} className="rounded border border-blue-300 px-4 py-2 text-blue-700">Создать аккаунт</Link>
+          </div>
         </div>
       ) : (
         <SelfRegisterForm eventId={eventId} tiers={tiers} categories={categories} />
