@@ -19,16 +19,6 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
       <p className="mt-4 text-sm text-gray-600">
         Нет аккаунта? <Link href={`/signup${nextQ}`} className="text-blue-600 font-medium">Зарегистрироваться</Link>
       </p>
-      <div className="mt-6 text-xs text-gray-500">
-        <p className="font-semibold">Демо-аккаунты (пароль: demo):</p>
-        <ul className="mt-1 space-y-0.5">
-          <li>admin@ugp.local — админ</li>
-          <li>org@ugp.local — организатор</li>
-          <li>coach@ugp.local — тренер</li>
-          <li>ref@ugp.local — судья</li>
-          <li>athlete@ugp.local — участник</li>
-        </ul>
-      </div>
     </main>
   );
 }
