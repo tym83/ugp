@@ -84,11 +84,11 @@ export default async function Home() {
       <section className="border-t border-white/10">
         <div className="mx-auto max-w-5xl px-6 py-16">
           <div className={kicker}>Это будет крутейшее шоу</div>
-          <h2 className="mt-3 text-3xl font-black uppercase tracking-tight sm:text-4xl">Один вечер. Три акта. Корона в финале.</h2>
+          <h2 className="mt-3 text-3xl font-black uppercase tracking-tight sm:text-4xl">Один вечер. Три акта. Битва городов в финале.</h2>
           <p className="mt-4 max-w-3xl text-lg text-[#cec8bc]">
-            Целый день борьбы, а вечером — большое шоу: именные поединки, командный вызов город против города
-            и финал King of the Pit. Без ударов в голову, но с настоящим накалом. Мы делаем Урал столицей
-            грэпплинга и зовём всех: спортсменов, зрителей, школы, бренды и медиа.
+            Целый день борьбы, а вечером — большое шоу: именные поединки и Битва городов — сборная
+            Екатеринбурга против Челябинска, 5 на 5. Без ударов в голову, но с настоящим накалом. Мы делаем Урал
+            столицей грэпплинга и зовём всех: спортсменов, зрителей, школы, бренды и медиа.
           </p>
           <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-4">
             <Stat n="300" t="спортсменов на татами" />
@@ -153,19 +153,19 @@ export default async function Home() {
         </div>
       </section>
 
-      {/* KING OF THE PIT */}
+      {/* БИТВА ГОРОДОВ */}
       <section className="border-t border-white/10">
         <div className="mx-auto max-w-5xl px-6 py-16">
           <div className={kicker}>Главное шоу вечера</div>
-          <h2 className="mt-3 text-3xl font-black uppercase tracking-tight sm:text-5xl">King of the Pit — бой за корону ♛</h2>
+          <h2 className="mt-3 text-3xl font-black uppercase tracking-tight sm:text-5xl">Битва городов — Екатеринбург против Челябинска</h2>
           <p className="mt-4 max-w-3xl text-lg text-[#cec8bc]">
-            Вечернее шоу в трёх частях: от именных поединков до финала за корону чемпиона вечера.
+            Вечернее шоу в трёх актах: именные поединки, командная битва город на город 5 на 5 и награждение чемпионов.
           </p>
           <div className="mt-8 grid gap-4 md:grid-cols-3">
             {[
               { n: "01", t: "Именные поединки", d: "Топовые бойцы один на один. Известные имена и живая интрига — то, ради чего приходят зрители." },
-              { n: "02", t: "Команда 5×5 · Екатеринбург против Челябинска", d: "Город против города. Победитель остаётся на татами, проигравший уходит. Самый эмоциональный блок вечера." },
-              { n: "03", t: "King of the Pit ♛", d: "8 бойцов и большой финал: победитель забирает корону. Формат построен так, чтобы победил действительно сильнейший." },
+              { n: "02", t: "Битва городов · 5×5", d: "Сборная Екатеринбурга против сборной Челябинска. Победитель остаётся на татами, проигравший уходит. Кульминация вечера." },
+              { n: "03", t: "Награждение чемпионов", d: "Итоги дня и вечернего шоу, призы и чествование сильнейших под финал вечера." },
             ].map((c) => (
               <div key={c.n} className="rounded-lg border border-white/10 bg-white/5 p-6">
                 <div className="text-4xl font-black text-[#e3863d]">{c.n}</div>
@@ -175,11 +175,11 @@ export default async function Home() {
             ))}
           </div>
           <div className="mt-6 rounded-lg border border-white/10 bg-white/[0.03] p-6">
-            <div className="mb-2 font-bold uppercase tracking-wide text-[#e3863d]">Как работает King of the Pit</div>
+            <div className="mb-2 font-bold uppercase tracking-wide text-[#e3863d]">Как работает Битва городов</div>
             <ul className="grid gap-2 text-sm text-[#cec8bc] sm:grid-cols-2">
-              <li>• 8 бойцов делятся на две группы по 4 человека.</li>
-              <li>• Внутри группы бьются по очереди: кто выиграл — остаётся и встречает следующего. Каждый бой до сдачи, максимум 3 минуты.</li>
-              <li>• Победители групп выходят в финал — один на один за корону.</li>
+              <li>• Две сборные по 5 бойцов: Екатеринбург и Челябинск.</li>
+              <li>• Бьются по очереди: кто выиграл — остаётся на татами и встречает следующего. Каждый бой до сдачи, максимум 3 минуты.</li>
+              <li>• Город, чьи бойцы наберут больше побед, забирает Битву городов.</li>
               <li>• Отдельные призы за самую быструю победу и за наибольшее число побед.</li>
             </ul>
           </div>
@@ -198,7 +198,7 @@ export default async function Home() {
           <div className="mt-8 grid gap-4 md:grid-cols-3">
             {[
               { h: "До турнира · лето–осень", t: "Грэпплинг едет в города", li: ["20+ локальных событий: Челябинск, Екатеринбург, Уфа, Пермь, Тюмень", "Открытые тренировки и мастер-классы со школами", "Зачёт городов: кто выставит больше спортсменов"] },
-              { h: "День турнира", t: "Турнир днём, шоу вечером", li: ["Открытый турнир: мужчины, женщины, новички и опытные", "Фестиваль: активности, фотозоны, еда, семейная атмосфера", "Вечером — шоу King of the Pit со звёздами и трансляцией"] },
+              { h: "День турнира", t: "Турнир днём, шоу вечером", li: ["Открытый турнир: мужчины, женщины, новички и опытные", "Фестиваль: активности, фотозоны, еда, семейная атмосфера", "Вечером — шоу: именные поединки и Битва городов, со звёздами и трансляцией"] },
               { h: "После турнира", t: "Движение не заканчивается", li: ["Нарезки лучших моментов и фильм о турнире", "Локальные события в городах после турнира", "Рейтинг спортсменов и планы на следующий сезон"] },
             ].map((c) => (
               <div key={c.h} className="rounded-lg border border-white/10 bg-white/5 p-6">
@@ -277,6 +277,25 @@ export default async function Home() {
             потому что любим этот спорт. И даже тогда они собирали сильных ребят со всего региона и из Казахстана.
             Теперь мы выходим на новый уровень — событие для всего Урала.
           </p>
+        </div>
+      </section>
+
+      {/* ОРГАНИЗАТОРЫ */}
+      <section className="border-t border-white/10">
+        <div className="mx-auto max-w-5xl px-6 py-16">
+          <div className={kicker}>Кто делает турнир</div>
+          <h2 className="mt-3 text-3xl font-black uppercase tracking-tight">Организаторы</h2>
+          <p className="mt-3 max-w-2xl text-lg text-[#cec8bc]">Турнир делают практики грэпплинга — те, кто сам на татами и в зале каждый день.</p>
+          <div className="mt-6 grid gap-4 sm:grid-cols-2">
+            <div className="rounded-lg border border-white/10 bg-white/5 p-6">
+              <div className="text-lg font-bold">Александр Никитенко</div>
+              <div className="mt-1 text-sm text-[#cec8bc]">Основатель турнира · тренер и действующий боец</div>
+            </div>
+            <div className="rounded-lg border border-white/10 bg-white/5 p-6">
+              <div className="text-lg font-bold">Эмиль</div>
+              <div className="mt-1 text-sm text-[#cec8bc]">Соорганизатор турнира</div>
+            </div>
+          </div>
         </div>
       </section>
 
