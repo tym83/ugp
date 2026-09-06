@@ -21,12 +21,14 @@ export default function SelfRegisterForm({
   categories,
   coach = null,
   refDiscount = 0,
+  paymentInfo = null,
 }: {
   eventId: string;
   tiers: TierDTO[];
   categories: CatDTO[];
   coach?: { id: string; name: string } | null;
   refDiscount?: number;
+  paymentInfo?: string | null;
 }) {
   const [fullName, setFullName] = useState("");
   const [birthDate, setBirthDate] = useState("");
@@ -91,6 +93,12 @@ export default function SelfRegisterForm({
       <div className="rounded border border-green-300 bg-green-50 p-4 text-sm">
         <p className="text-green-800 font-semibold">Готово!</p>
         <p className="text-green-800 mt-1">{result.msg}</p>
+        {paymentInfo && (
+          <div className="mt-3 rounded border border-amber-300 bg-amber-50 p-3">
+            <p className="font-semibold text-amber-900">Как оплатить стартовый взнос</p>
+            <p className="mt-1 whitespace-pre-line text-amber-900">{paymentInfo}</p>
+          </div>
+        )}
         <div className="mt-3 flex gap-3">
           <Link href={`/category/${result.categoryId}`} className="text-blue-600">Ваша сетка →</Link>
           <Link href="/me" className="text-blue-600">Мой кабинет →</Link>

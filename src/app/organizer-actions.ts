@@ -522,3 +522,16 @@ export async function generateAbsoluteBracket(
   revalidatePath(`/category/${absoluteCategoryId}`);
   return { ok: true, msg: "Сетка абсолютки сверстана" };
 }
+
+/** Подтверждение оплаты взноса организатором (ручной трекинг). */
+export async function setEntryPaid(entryId: string, paid: boolean): Promise<{ ok: boolean; msg: string }> {
+  await requireRole("ORGANIZER", "ADMIN");
+  const entry = await prisma.eventEntry.findUnique({ where: { id: entryId } });
+  if (!entry) return { ok: false, msg: "Заявка не найдена" };
+  await prisma.eventEntry.update({
+    where: { id: entryId },
+    data: { paid, paidAt: paid ? new Date() : null },
+  });
+  revalidatePath(`/organizer/${entry.eventId}`);
+  return { ok: true, msg: paid ? "Отмечено оплаченным" : "Отметка снята" };
+}
