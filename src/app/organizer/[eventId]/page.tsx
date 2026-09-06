@@ -4,7 +4,7 @@ import { buildBracketAction } from "@/app/actions";
 import { needsMerge, suggestMergeTarget, type MergeCat } from "@/lib/domain/merge";
 import Link from "next/link";
 import WeighInForm from "./WeighInForm";
-import { MergeButton, LockButton } from "./OrganizerButtons";
+import { MergeButton, LockButton, PaidToggle } from "./OrganizerButtons";
 import AbsolutePanel from "./AbsolutePanel";
 import { absoluteRoster } from "@/app/organizer-actions";
 
@@ -66,6 +66,16 @@ export default async function OrganizerConsole({ params }: { params: Promise<{ e
     }))
   );
 
+  // Заявки и статус оплаты (ручной трекинг взноса).
+  const entries = await prisma.eventEntry.findMany({
+    where: { eventId },
+    include: { athlete: { select: { fullName: true } } },
+    orderBy: { createdAt: "asc" },
+  });
+  const paidCount = entries.filter((e) => e.paid).length;
+  const paidSum = entries.filter((e) => e.paid).reduce((s, e) => s + e.priceTotal, 0);
+  const totalSum = entries.reduce((s, e) => s + e.priceTotal, 0);
+
   return (
     <main className="mx-auto max-w-5xl p-6">
       <div className="flex items-center justify-between">
@@ -79,6 +89,41 @@ export default async function OrganizerConsole({ params }: { params: Promise<{ e
           <LockButton eventId={eventId} locked={locked} />
         </div>
       </div>
+
+      <section className="mt-6">
+        <div className="flex items-baseline justify-between">
+          <h2 className="text-lg font-semibold mb-2">Оплата заявок</h2>
+          <span className="text-sm text-gray-500">
+            оплачено {paidCount} из {entries.length} · {paidSum} / {totalSum} ₽
+          </span>
+        </div>
+        {entries.length === 0 ? (
+          <p className="text-sm text-gray-400">Заявок пока нет.</p>
+        ) : (
+          <div className="overflow-x-auto rounded border">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50 text-left text-xs uppercase tracking-wide text-gray-500">
+                <tr>
+                  <th className="px-3 py-2">Участник</th>
+                  <th className="px-3 py-2">Источник</th>
+                  <th className="px-3 py-2">Взнос</th>
+                  <th className="px-3 py-2">Оплата</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {entries.map((e) => (
+                  <tr key={e.id}>
+                    <td className="px-3 py-2">{e.athlete.fullName}</td>
+                    <td className="px-3 py-2 text-gray-500">{e.source === "referral" ? "по тренеру" : e.source === "coach" ? "список тренера" : "сам"}</td>
+                    <td className="px-3 py-2 tabular-nums">{e.priceTotal} ₽</td>
+                    <td className="px-3 py-2"><PaidToggle entryId={e.id} paid={e.paid} /></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
 
       {suggestions.length > 0 && (
         <section className="mt-6">

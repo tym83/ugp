@@ -61,6 +61,13 @@ export default async function MePage({ searchParams }: { searchParams: Promise<{
   const athleteIds = list.map((a) => a.id);
   const nameById = new Map(list.map((a) => [a.id, a.fullName]));
 
+  // Заявки участника: статус оплаты + инструкция «как оплатить».
+  const entries = await prisma.eventEntry.findMany({
+    where: { athleteId: { in: athleteIds } },
+    include: { event: { select: { name: true, paymentInfo: true } } },
+    orderBy: { createdAt: "desc" },
+  });
+
   // все матчи атлета(ов)
   const matches = await prisma.match.findMany({
     where: { OR: [{ slotAAthleteId: { in: athleteIds } }, { slotBAthleteId: { in: athleteIds } }] },
@@ -109,6 +116,36 @@ export default async function MePage({ searchParams }: { searchParams: Promise<{
     <main className="mx-auto max-w-lg px-4 py-6 sm:p-8">
       <h1 className="text-2xl font-bold mb-1">Мой кабинет</h1>
       <p className="text-sm text-gray-500 mb-6 break-words">{list.map((a) => a.fullName).join(", ")}</p>
+
+      {entries.length > 0 && (
+        <section className="mb-8">
+          <h2 className="text-lg font-semibold mb-2">Заявки и оплата</h2>
+          <ul className="space-y-2">
+            {entries.map((e) => (
+              <li key={e.id} className="rounded-lg border p-3 text-sm">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="min-w-0 break-words font-medium">{e.event.name}</span>
+                  <span
+                    className={
+                      "shrink-0 rounded px-2 py-0.5 text-xs font-semibold " +
+                      (e.paid ? "bg-green-100 text-green-800" : "bg-amber-100 text-amber-800")
+                    }
+                  >
+                    {e.paid ? "оплачено" : "ожидает оплаты"}
+                  </span>
+                </div>
+                <div className="mt-1 text-gray-600">Взнос: {e.priceTotal} ₽</div>
+                {!e.paid && e.event.paymentInfo && (
+                  <div className="mt-2 rounded border border-amber-300 bg-amber-50 p-2 text-amber-900">
+                    <p className="font-semibold">Как оплатить</p>
+                    <p className="mt-1 whitespace-pre-line">{e.event.paymentInfo}</p>
+                  </div>
+                )}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <section>
         <h2 className="text-lg font-semibold mb-2">Ближайшие схватки</h2>

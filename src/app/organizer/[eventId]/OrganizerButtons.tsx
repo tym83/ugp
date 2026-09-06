@@ -1,6 +1,6 @@
 "use client";
 import { useTransition, useState } from "react";
-import { applyMerge, setWeighInLock } from "@/app/organizer-actions";
+import { applyMerge, setWeighInLock, setEntryPaid } from "@/app/organizer-actions";
 
 export function MergeButton({ sourceId, targetId, targetLabel }: { sourceId: string; targetId: string; targetLabel: string }) {
   const [pending, start] = useTransition();
@@ -16,6 +16,28 @@ export function MergeButton({ sourceId, targetId, targetLabel }: { sourceId: str
       </button>
       {msg && <span className="text-xs text-gray-500">{msg}</span>}
     </span>
+  );
+}
+
+export function PaidToggle({ entryId, paid }: { entryId: string; paid: boolean }) {
+  const [pending, start] = useTransition();
+  const [state, setState] = useState(paid);
+  return (
+    <button
+      disabled={pending}
+      onClick={() =>
+        start(async () => {
+          const r = await setEntryPaid(entryId, !state);
+          if (r.ok) setState(!state);
+        })
+      }
+      className={
+        "rounded px-2 py-0.5 text-xs font-semibold text-white disabled:opacity-50 " +
+        (state ? "bg-green-600" : "bg-gray-400")
+      }
+    >
+      {pending ? "…" : state ? "оплачено ✓" : "отметить оплату"}
+    </button>
   );
 }
 

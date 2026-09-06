@@ -91,7 +91,7 @@ export default async function RegisterPage({
           </div>
         </div>
       ) : (
-        <SelfRegisterForm eventId={eventId} tiers={tiers} categories={categories} coach={coach} refDiscount={refDiscount} />
+        <SelfRegisterForm eventId={eventId} tiers={tiers} categories={categories} coach={coach} refDiscount={refDiscount} paymentInfo={event.paymentInfo} />
       )}
 
       <footer className="mt-10 border-t pt-4 text-xs text-gray-500">
