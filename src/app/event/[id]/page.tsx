@@ -1,7 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import type { Metadata } from "next";
-import EventSearch from "@/components/EventSearch";
 import DivisionsBrowser, { type Division } from "@/components/DivisionsBrowser";
 import Countdown from "@/components/Countdown";
 
@@ -83,15 +82,9 @@ export default async function EventPage({ params }: { params: Promise<{ id: stri
         <section id="divisions" className="scroll-mt-4">
           <h2 className="mb-1 text-2xl font-black uppercase tracking-tight">Сетки и категории</h2>
           <p className="mb-4 text-sm text-[#cec8bc]">
-            Нажми категорию — участники раскроются прямо здесь. Фильтруй по разделу, полу и весу. Поиск по имени — ниже.
+            Нажми категорию — участники раскроются прямо здесь. Фильтруй по разделу, полу и весу.
           </p>
           <DivisionsBrowser divisions={divisions} />
-        </section>
-
-        {/* Поиск участника/клуба — вторично */}
-        <section className="mt-10">
-          <h2 className="mb-2 text-sm font-bold uppercase tracking-[0.25em] text-[#e3863d]">Найти спортсмена или клуб</h2>
-          <EventSearch eventId={event.id} />
         </section>
 
         <div className="mt-10 grid gap-8 sm:grid-cols-2">

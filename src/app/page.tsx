@@ -45,42 +45,37 @@ export default async function Home() {
 
   return (
     <main className="bg-[#0d0b08] text-[#f4f0e8]">
-      {/* HERO */}
-      <section className="relative min-h-[92vh] w-full">
-        <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: "url(/brand/hero-cover.jpg)" }} />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#0d0b08] via-[#0d0b08]/60 to-[#0d0b08]/20" />
-        <div className="relative mx-auto flex min-h-[92vh] max-w-5xl flex-col justify-end px-6 pb-16 pt-24">
-          <div className={kicker}>Underground Grappling · Челябинск</div>
+      {/* HERO — афиша по центру, бока дозаполнены размытой копией афиши (тот же цвет/паттерн) + затемнение */}
+      <section className="relative w-full overflow-hidden">
+        <div className="absolute inset-0 scale-125 bg-cover bg-center opacity-40 blur-2xl" style={{ backgroundImage: "url(/brand/poster-2026.png)" }} />
+        <div className="absolute inset-0 bg-[#0d0b08]/75" />
+        <div className="relative mx-auto flex max-w-3xl flex-col items-center px-6 py-12 text-center">
+          {/* сама афиша */}
+          <div className="aspect-square w-full max-w-md rounded-xl bg-contain bg-center bg-no-repeat shadow-2xl ring-1 ring-white/10" style={{ backgroundImage: "url(/brand/poster-2026.png)" }} />
           {ev ? (
             <>
-              <h1 className="mt-3 text-4xl font-black uppercase leading-[0.95] tracking-tight sm:text-6xl">{ev.name}</h1>
-              <p className="mt-4 max-w-2xl text-xl text-[#dcd7ce]">
-                Борьба без ударов. Шоу с характером. Кульминация турнира — <b className="text-[#f4f0e8]">сборная Екатеринбурга против Челябинска, 5 на 5</b>.
+              <p className="mt-7 max-w-2xl text-lg text-[#e7e2d8] sm:text-xl">
+                Борьба без ударов. Шоу с характером. Кульминация турнира — <b className="text-white">сборная Екатеринбурга против Челябинска, 5 на 5</b>.
               </p>
-              <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-[#dcd7ce]">
+              <div className="mt-4 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-[#e7e2d8]">
                 {st && <span className={`rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wide ${st.cls}`}>{st.text}</span>}
                 <span className="text-lg">{new Date(ev.date).toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" })}</span>
                 {ev.venue && <span>· {ev.venue}</span>}
                 <span>· {ev.city}</span>
               </div>
-              <div className="mt-1 flex flex-wrap gap-x-4 text-sm text-[#cec8bc]">
-                <span>{ev._count.categories} категорий</span>
-                <span>{ev._count.entries} заявок</span>
-                <span>{ev.matsCount} ковра</span>
-              </div>
               {canReg && ev.registrationClosesAt && (
-                <div className="mt-4 text-[#dcd7ce]"><Countdown target={new Date(ev.registrationClosesAt).toISOString()} /></div>
+                <div className="mt-4 text-[#e7e2d8]"><Countdown target={new Date(ev.registrationClosesAt).toISOString()} /></div>
               )}
-              <div className="mt-7 flex flex-wrap items-center gap-3">
+              <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
                 <RegBtn big />
                 <Link href={`/event/${ev.id}#divisions`} className="rounded border border-white/30 bg-white/5 px-7 py-4 font-bold uppercase tracking-wide backdrop-blur hover:bg-white/15">
                   Сетки и категории
                 </Link>
-                <Link href="/guide" className="px-4 py-4 font-semibold text-[#dcd7ce] underline-offset-4 hover:text-[#e3863d] hover:underline">Что такое грэпплинг →</Link>
+                <Link href="/guide" className="px-4 py-4 font-semibold text-[#e7e2d8] underline-offset-4 hover:text-[#e3863d] hover:underline">Что такое грэпплинг →</Link>
               </div>
             </>
           ) : (
-            <h1 className="mt-3 text-5xl font-black uppercase">Турниры по грэпплингу</h1>
+            <h1 className="mt-6 text-5xl font-black uppercase">Турниры по грэпплингу</h1>
           )}
         </div>
       </section>

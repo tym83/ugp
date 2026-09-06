@@ -139,17 +139,32 @@ export default function SelfRegisterForm({
 
       <label className="block">
         <span className="text-sm text-gray-600">Пояс (необязательно)</span>
-        <input name="belt" value={belt} onChange={(e) => setBelt(e.target.value)}
-          placeholder="напр. синий" className="mt-1 w-full border rounded px-3 py-2" />
+        <select name="belt" value={belt} onChange={(e) => setBelt(e.target.value)}
+          className="mt-1 w-full border rounded px-3 py-2 bg-white">
+          <option value="">— не указывать —</option>
+          <option value="белый">Белый</option>
+          <option value="серый">Серый (детский)</option>
+          <option value="жёлтый">Жёлтый (детский)</option>
+          <option value="оранжевый">Оранжевый (детский)</option>
+          <option value="зелёный">Зелёный (детский)</option>
+          <option value="синий">Синий</option>
+          <option value="фиолетовый">Фиолетовый</option>
+          <option value="коричневый">Коричневый</option>
+          <option value="чёрный">Чёрный</option>
+        </select>
       </label>
 
       <fieldset>
         <div className="flex items-center justify-between">
           <span className="text-sm text-gray-600">Категории {picked.size > 0 && `· выбрано ${picked.size}`}</span>
           <button type="button" onClick={() => setShowAll((v) => !v)} className="text-xs text-blue-600">
-            {showAll ? "← только подходящие" : "Показать все →"}
+            {showAll ? "← по моему весу" : "Показать все веса →"}
           </button>
         </div>
+        <p className="mt-1 text-xs text-gray-500">
+          Отметьте все категории, где хотите бороться (можно несколько: разные веса, ги и ноу-ги, абсолютка).
+          По умолчанию показаны ваша весовая и соседние; «Показать все веса» открывает остальные в ваших возрастных группах.
+        </p>
         {!birthDate ? (
           <p className="mt-2 text-sm text-gray-400">Укажите дату рождения и пол — покажем доступные категории.</p>
         ) : visible.length === 0 ? (
@@ -172,12 +187,17 @@ export default function SelfRegisterForm({
       </fieldset>
 
       {pricePreview && (
-        <div className="rounded bg-gray-50 border px-3 py-2 text-sm">
-          Стоимость: <span className="font-semibold">{pricePreview.total} ₽</span>
-          {pricePreview.total < pricePreview.full && (
-            <span className="text-gray-400 line-through ml-2">{pricePreview.full} ₽</span>
-          )}
-          <span className="text-gray-500"> · тариф «{pricePreview.tierName}» · {picked.size} категор.</span>
+        <div className="rounded bg-gray-100 border border-gray-300 px-3 py-2 text-sm text-gray-900">
+          <div>
+            Итого к оплате: <span className="font-bold text-base">{pricePreview.total} ₽</span>
+            {pricePreview.total < pricePreview.full && (
+              <span className="text-gray-500 line-through ml-2">{pricePreview.full} ₽</span>
+            )}
+          </div>
+          <div className="text-xs text-gray-600 mt-0.5">
+            {picked.size} {picked.size === 1 ? "категория" : "категории(й)"} · тариф «{pricePreview.tierName}»
+            {refDiscount > 0 && coach ? ` · скидка тренера −${refDiscount} ₽/категория` : ""}
+          </div>
         </div>
       )}
 
