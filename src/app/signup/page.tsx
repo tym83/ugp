@@ -24,6 +24,15 @@ export default async function SignupPage({ searchParams }: { searchParams: Promi
         <input name="fullName" placeholder="Фамилия Имя" className="w-full border rounded px-3 py-2" required />
         <input name="email" type="email" placeholder="email" className="w-full border rounded px-3 py-2" required />
         <input name="password" type="password" placeholder="пароль (минимум 6 символов)" className="w-full border rounded px-3 py-2" required minLength={6} />
+        <fieldset className="rounded border p-3">
+          <legend className="px-1 text-sm text-gray-600">Я регистрируюсь как</legend>
+          <label className="flex items-center gap-2 text-sm py-0.5">
+            <input type="radio" name="role" value="ATHLETE" defaultChecked /> Участник (заявляюсь на турниры сам)
+          </label>
+          <label className="flex items-center gap-2 text-sm py-0.5">
+            <input type="radio" name="role" value="COACH" /> Тренер (заявляю команду, реф-ссылка для учеников)
+          </label>
+        </fieldset>
         <button className="w-full rounded bg-blue-600 px-4 py-2 text-white">Создать аккаунт</button>
       </form>
       <p className="mt-4 text-sm text-gray-600">

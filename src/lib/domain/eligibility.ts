@@ -99,31 +99,34 @@ export function athleteIsKid(birthYear: number, cats: SelectableCat[]): boolean 
   return cats.some((c) => isKidsCode(c.ageGroupCode) && birthYear >= c.birthYearFrom && birthYear <= c.birthYearTo);
 }
 
-/** Полный список категорий, доступных атлету по ЖЁСТКИМ правилам (для серверной проверки и режима «Показать все»):
- *  совпадает пол; ребёнку — только его детские группы; взрослому/юниору — любые НЕ детские. Вес и пояс не ограничивают. */
+/** Категории, доступные атлету (для серверной проверки и режима «Показать все»):
+ *  совпадает пол И год рождения попадает в возрастной диапазон категории [from,to].
+ *  Так взрослому (1983) не покажутся юниорские/детские группы — только его взрослая + ветераны. */
 export function allowedCategories(a: { sex: "M" | "F"; birthYear: number }, cats: SelectableCat[]): SelectableCat[] {
-  const kid = athleteIsKid(a.birthYear, cats);
-  return cats.filter((c) => {
-    if (c.sex !== a.sex) return false;
-    const catKids = isKidsCode(c.ageGroupCode);
-    if (kid) return catKids && a.birthYear >= c.birthYearFrom && a.birthYear <= c.birthYearTo;
-    return !catKids;
-  });
+  return cats.filter(
+    (c) => c.sex === a.sex && a.birthYear >= c.birthYearFrom && a.birthYear <= c.birthYearTo,
+  );
 }
 
-/** Суженный список по умолчанию: из allowed, весовые — окном ±2 шага вокруг веса атлета
- *  (внутри группы age+discipline). Абсолютки/open-top показываем всегда. Без веса — не сужаем. */
+/** Эффективный верхний вес категории для сортировки (open-top → бесконечность). */
+function weightCap(c: SelectableCat): number {
+  if (c.isOpenTop || c.weightMax == null) return Infinity;
+  return c.weightMax;
+}
+
+/** Список по умолчанию: доступные категории, весовые — «своя + 1–2 вниз» (и одна вверх)
+ *  внутри группы возраст+дисциплина. Абсолютка показывается всегда. Без веса — не сужаем. */
 export function suggestedCategories(
   a: { sex: "M" | "F"; birthYear: number; weight?: number | null },
   cats: SelectableCat[]
 ): SelectableCat[] {
-  const allowed = allowedCategories(a, cats);
+  const eligible = allowedCategories(a, cats);
   const w = a.weight;
-  if (w == null || !Number.isFinite(w)) return allowed;
+  if (w == null || !Number.isFinite(w)) return eligible;
 
   const groups = new Map<string, SelectableCat[]>();
-  for (const c of allowed) {
-    if (c.isAbsolute || c.isOpenTop) continue;
+  for (const c of eligible) {
+    if (c.isAbsolute) continue; // абсолютку не режем по весу
     const key = `${c.ageGroupCode}|${c.discipline}`;
     const arr = groups.get(key) ?? [];
     arr.push(c);
@@ -131,11 +134,13 @@ export function suggestedCategories(
   }
   const keep = new Set<string>();
   for (const list of groups.values()) {
-    const sorted = list.slice().sort((x, y) => (x.weightMax ?? 1e9) - (y.weightMax ?? 1e9));
+    const sorted = list.slice().sort((x, y) => weightCap(x) - weightCap(y));
+    // «своя» весовая — первая, куда атлет проходит (weightFits), иначе ближайшая сверху, иначе самая тяжёлая.
     let idx = sorted.findIndex((c) => weightFits(w, c));
-    if (idx < 0) idx = sorted.findIndex((c) => (c.weightMax ?? 1e9) >= w);
+    if (idx < 0) idx = sorted.findIndex((c) => weightCap(c) >= w);
     if (idx < 0) idx = sorted.length - 1;
-    for (let i = Math.max(0, idx - 2); i <= Math.min(sorted.length - 1, idx + 2); i++) keep.add(sorted[i].id);
+    // своя + 2 вниз + 1 вверх — как просили: «1–2 категории вниз и своя».
+    for (let i = Math.max(0, idx - 2); i <= Math.min(sorted.length - 1, idx + 1); i++) keep.add(sorted[i].id);
   }
-  return allowed.filter((c) => c.isAbsolute || c.isOpenTop || keep.has(c.id));
+  return eligible.filter((c) => c.isAbsolute || keep.has(c.id));
 }

@@ -50,6 +50,7 @@ export async function signUpAction(formData: FormData) {
   const fullName = String(formData.get("fullName") ?? "").trim();
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const password = String(formData.get("password") ?? "");
+  const role = String(formData.get("role") ?? "ATHLETE") === "COACH" ? "COACH" : "ATHLETE";
   const next = safeNext(formData.get("next"));
   const nextQ = next ? `&next=${encodeURIComponent(next)}` : "";
 
@@ -72,11 +73,12 @@ export async function signUpAction(formData: FormData) {
       fullName,
       email,
       passwordHash: hashPassword(password),
-      memberships: { create: [{ role: "ATHLETE", scope: "PLATFORM" }] },
+      memberships: { create: [{ role, scope: "PLATFORM" }] },
     },
   });
   await signIn(user.id);
-  redirect(next || "/me");
+  if (next) redirect(next);
+  redirect(role === "COACH" ? "/coach" : "/me");
 }
 
 export async function signOutAction() {

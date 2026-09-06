@@ -47,11 +47,13 @@ export default async function MePage({ searchParams }: { searchParams: Promise<{
             <Link href="/login" className="text-blue-600">Вход →</Link>
           </p>
         ) : (
-          <p className="text-sm text-gray-600">Профиль участника не найден.</p>
+          <div className="text-sm text-gray-700">
+            <p>Вы вошли, но ещё не подавали заявку на турнир.</p>
+            <p className="mt-2">
+              <Link href="/" className="text-blue-600 font-medium">Выбрать турнир и зарегистрироваться →</Link>
+            </p>
+          </div>
         )}
-        <p className="mt-3 text-sm">
-          Или <Link href="/me/search" className="text-blue-600">найдите свою сетку по имени →</Link>
-        </p>
       </main>
     );
   }

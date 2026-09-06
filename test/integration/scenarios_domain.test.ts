@@ -275,9 +275,12 @@ describe("Само-выбор: allowed/suggested/kid (S151–S156)", () => {
     expect(athleteIsKid(2016, all)).toBe(true);
     expect(athleteIsKid(1995, all)).toBe(false);
   });
-  it("S155 suggestedCategories: весовое окно ±2 вокруг веса + абсолютка всегда", () => {
+  it("S155 suggestedCategories: своя весовая + соседние (не вся пачка) + абсолютка всегда", () => {
+    // вес 70 → своя aL(≤70), +1 вверх aM(≤77); aH(≤94) далеко — НЕ показываем
     const r = suggestedCategories({ sex: "M", birthYear: 1995, weight: 70 }, all).map((c) => c.id);
-    expect(r).toContain("aL"); expect(r).toContain("aM"); expect(r).toContain("aH");
+    expect(r).toContain("aL");
+    expect(r).toContain("aM");
+    expect(r).not.toContain("aH");
     expect(r).toContain("abs"); // абсолютка не зависит от веса
   });
   it("S156 suggestedCategories без веса = allowed (не сужаем)", () => {
