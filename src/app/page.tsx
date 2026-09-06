@@ -55,7 +55,7 @@ export default async function Home() {
             <>
               <h1 className="mt-3 text-4xl font-black uppercase leading-[0.95] tracking-tight sm:text-6xl">{ev.name}</h1>
               <p className="mt-4 max-w-2xl text-xl text-[#dcd7ce]">
-                Борьба без ударов. Шоу с характером. Урал собирает город против города и корону <b className="text-[#f4f0e8]">King of the Pit</b>.
+                Борьба без ударов. Шоу с характером. Кульминация турнира — <b className="text-[#f4f0e8]">сборная Екатеринбурга против Челябинска, 5 на 5</b>.
               </p>
               <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-[#dcd7ce]">
                 {st && <span className={`rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wide ${st.cls}`}>{st.text}</span>}
