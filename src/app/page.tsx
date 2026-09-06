@@ -292,7 +292,7 @@ export default async function Home() {
               <div className="mt-1 text-sm text-[#cec8bc]">Основатель турнира · тренер и действующий боец</div>
             </div>
             <div className="rounded-lg border border-white/10 bg-white/5 p-6">
-              <div className="text-lg font-bold">Эмиль</div>
+              <div className="text-lg font-bold">Эмиль Якупов</div>
               <div className="mt-1 text-sm text-[#cec8bc]">Соорганизатор турнира</div>
             </div>
           </div>
