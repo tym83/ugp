@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { togglePaidAction } from "@/app/coach-actions";
 import { signOutAction } from "@/app/auth-actions";
@@ -17,6 +18,12 @@ export default async function CoachPage() {
 
   const event = await prisma.event.findFirst({ where: { status: "REG_OPEN" }, orderBy: { date: "asc" } });
   if (!event) return <main className="p-8">Нет открытых событий.</main>;
+
+  // Полный адрес сайта для реф-ссылки (в проде NEXT_PUBLIC_SITE_URL не задан — берём хост запроса).
+  const h = await headers();
+  const host = h.get("host") ?? "";
+  const proto = h.get("x-forwarded-proto") ?? "https";
+  const origin = host ? `${proto}://${host}` : "";
 
   const entries = await prisma.eventEntry.findMany({
     where: { eventId: event.id, coachUserId: user.id },
@@ -37,7 +44,7 @@ export default async function CoachPage() {
       <p className="text-sm text-gray-500">Событие: {event.name}</p>
 
       <section className="mt-6">
-        <RefLink eventId={event.id} coachId={user.id} />
+        <RefLink eventId={event.id} coachId={user.id} origin={origin} />
       </section>
 
       <section className="mt-6">

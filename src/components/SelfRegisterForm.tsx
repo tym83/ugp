@@ -22,6 +22,7 @@ export default function SelfRegisterForm({
   coach = null,
   refDiscount = 0,
   paymentInfo = null,
+  defaults,
 }: {
   eventId: string;
   tiers: TierDTO[];
@@ -29,12 +30,13 @@ export default function SelfRegisterForm({
   coach?: { id: string; name: string } | null;
   refDiscount?: number;
   paymentInfo?: string | null;
+  defaults?: { fullName?: string; birthDate?: string; sex?: "M" | "F"; belt?: string };
 }) {
-  const [fullName, setFullName] = useState("");
-  const [birthDate, setBirthDate] = useState("");
-  const [sex, setSex] = useState<"M" | "F">("M");
+  const [fullName, setFullName] = useState(defaults?.fullName ?? "");
+  const [birthDate, setBirthDate] = useState(defaults?.birthDate ?? "");
+  const [sex, setSex] = useState<"M" | "F">(defaults?.sex ?? "M");
   const [weight, setWeight] = useState("");
-  const [belt, setBelt] = useState("");
+  const [belt, setBelt] = useState(defaults?.belt ?? "");
   const [showAll, setShowAll] = useState(false);
   const [picked, setPicked] = useState<Set<string>>(new Set());
   const [consent, setConsent] = useState(false);
@@ -64,15 +66,24 @@ export default function SelfRegisterForm({
     return [...g.entries()];
   }, [visible]);
 
-  const pricePreview = useMemo(() => {
-    if (!picked.size) return null;
+  const activeTier = useMemo(() => {
     const parsed: Tier[] = tiers.map((t) => ({ ...t, startsAt: new Date(t.startsAt) }));
-    const tier = selectTier(parsed, new Date()) ?? parsed[0];
-    if (!tier) return null;
-    const total = priceEntry(tier, { categoryCount: picked.size, discountPerCategory: refDiscount });
-    const full = priceEntry(tier, { categoryCount: picked.size });
-    return { total, full, tierName: tier.name };
-  }, [picked, tiers, refDiscount]);
+    return selectTier(parsed, new Date()) ?? parsed[0] ?? null;
+  }, [tiers]);
+
+  const priceRule = useMemo(() => {
+    if (!activeTier) return null;
+    const first = activeTier.priceFirstCategory;
+    const extra = activeTier.priceExtraCategory ?? first;
+    return { first, extra };
+  }, [activeTier]);
+
+  const pricePreview = useMemo(() => {
+    if (!picked.size || !activeTier) return null;
+    const total = priceEntry(activeTier, { categoryCount: picked.size, discountPerCategory: refDiscount });
+    const full = priceEntry(activeTier, { categoryCount: picked.size });
+    return { total, full, tierName: activeTier.name };
+  }, [picked, activeTier, refDiscount]);
 
   const toggle = (id: string) =>
     setPicked((prev) => {
@@ -99,8 +110,9 @@ export default function SelfRegisterForm({
             <p className="mt-1 whitespace-pre-line text-amber-900">{paymentInfo}</p>
           </div>
         )}
+        <p className="mt-2 text-xs text-gray-600">Сетки появятся после закрытия регистрации и жеребьёвки — следите в кабинете и на странице турнира.</p>
         <div className="mt-3 flex gap-3">
-          <Link href={`/category/${result.categoryId}`} className="text-blue-600">Ваша сетка →</Link>
+          <Link href={`/event/${eventId}#divisions`} className="text-blue-600">Сетки турнира →</Link>
           <Link href="/me" className="text-blue-600">Мой кабинет →</Link>
         </div>
       </div>
@@ -173,6 +185,11 @@ export default function SelfRegisterForm({
           Отметьте все категории, где хотите бороться (можно несколько: разные веса, ги и ноу-ги, абсолютка).
           По умолчанию показаны ваша весовая и соседние; «Показать все веса» открывает остальные в ваших возрастных группах.
         </p>
+        {priceRule && (
+          <p className="mt-1 text-xs font-medium text-gray-700">
+            Стоимость: первая категория — {priceRule.first} ₽, каждая следующая (в том числе абсолютка) — +{priceRule.extra} ₽.
+          </p>
+        )}
         {!birthDate ? (
           <p className="mt-2 text-sm text-gray-400">Укажите дату рождения и пол — покажем доступные категории.</p>
         ) : visible.length === 0 ? (

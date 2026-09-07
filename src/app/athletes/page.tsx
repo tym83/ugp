@@ -1,5 +1,9 @@
 import Link from "next/link";
 import type { Metadata } from "next";
+import ContactCard from "@/components/ContactCard";
+import { prisma } from "@/lib/prisma";
+
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Спортсменам и школам",
@@ -42,7 +46,8 @@ function Check() {
   );
 }
 
-export default function AthletesPage() {
+export default async function AthletesPage() {
+  const openEvent = await prisma.event.findFirst({ where: { status: "REG_OPEN" }, orderBy: { date: "asc" } });
   return (
     <main className="min-h-screen bg-[#0d0b08] text-[#f4f0e8]">
       {/* Hero */}
@@ -135,30 +140,24 @@ export default function AthletesPage() {
       <section className="mx-auto max-w-5xl px-6 py-12 border-t border-white/10">
         <p className={kicker}>Как заявиться</p>
         <div className="mt-6 grid gap-8 md:grid-cols-2">
-          <p className="text-[#cec8bc] leading-relaxed">
-            Регистрация спортсменов откроется позже — следите за анонсами. Школы и клубы
-            могут присоединиться к движению уже сейчас: напишите или позвоните.
-          </p>
-          <div className="rounded border border-white/10 bg-white/5 p-6">
-            <p className="text-sm uppercase tracking-[0.2em] text-[#8a8378]">
-              Александр, главный организатор
+          <div>
+            <p className="text-[#cec8bc] leading-relaxed">
+              {openEvent
+                ? "Регистрация уже открыта — подайте заявку онлайн: выберите категории и оплатите взнос. По любым вопросам напишите или позвоните."
+                : "Регистрация скоро откроется — следите за анонсами. По любым вопросам напишите или позвоните."}
             </p>
-            <p className="mt-1 text-[#cec8bc]">По всем вопросам о турнире</p>
-            <div className="mt-4 flex flex-col gap-2">
-              <a
-                href="tel:+79124058573"
-                className="text-lg font-bold text-[#f4f0e8] hover:text-[#e3863d]"
-              >
-                +7 912 405-85-73
-              </a>
-              <a
-                href="https://t.me/Ug174bjj"
-                className="text-[#e3863d] hover:brightness-110"
-              >
-                @Ug174bjj
-              </a>
-            </div>
+            {openEvent && (
+              <div className="mt-6">
+                <Link
+                  href={`/register/${openEvent.id}`}
+                  className="inline-block rounded bg-[#e3863d] px-6 py-3 font-bold uppercase tracking-wide text-black hover:brightness-110"
+                >
+                  Зарегистрироваться
+                </Link>
+              </div>
+            )}
           </div>
+          <ContactCard />
         </div>
       </section>
     </main>

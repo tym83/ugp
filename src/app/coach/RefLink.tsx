@@ -3,14 +3,14 @@ import { useState } from "react";
 
 /** Персональная реф-ссылка тренера на событие. Кто зарегистрируется по ней —
  *  идёт тренеру в зачёт и получает скидку. */
-export default function RefLink({ eventId, coachId }: { eventId: string; coachId: string }) {
+export default function RefLink({ eventId, coachId, origin = "" }: { eventId: string; coachId: string; origin?: string }) {
   const path = `/register/${eventId}?ref=${coachId}`;
+  const fullUrl = (origin || (typeof window !== "undefined" ? window.location.origin : "")) + path;
   const [copied, setCopied] = useState(false);
 
   const copy = async () => {
-    const url = typeof window !== "undefined" ? `${window.location.origin}${path}` : path;
     try {
-      await navigator.clipboard.writeText(url);
+      await navigator.clipboard.writeText(fullUrl);
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
     } catch {
@@ -25,7 +25,7 @@ export default function RefLink({ eventId, coachId }: { eventId: string; coachId
         Отправьте её ученикам: кто зарегистрируется по ней — попадёт в вашу команду и получит цену со скидкой.
       </p>
       <div className="flex gap-2">
-        <input readOnly value={path} onFocus={(e) => e.currentTarget.select()} className="flex-1 rounded border px-2 py-1 text-sm bg-white" />
+        <input readOnly value={fullUrl} onFocus={(e) => e.currentTarget.select()} className="flex-1 rounded border px-2 py-1 text-sm bg-white" />
         <button type="button" onClick={copy} className="rounded bg-blue-600 px-3 py-1 text-sm text-white">
           {copied ? "Скопировано" : "Копировать"}
         </button>

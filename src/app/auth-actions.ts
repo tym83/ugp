@@ -51,6 +51,8 @@ export async function signUpAction(formData: FormData) {
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const password = String(formData.get("password") ?? "");
   const role = String(formData.get("role") ?? "ATHLETE") === "COACH" ? "COACH" : "ATHLETE";
+  const birthDateRaw = String(formData.get("birthDate") ?? "").trim();
+  const sex = String(formData.get("sex") ?? "") === "F" ? "F" : "M";
   const next = safeNext(formData.get("next"));
   const nextQ = next ? `&next=${encodeURIComponent(next)}` : "";
 
@@ -58,6 +60,9 @@ export async function signUpAction(formData: FormData) {
   if (fullName.length < 2) redirect(`/signup?e=name${nextQ}`);
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) redirect(`/signup?e=email${nextQ}`);
   if (password.length < 6) redirect(`/signup?e=weak${nextQ}`);
+  // Для участника дата рождения обязательна — по ней подбираются категории.
+  const birthDate = birthDateRaw ? new Date(birthDateRaw) : null;
+  if (role === "ATHLETE" && (!birthDate || Number.isNaN(birthDate.getTime()))) redirect(`/signup?e=birth${nextQ}`);
 
   // Брутфорс/спам-защита по IP.
   const ip = await clientIp();
@@ -74,6 +79,10 @@ export async function signUpAction(formData: FormData) {
       email,
       passwordHash: hashPassword(password),
       memberships: { create: [{ role, scope: "PLATFORM" }] },
+      // Профиль атлета сразу — чтобы ФИО/ДР/пол не спрашивать повторно в заявке.
+      ...(role === "ATHLETE" && birthDate
+        ? { athleteProfile: { create: { fullName, birthDate, sex } } }
+        : {}),
     },
   });
   await signIn(user.id);

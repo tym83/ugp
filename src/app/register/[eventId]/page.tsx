@@ -35,6 +35,16 @@ export default async function RegisterPage({
   if (!event) return <main className="p-8">Событие не найдено</main>;
 
   const user = await getCurrentUser();
+  // Профиль атлета (если уже есть) — чтобы не переспрашивать ФИО/ДР/пол в форме заявки.
+  const profile = user
+    ? await prisma.athlete.findUnique({ where: { userId: user.id }, select: { fullName: true, birthDate: true, sex: true, belt: true } })
+    : null;
+  const defaults = {
+    fullName: profile?.fullName ?? user?.fullName ?? "",
+    birthDate: profile?.birthDate ? profile.birthDate.toISOString().slice(0, 10) : "",
+    sex: (profile?.sex === "F" ? "F" : "M") as "M" | "F",
+    belt: profile?.belt ?? "",
+  };
   // Реф-ссылка тренера: валидируем и берём имя для позиционирования («по ссылке тренера дешевле»).
   let coach: { id: string; name: string } | null = null;
   if (ref) {
@@ -91,7 +101,7 @@ export default async function RegisterPage({
           </div>
         </div>
       ) : (
-        <SelfRegisterForm eventId={eventId} tiers={tiers} categories={categories} coach={coach} refDiscount={refDiscount} paymentInfo={event.paymentInfo} />
+        <SelfRegisterForm eventId={eventId} tiers={tiers} categories={categories} coach={coach} refDiscount={refDiscount} paymentInfo={event.paymentInfo} defaults={defaults} />
       )}
 
       <footer className="mt-10 border-t pt-4 text-xs text-gray-500">

@@ -857,20 +857,26 @@ describe("Регистрация аккаунта участника (S157–S15
   it("S157 signUpAction создаёт аккаунт участника (роль ATHLETE) и логинит", async () => {
     actAnon();
     const email = uniq("newath") + "@t.local";
-    const dest = await catchRedirect(() => signUpAction(fd({ fullName: "Новый Участник", email, password: "secret1" })));
+    const dest = await catchRedirect(() => signUpAction(fd({ fullName: "Новый Участник", email, password: "secret1", birthDate: "1995-05-05", sex: "M" })));
     expect(dest).toBe("/me");
-    const u = await prisma.user.findUnique({ where: { email }, include: { memberships: true } });
+    const u = await prisma.user.findUnique({ where: { email }, include: { memberships: true, athleteProfile: true } });
     expect(u?.memberships.some((m) => m.role === "ATHLETE")).toBe(true);
+    expect(u?.athleteProfile?.fullName).toBe("Новый Участник");
   });
   it("S158 signUpAction: занятый email → понятная ошибка (redirect e=dup)", async () => {
     const email = uniq("dup") + "@t.local";
     await prisma.user.create({ data: { fullName: "Уже Есть", email, passwordHash: "x" } });
-    const dest = await catchRedirect(() => signUpAction(fd({ fullName: "Дубликат", email, password: "secret1" })));
+    const dest = await catchRedirect(() => signUpAction(fd({ fullName: "Дубликат", email, password: "secret1", birthDate: "1995-05-05", sex: "M" })));
     expect(dest).toMatch(/signup\?e=dup/);
   });
   it("S159 signUpAction: слабый пароль → e=weak", async () => {
-    const dest = await catchRedirect(() => signUpAction(fd({ fullName: "Слабый Пароль", email: uniq("w") + "@t.local", password: "123" })));
+    const dest = await catchRedirect(() => signUpAction(fd({ fullName: "Слабый Пароль", email: uniq("w") + "@t.local", password: "123", birthDate: "1995-05-05", sex: "M" })));
     expect(dest).toMatch(/signup\?e=weak/);
+  });
+  it("S159b signUpAction: участник без даты рождения → e=birth", async () => {
+    actAnon();
+    const dest = await catchRedirect(() => signUpAction(fd({ fullName: "Без Даты", email: uniq("nb") + "@t.local", password: "secret1", role: "ATHLETE" })));
+    expect(dest).toMatch(/signup\?e=birth/);
   });
 });
 
