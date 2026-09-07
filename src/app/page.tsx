@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import Countdown from "@/components/Countdown";
+import ContactCard from "@/components/ContactCard";
 
 export const dynamic = "force-dynamic";
 
@@ -234,49 +235,32 @@ export default async function Home() {
         </div>
       </section>
 
-      {/* СПОРТСМЕНАМ И ШКОЛАМ */}
+      {/* ТРЕНЕРАМ И КЛУБАМ */}
       <section className="border-t border-white/10 bg-white/[0.02]">
         <div className="mx-auto max-w-5xl px-6 py-16">
-          <div className={kicker}>Спортсменам и школам</div>
-          <h2 className="mt-3 text-3xl font-black uppercase tracking-tight">Не просто турнир, а целое движение</h2>
+          <div className={kicker}>Тренерам и клубам</div>
+          <h2 className="mt-3 text-3xl font-black uppercase tracking-tight">Приводите команду</h2>
           <div className="mt-6 grid gap-4 md:grid-cols-2">
             <div className="rounded-lg border border-white/10 bg-white/5 p-6">
-              <div className="font-bold uppercase tracking-wide">Спортсменам</div>
+              <div className="font-bold uppercase tracking-wide">Тренерам</div>
               <ul className="mt-3 space-y-1.5 text-sm text-[#cec8bc]">
-                <li>• Призовой фонд, абсолютная категория и командный зачёт</li>
-                <li>• Вечернее шоу мирового уровня — шанс выйти на большую сцену</li>
-                <li>• Встреча со звёздами: мастер-класс, открытая тренировка, фото</li>
-                <li>• Сильные соперники, фото и видео лучших моментов схваток</li>
+                <li>• Персональная ссылка — ученики регистрируются по ней дешевле</li>
+                <li>• Заявка всей команды в пару кликов, единый список</li>
+                <li>• Видите статусы заявок и оплаты своих спортсменов</li>
               </ul>
+              <div className="mt-4">
+                <Link href="/coach" className="inline-block rounded border border-white/25 px-6 py-3 font-bold uppercase tracking-wide hover:bg-white/10">Кабинет тренера</Link>
+              </div>
             </div>
             <div className="rounded-lg border border-white/10 bg-white/5 p-6">
-              <div className="font-bold uppercase tracking-wide">Спортивным школам</div>
+              <div className="font-bold uppercase tracking-wide">Клубам</div>
               <ul className="mt-3 space-y-1.5 text-sm text-[#cec8bc]">
-                <li>• Медийное продвижение грэпплинга в вашем городе</li>
-                <li>• Место на «Карте грэпплинга Урала» — логотип и ссылка на запись</li>
-                <li>• Долгосрочное внимание и поток новых учеников</li>
-                <li>• Включим ваши события в контур турнира и поможем организовать</li>
+                <li>• Командный зачёт — борьба за первое место среди клубов</li>
+                <li>• Место на «Карте грэпплинга Урала»: логотип и ссылка на запись</li>
+                <li>• Медийное продвижение клуба и поток новых учеников</li>
               </ul>
             </div>
           </div>
-          <div className="mt-6 flex flex-wrap gap-3">
-            <RegBtn />
-            <Link href="/athletes" className="rounded border border-white/25 px-6 py-3 font-bold uppercase tracking-wide hover:bg-white/10">Подробнее спортсменам</Link>
-            <Link href="/coach" className="rounded border border-white/25 px-6 py-3 font-bold uppercase tracking-wide hover:bg-white/10">Кабинет тренера</Link>
-          </div>
-        </div>
-      </section>
-
-      {/* ИСТОРИЯ */}
-      <section className="border-t border-white/10">
-        <div className="mx-auto max-w-5xl px-6 py-16">
-          <div className={kicker}>Наша история</div>
-          <h2 className="mt-3 text-3xl font-black uppercase tracking-tight">Начинали на голом энтузиазме</h2>
-          <p className="mt-4 max-w-3xl text-lg text-[#cec8bc]">
-            Первые турниры Underground Grappling мы проводили сами — без спонсоров и больших компаний, просто
-            потому что любим этот спорт. И даже тогда они собирали сильных ребят со всего региона и из Казахстана.
-            Теперь мы выходим на новый уровень — событие для всего Урала.
-          </p>
         </div>
       </section>
 
@@ -304,19 +288,9 @@ export default async function Home() {
         <div className="mx-auto max-w-5xl px-6 py-16">
           <div className={kicker}>Связаться</div>
           <h2 className="mt-3 text-3xl font-black uppercase tracking-tight">Хочешь стать частью турнира?</h2>
-          <p className="mt-3 text-lg text-[#cec8bc]">Спортсмен, школа, спонсор или медиа — напиши или позвони. Мы строим это движение вместе.</p>
-          <div className="mt-6 grid gap-4 sm:grid-cols-2">
-            <div className="rounded-lg border border-white/10 bg-white/5 p-6">
-              <div className="font-bold">Александр — главный организатор</div>
-              <div className="mt-1 text-sm text-[#cec8bc]">Любые вопросы по турниру</div>
-              <a href="tel:+79124058573" className="mt-2 block text-lg text-[#e3863d] hover:underline">+7 912 405-85-73</a>
-              <a href="https://t.me/Ug174bjj" className="text-sm text-[#cec8bc] hover:text-[#e3863d]">@Ug174bjj</a>
-            </div>
-            <div className="rounded-lg border border-white/10 bg-white/5 p-6">
-              <div className="font-bold">Тимур — спонсорство и медиа</div>
-              <div className="mt-1 text-sm text-[#cec8bc]">Партнёрство, СМИ, блогеры</div>
-              <a href="tel:+79995870924" className="mt-2 block text-lg text-[#e3863d] hover:underline">+7 999 587-09-24</a>
-            </div>
+          <p className="mt-3 text-lg text-[#cec8bc]">Спортсмен, школа, спонсор или медиа — напиши или позвони. По всем вопросам турнира — Эмиль.</p>
+          <div className="mt-6 max-w-md">
+            <ContactCard />
           </div>
           <div className="mt-8 flex flex-wrap items-center gap-3">
             <RegBtn big />
@@ -324,17 +298,6 @@ export default async function Home() {
           </div>
         </div>
       </section>
-
-      <footer className="border-t border-white/10">
-        <div className="mx-auto max-w-5xl px-6 py-8 text-sm text-[#8a8378]">
-          <span className="font-black uppercase tracking-wide text-[#f4f0e8]">♛ Underground Grappling</span>
-          <div className="mt-1">Челябинск · 18+ · грэпплинг — борьба без ударов в голову.</div>
-          <div className="mt-2">
-            <Link href="/privacy" className="hover:text-[#e3863d]">Политика обработки ПДн</Link>
-            <span className="mx-2">·</span>© 2026 Underground Grappling
-          </div>
-        </div>
-      </footer>
     </main>
   );
 }

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { Metadata } from "next";
+import ContactCard from "@/components/ContactCard";
 
 export const metadata: Metadata = {
   title: "Спонсорам — партнёрство и пакеты",
@@ -131,7 +132,7 @@ export default function SponsorsPage() {
               Скачать презентацию (PDF)
             </a>
             <a
-              href="tel:+79995870924"
+              href="tel:+79514412510"
               className="inline-block rounded border border-white/20 px-6 py-3 font-bold uppercase tracking-wide text-[#f4f0e8] hover:border-[#e3863d] hover:text-[#e3863d]"
             >
               Запросить пакет
@@ -213,20 +214,7 @@ export default function SponsorsPage() {
             </p>
           </div>
           <div className="rounded border border-white/10 bg-white/5 p-8">
-            <p className="text-sm uppercase tracking-[0.2em] text-[#8a8378]">
-              Тимур, спонсорство и медиа
-            </p>
-            <div className="mt-4 flex flex-col gap-2">
-              <a
-                href="tel:+79995870924"
-                className="text-lg font-bold text-[#f4f0e8] hover:text-[#e3863d]"
-              >
-                +7 999 587-09-24
-              </a>
-              <span className="text-[#cec8bc]">
-                MAX <span className="text-[#f4f0e8]">+7 999 587-09-24</span>
-              </span>
-            </div>
+            <ContactCard className="border-0 bg-transparent p-0" />
             <a
               href="/underground-grappling-sponsors.pdf"
               download

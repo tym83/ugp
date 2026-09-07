@@ -9,6 +9,7 @@ const ERRORS: Record<string, string> = {
   weak: "Пароль слишком короткий — минимум 6 символов.",
   dup: "На этот email уже есть аккаунт. Попробуйте войти.",
   rate: "Слишком много попыток. Подождите пару минут и повторите.",
+  birth: "Укажите дату рождения — по ней подбираются категории.",
 };
 
 export default async function SignupPage({ searchParams }: { searchParams: Promise<{ e?: string; next?: string }> }) {
@@ -24,6 +25,20 @@ export default async function SignupPage({ searchParams }: { searchParams: Promi
         <input name="fullName" placeholder="Фамилия Имя" className="w-full border rounded px-3 py-2" required />
         <input name="email" type="email" placeholder="email" className="w-full border rounded px-3 py-2" required />
         <input name="password" type="password" placeholder="пароль (минимум 6 символов)" className="w-full border rounded px-3 py-2" required minLength={6} />
+        <div className="flex gap-3">
+          <label className="block flex-1">
+            <span className="text-xs text-gray-500">Дата рождения</span>
+            <input name="birthDate" type="date" className="mt-1 w-full border rounded px-3 py-2" />
+          </label>
+          <label className="block w-28">
+            <span className="text-xs text-gray-500">Пол</span>
+            <select name="sex" className="mt-1 w-full border rounded px-3 py-2 bg-white">
+              <option value="M">М</option>
+              <option value="F">Ж</option>
+            </select>
+          </label>
+        </div>
+        <p className="-mt-1 text-xs text-gray-400">Для участника — обязательно: по дате рождения автоматически подберутся категории.</p>
         <fieldset className="rounded border p-3">
           <legend className="px-1 text-sm text-gray-600">Я регистрируюсь как</legend>
           <label className="flex items-center gap-2 text-sm py-0.5">
