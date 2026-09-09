@@ -2,26 +2,17 @@ import * as XLSX from "xlsx";
 import type { GroupRow } from "@/app/coach-actions";
 
 // Ожидаемые колонки (RU или EN, регистр не важен):
-// ФИО / name · дата рождения (дата) / birthDate · пол / sex (М/Ж/M/F) · вес / weight · ги / gi · ноу-ги / nogi
-export const TEMPLATE_HINT = "Колонки: ФИО, дата рождения, пол (М/Ж), вес, ги, ноу-ги";
+// ФИО / name · дата рождения (дата) / birthDate · пол / sex (М/Ж/M/F) · вес / weight
+// Категории тренер выбирает в таблице после импорта (по каждому спортсмену).
+export const TEMPLATE_HINT = "Колонки: ФИО, дата рождения, пол (М/Ж), вес. Категории выберете в таблице после импорта.";
 
 const norm = (s: string) => s.toLowerCase().replace(/[\s._-]/g, "");
 
-const COLS: Record<keyof GroupRow, string[]> = {
+const COLS: Record<"fullName" | "birthDate" | "sex" | "weight", string[]> = {
   fullName: ["фио", "имя", "name", "fullname"],
   birthDate: ["датарождения", "дата", "birthdate", "dob"],
   sex: ["пол", "sex", "gender"],
   weight: ["вес", "weight"],
-  gi: ["ги", "gi"],
-  nogi: ["ноуги", "nogi", "ноги"],
-};
-
-const TRUTHY = new Set(["1", "да", "yes", "y", "x", "true", "+", "ги", "gi", "nogi", "ноуги"]);
-
-const toBool = (v: unknown): boolean => {
-  if (typeof v === "boolean") return v;
-  if (typeof v === "number") return v !== 0;
-  return TRUTHY.has(norm(String(v ?? "")));
 };
 
 const toSex = (v: unknown): "M" | "F" => {
@@ -62,11 +53,13 @@ const toDate = (v: unknown): string => {
 };
 
 // сопоставляем реальные заголовки листа с полями GroupRow
-const buildKeyMap = (headers: string[]): Partial<Record<keyof GroupRow, string>> => {
-  const map: Partial<Record<keyof GroupRow, string>> = {};
+type ImportField = "fullName" | "birthDate" | "sex" | "weight";
+
+const buildKeyMap = (headers: string[]): Partial<Record<ImportField, string>> => {
+  const map: Partial<Record<ImportField, string>> = {};
   for (const h of headers) {
     const nh = norm(h);
-    for (const field of Object.keys(COLS) as (keyof GroupRow)[]) {
+    for (const field of Object.keys(COLS) as ImportField[]) {
       if (map[field]) continue;
       if (COLS[field].some((alias) => nh === alias || nh.startsWith(alias))) {
         map[field] = h;
@@ -86,14 +79,13 @@ export function parseXlsx(buf: ArrayBuffer): GroupRow[] {
   const keyMap = buildKeyMap(Object.keys(json[0]));
 
   return json.map((r): GroupRow => {
-    const pick = (f: keyof GroupRow) => (keyMap[f] ? r[keyMap[f] as string] : "");
+    const pick = (f: ImportField) => (keyMap[f] ? r[keyMap[f] as string] : "");
     return {
       fullName: String(pick("fullName") ?? "").trim(),
       birthDate: toDate(pick("birthDate")),
       sex: toSex(pick("sex")),
       weight: toWeight(pick("weight")),
-      gi: toBool(pick("gi")),
-      nogi: toBool(pick("nogi")),
+      categoryIds: [],
     };
   });
 }
