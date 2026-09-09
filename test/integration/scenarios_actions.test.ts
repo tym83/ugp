@@ -200,84 +200,93 @@ describe("Регистрация тренером группы + оплата (S
     return u;
   }
   it("S074 тренер регистрирует двух подопечных — обе строки ok", async () => {
-    const { e } = await regEvent();
+    const { e, light, lightGi } = await regEvent();
     await coachOn();
     const rows = JSON.stringify([
-      { fullName: "Ученик Один", birthDate: "1998-01-01", sex: "M", weight: 70, gi: false, nogi: true },
-      { fullName: "Ученик Два", birthDate: "1999-02-02", sex: "M", weight: 74, gi: true, nogi: true },
+      { fullName: "Ученик Один", birthDate: "1998-01-01", sex: "M", weight: 70, categoryIds: [light.id] },
+      { fullName: "Ученик Два", birthDate: "1999-02-02", sex: "M", weight: 74, categoryIds: [light.id, lightGi.id] },
     ]);
     const res = await registerGroup(rows, e.id);
     expect(res.every((r) => r.ok)).toBe(true);
     expect(res).toHaveLength(2);
   });
-  it("S075 строка без веса → ok:false для строки, остальные проходят", async () => {
-    const { e } = await regEvent();
+  it("S075 строка без выбранной категории → ok:false, остальные проходят", async () => {
+    const { e, light } = await regEvent();
     await coachOn();
     const rows = JSON.stringify([
-      { fullName: "Норм Ученик", birthDate: "1998-01-01", sex: "M", weight: 70, gi: false, nogi: true },
-      { fullName: "Без Веса", birthDate: "1998-01-01", sex: "M", weight: 0, gi: false, nogi: true },
+      { fullName: "Норм Ученик", birthDate: "1998-01-01", sex: "M", weight: 70, categoryIds: [light.id] },
+      { fullName: "Без Категории", birthDate: "1998-01-01", sex: "M", weight: 70, categoryIds: [] },
     ]);
     const res = await registerGroup(rows, e.id);
     expect(res[0].ok).toBe(true);
     expect(res[1].ok).toBe(false);
+    expect(res[1].msg).toMatch(/категори/i);
   });
-  it("S076 строка без дисциплины → ошибка строки", async () => {
-    const { e } = await regEvent();
+  it("S076 недоступная категория (чужой пол/возраст) → ошибка строки", async () => {
+    const { e, female } = await regEvent();
     await coachOn();
-    const res = await registerGroup(JSON.stringify([{ fullName: "Без Раздела", birthDate: "1998-01-01", sex: "M", weight: 70, gi: false, nogi: false }]), e.id);
+    const res = await registerGroup(JSON.stringify([{ fullName: "Мужик В Жен", birthDate: "1998-01-01", sex: "M", weight: 70, categoryIds: [female.id] }]), e.id);
     expect(res[0].ok).toBe(false);
-    expect(res[0].msg).toMatch(/раздел/i);
+    expect(res[0].msg).toMatch(/недоступн/i);
   });
   it("S077 регистрация на закрытое событие → throw", async () => {
-    const { e } = await regEvent();
+    const { e, light } = await regEvent();
     await prisma.event.update({ where: { id: e.id }, data: { status: "REG_CLOSED" } });
     await coachOn();
-    await expect(registerGroup(JSON.stringify([{ fullName: "Кто-то", birthDate: "1998-01-01", sex: "M", weight: 70, gi: false, nogi: true }]), e.id)).rejects.toThrow(/закрыта/i);
+    await expect(registerGroup(JSON.stringify([{ fullName: "Кто-то", birthDate: "1998-01-01", sex: "M", weight: 70, categoryIds: [light.id] }]), e.id)).rejects.toThrow(/закрыта/i);
   });
   it("S078 повторная заявка того же атлета тем же тренером → ошибка строки (дубль)", async () => {
-    const { e } = await regEvent();
+    const { e, light } = await regEvent();
     await coachOn();
-    const row = [{ fullName: "Повтор Ученик", birthDate: "1998-01-01", sex: "M", weight: 70, gi: false, nogi: true }];
+    const row = [{ fullName: "Повтор Ученик", birthDate: "1998-01-01", sex: "M", weight: 70, categoryIds: [light.id] }];
     await registerGroup(JSON.stringify(row), e.id);
     const res2 = await registerGroup(JSON.stringify(row), e.id);
     expect(res2[0].ok).toBe(false);
     expect(res2[0].msg).toMatch(/уже заявлен/i);
   });
   it("S079 registerGroup создаёт EventEntry source=coach с ценой", async () => {
-    const { e } = await regEvent();
+    const { e, light, lightGi } = await regEvent();
     await coachOn();
-    await registerGroup(JSON.stringify([{ fullName: "Ценник Ученик", birthDate: "1998-01-01", sex: "M", weight: 70, gi: true, nogi: true }]), e.id);
+    await registerGroup(JSON.stringify([{ fullName: "Ценник Ученик", birthDate: "1998-01-01", sex: "M", weight: 70, categoryIds: [light.id, lightGi.id] }]), e.id);
     const entry = await prisma.eventEntry.findFirst({ where: { athlete: { fullName: "Ценник Ученик" } } });
     expect(entry?.source).toBe("coach");
-    // 2 дисциплины = 2 категории → (2000 + 1500) − скидка тренерского списка 200×2 = 3100
+    // 2 категории → (2000 + 1500) − скидка тренерского списка 200×2 = 3100
     expect(entry?.priceTotal).toBe(3100);
   });
   it("S080 регистрации создаются в статусе ENTERED", async () => {
-    const { e } = await regEvent();
+    const { e, light } = await regEvent();
     await coachOn();
-    await registerGroup(JSON.stringify([{ fullName: "Статус Ученик", birthDate: "1998-01-01", sex: "M", weight: 70, gi: false, nogi: true }]), e.id);
+    await registerGroup(JSON.stringify([{ fullName: "Статус Ученик", birthDate: "1998-01-01", sex: "M", weight: 70, categoryIds: [light.id] }]), e.id);
     const reg = await prisma.registration.findFirst({ where: { athlete: { fullName: "Статус Ученик" } } });
     expect(reg?.status).toBe("ENTERED");
   });
-  it("S081 перевес юниора → play-up (строка ok с пометкой)", async () => {
-    const { e } = await regEvent();
+  it("S081 тренер выбирает тяжёлую весовую взрослому — ok", async () => {
+    const { e, heavy } = await regEvent();
     await coachOn();
-    const res = await registerGroup(JSON.stringify([{ fullName: "Юниор Тяж", birthDate: "1995-05-05", sex: "M", weight: 85, gi: false, nogi: true }]), e.id);
+    const res = await registerGroup(JSON.stringify([{ fullName: "Тяж Боец", birthDate: "1995-05-05", sex: "M", weight: 85, categoryIds: [heavy.id] }]), e.id);
     expect(res[0].ok).toBe(true);
   });
-  it("S082 тренер отмечает заявку оплаченной (свою) — paidToCoach=true", async () => {
-    const { e } = await regEvent();
+  it("S081b тренер добавляет абсолютку (несколько категорий) — ok, 2 регистрации", async () => {
+    const { e, heavy, abs } = await regEvent();
     await coachOn();
-    await registerGroup(JSON.stringify([{ fullName: "Оплата Ученик", birthDate: "1998-01-01", sex: "M", weight: 70, gi: false, nogi: true }]), e.id);
+    const res = await registerGroup(JSON.stringify([{ fullName: "Абс Боец", birthDate: "1995-05-05", sex: "M", weight: 85, categoryIds: [heavy.id, abs.id] }]), e.id);
+    expect(res[0].ok).toBe(true);
+    const entry = await prisma.eventEntry.findFirst({ where: { athlete: { fullName: "Абс Боец" } } });
+    expect(await prisma.registration.count({ where: { entryId: entry!.id } })).toBe(2);
+  });
+  it("S082 тренер отмечает заявку оплаченной (свою) — paidToCoach=true", async () => {
+    const { e, light } = await regEvent();
+    await coachOn();
+    await registerGroup(JSON.stringify([{ fullName: "Оплата Ученик", birthDate: "1998-01-01", sex: "M", weight: 70, categoryIds: [light.id] }]), e.id);
     const entry = await prisma.eventEntry.findFirst({ where: { athlete: { fullName: "Оплата Ученик" } } });
     await togglePaidAction(entry!.id, true);
     const after = await prisma.eventEntry.findUnique({ where: { id: entry!.id } });
     expect(after?.paidToCoach).toBe(true);
   });
   it("S083 снятие отметки оплаты (paid=false)", async () => {
-    const { e } = await regEvent();
+    const { e, light } = await regEvent();
     await coachOn();
-    await registerGroup(JSON.stringify([{ fullName: "Снять Оплату", birthDate: "1998-01-01", sex: "M", weight: 70, gi: false, nogi: true }]), e.id);
+    await registerGroup(JSON.stringify([{ fullName: "Снять Оплату", birthDate: "1998-01-01", sex: "M", weight: 70, categoryIds: [light.id] }]), e.id);
     const entry = await prisma.eventEntry.findFirst({ where: { athlete: { fullName: "Снять Оплату" } } });
     await togglePaidAction(entry!.id, true);
     await togglePaidAction(entry!.id, false);
@@ -285,32 +294,32 @@ describe("Регистрация тренером группы + оплата (S
     expect(after?.paidToCoach).toBe(false);
   });
   it("S084 IDOR: чужую заявку тренер оплатить НЕ может → throw", async () => {
-    const { e } = await regEvent();
+    const { e, light } = await regEvent();
     const coachA = await makeUser(["COACH"]);
     actAs(coachA.id);
-    await registerGroup(JSON.stringify([{ fullName: "Чужой Ученик", birthDate: "1998-01-01", sex: "M", weight: 70, gi: false, nogi: true }]), e.id);
+    await registerGroup(JSON.stringify([{ fullName: "Чужой Ученик", birthDate: "1998-01-01", sex: "M", weight: 70, categoryIds: [light.id] }]), e.id);
     const entry = await prisma.eventEntry.findFirst({ where: { athlete: { fullName: "Чужой Ученик" } } });
     const coachB = await makeUser(["COACH"]);
     actAs(coachB.id);
     await expect(togglePaidAction(entry!.id, true)).rejects.toThrow(/не найдена или не ваша/i);
   });
   it("S085 организатор тоже может регистрировать группу", async () => {
-    const { e } = await regEvent();
+    const { e, light } = await regEvent();
     const org = await makeUser(["ORGANIZER"]);
     actAs(org.id);
-    const res = await registerGroup(JSON.stringify([{ fullName: "Орг Регнул", birthDate: "1998-01-01", sex: "M", weight: 70, gi: false, nogi: true }]), e.id);
+    const res = await registerGroup(JSON.stringify([{ fullName: "Орг Регнул", birthDate: "1998-01-01", sex: "M", weight: 70, categoryIds: [light.id] }]), e.id);
     expect(res[0].ok).toBe(true);
   });
   it("S086 registerGroup от АТЛЕТА → throw (нет прав)", async () => {
     const { e } = await regEvent();
     const ath = await makeUser(["ATHLETE"]);
     actAs(ath.id);
-    await expect(registerGroup(JSON.stringify([{ fullName: "X", birthDate: "1998-01-01", sex: "M", weight: 70, gi: false, nogi: true }]), e.id)).rejects.toThrow(/прав/i);
+    await expect(registerGroup(JSON.stringify([{ fullName: "X", birthDate: "1998-01-01", sex: "M", weight: 70, categoryIds: ["x"] }]), e.id)).rejects.toThrow(/прав/i);
   });
   it("S087 registerGroup анонимно → throw (не авторизован)", async () => {
     const { e } = await regEvent();
     actAnon();
-    await expect(registerGroup(JSON.stringify([{ fullName: "X", birthDate: "1998-01-01", sex: "M", weight: 70, gi: false, nogi: true }]), e.id)).rejects.toThrow();
+    await expect(registerGroup(JSON.stringify([{ fullName: "X", birthDate: "1998-01-01", sex: "M", weight: 70, categoryIds: ["x"] }]), e.id)).rejects.toThrow();
   });
   it("S088 пустой список строк → пустой результат", async () => {
     const { e } = await regEvent();
@@ -320,7 +329,7 @@ describe("Регистрация тренером группы + оплата (S
   });
   it("S089 несуществующее событие → throw", async () => {
     await coachOn();
-    await expect(registerGroup(JSON.stringify([{ fullName: "X", birthDate: "1998-01-01", sex: "M", weight: 70, gi: false, nogi: true }]), "no-such")).rejects.toThrow(/не найдено/i);
+    await expect(registerGroup(JSON.stringify([{ fullName: "X", birthDate: "1998-01-01", sex: "M", weight: 70, categoryIds: ["x"] }]), "no-such")).rejects.toThrow(/не найдено/i);
   });
 });
 
@@ -920,9 +929,9 @@ describe("Тренерские реф-ссылки и скидка (S160–S164)
     expect(coachEntries).toBe(1);
   });
   it("S164 тренерский список (registerGroup) тоже со скидкой", async () => {
-    const { e } = await regEvent();
+    const { e, light } = await regEvent();
     const coach = await makeUser(["COACH"]); actAs(coach.id);
-    await registerGroup(JSON.stringify([{ fullName: "Списком Дешевле", birthDate: "1998-01-01", sex: "M", weight: 70, gi: false, nogi: true }]), e.id);
+    await registerGroup(JSON.stringify([{ fullName: "Списком Дешевле", birthDate: "1998-01-01", sex: "M", weight: 70, categoryIds: [light.id] }]), e.id);
     const entry = await prisma.eventEntry.findFirst({ where: { athlete: { fullName: "Списком Дешевле" } } });
     expect(entry?.priceTotal).toBe(1800); // 1 категория: 2000 − 200
   });

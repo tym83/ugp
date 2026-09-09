@@ -25,6 +25,27 @@ export default async function CoachPage() {
   const proto = h.get("x-forwarded-proto") ?? "https";
   const origin = host ? `${proto}://${host}` : "";
 
+  const catRows = await prisma.category.findMany({
+    where: { eventId: event.id, mergedIntoId: null },
+    orderBy: { order: "asc" },
+  });
+  const categories = catRows.map((c) => ({
+    id: c.id,
+    label: `${c.ageGroupLabel} · ${c.sex === "M" ? "муж" : "жен"} · ${c.discipline === "gi" ? "ги" : "ноу-ги"}${
+      c.isAbsolute ? " · АБСОЛЮТКА" : c.isOpenTop ? ` · +${c.weightMin ?? 0} кг` : c.weightMax != null ? ` · до ${c.weightMax} кг` : ""
+    }`,
+    sex: c.sex as "M" | "F",
+    discipline: c.discipline as "gi" | "nogi",
+    ageGroupCode: c.ageGroupCode,
+    birthYearFrom: c.birthYearFrom,
+    birthYearTo: c.birthYearTo,
+    weightMin: c.weightMin,
+    weightMax: c.weightMax,
+    isOpenTop: c.isOpenTop,
+    isAbsolute: c.isAbsolute,
+    level: c.level,
+  }));
+
   const entries = await prisma.eventEntry.findMany({
     where: { eventId: event.id, coachUserId: user.id },
     include: { athlete: true, registrations: { include: { category: true } } },
@@ -49,8 +70,8 @@ export default async function CoachPage() {
 
       <section className="mt-6">
         <h2 className="text-lg font-semibold mb-2">Заявить группу</h2>
-        <p className="text-xs text-gray-500 mb-2">Вводите спортсменов; категория подберётся автоматически по полу, году рождения и весу. Разделы (ги/ноу-ги) влияют на цену.</p>
-        <RegisterGrid eventId={event.id} />
+        <p className="text-xs text-gray-500 mb-2">Вводите спортсменов; в колонке «Категории» появятся подходящие по полу, году рождения и весу — отметьте нужные (можно несколько, включая абсолютку). Цена — по числу категорий, со скидкой тренерского списка.</p>
+        <RegisterGrid eventId={event.id} categories={categories} />
       </section>
 
       <section className="mt-8">
