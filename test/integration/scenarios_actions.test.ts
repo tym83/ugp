@@ -22,6 +22,7 @@ import { prisma } from "@/lib/prisma";
 import { makeToken, makeUser, makeEvent, makeCategory, makeAthlete, registerAthlete, uniq } from "./_harness";
 import { selfRegister } from "@/app/athlete-actions";
 import { registerGroup, togglePaidAction } from "@/app/coach-actions";
+import { updateAthlete } from "@/app/participant-actions";
 import { weighInAndAdmit, setWeighInLock, applyMerge, swapSeeds, moveAthleteSeed, findBracketConflicts, resolveConflict, addToAbsolute, generateAbsoluteBracket } from "@/app/organizer-actions";
 import { createEvent, setEventStatus, addCategory, addPriceTier, createUser, assignRefereeToMat } from "@/app/admin-actions";
 import { buildBracketAction, submitResultAction } from "@/app/actions";
@@ -934,5 +935,42 @@ describe("Тренерские реф-ссылки и скидка (S160–S164)
     await registerGroup(JSON.stringify([{ fullName: "Списком Дешевле", birthDate: "1998-01-01", sex: "M", weight: 70, categoryIds: [light.id] }]), e.id);
     const entry = await prisma.eventEntry.findFirst({ where: { athlete: { fullName: "Списком Дешевле" } } });
     expect(entry?.priceTotal).toBe(1800); // 1 категория: 2000 − 200
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────
+describe("Редактирование анкеты участника (S165–S168)", () => {
+  const base = { fullName: "Правим Анкету", birthDate: "1996-06-06", sex: "M" as const };
+  it("S165 организатор меняет клуб (создаётся) и телефон", async () => {
+    const org = await makeUser(["ORGANIZER"]); actAs(org.id);
+    const a = await makeAthlete({ fullName: base.fullName, sex: base.sex, birthDate: new Date(base.birthDate) });
+    const r = await updateAthlete(fd({ athleteId: a.id, fullName: base.fullName, birthDate: base.birthDate, sex: "M", club: "Клуб Тайфун", city: "Челябинск", phone: "+7 900 111-22-33" }));
+    expect(r.ok).toBe(true);
+    const after = await prisma.athlete.findUnique({ where: { id: a.id }, include: { club: true } });
+    expect(after?.club?.name).toBe("Клуб Тайфун");
+    expect(after?.phone).toBe("+7 900 111-22-33");
+  });
+  it("S166 тренер правит своего спортсмена, но телефон не меняет (только организатор)", async () => {
+    const coach = await makeUser(["COACH"]); actAs(coach.id);
+    const a = await makeAthlete({ fullName: base.fullName, sex: base.sex, birthDate: new Date(base.birthDate), coachUserId: coach.id, phone: "+7 000" });
+    const r = await updateAthlete(fd({ athleteId: a.id, fullName: "Новое Имя", birthDate: base.birthDate, sex: "M", phone: "+7 999" }));
+    expect(r.ok).toBe(true);
+    const after = await prisma.athlete.findUnique({ where: { id: a.id } });
+    expect(after?.fullName).toBe("Новое Имя");
+    expect(after?.phone).toBe("+7 000"); // тренер телефон не трогает
+  });
+  it("S167 тренер НЕ может править чужого спортсмена", async () => {
+    const coachA = await makeUser(["COACH"]);
+    const a = await makeAthlete({ fullName: base.fullName, sex: base.sex, birthDate: new Date(base.birthDate), coachUserId: coachA.id });
+    const coachB = await makeUser(["COACH"]); actAs(coachB.id);
+    const r = await updateAthlete(fd({ athleteId: a.id, fullName: "Взлом", birthDate: base.birthDate, sex: "M" }));
+    expect(r.ok).toBe(false);
+    expect(r.msg).toMatch(/прав/i);
+  });
+  it("S168 аноним → отказ", async () => {
+    actAnon();
+    const a = await makeAthlete({ fullName: base.fullName, sex: base.sex, birthDate: new Date(base.birthDate) });
+    const r = await updateAthlete(fd({ athleteId: a.id, fullName: "X", birthDate: base.birthDate, sex: "M" }));
+    expect(r.ok).toBe(false);
   });
 });

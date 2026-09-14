@@ -87,7 +87,10 @@ export default async function CoachPage() {
           <tbody>
             {entries.map((e) => (
               <tr key={e.id} className={e.paidToCoach ? "" : "bg-amber-50"}>
-                <td className="border px-2 py-1">{e.athlete.fullName}</td>
+                <td className="border px-2 py-1">
+                  {e.athlete.fullName}
+                  <Link href={`/participant/${e.athlete.id}/edit?next=/coach`} className="ml-2 text-xs text-blue-600">изменить</Link>
+                </td>
                 <td className="border px-2 py-1 text-center">{e.disciplines}</td>
                 <td className="border px-2 py-1 text-xs">{e.registrations.map((r) => r.category.ageGroupLabel + " " + (r.category.isOpenTop ? "св." + r.category.weightMin : "до" + r.category.weightMax)).join("; ")}</td>
                 <td className="border px-2 py-1 text-center">{e.priceTotal} ₽</td>

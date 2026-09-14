@@ -69,7 +69,7 @@ export default async function OrganizerConsole({ params }: { params: Promise<{ e
   // Заявки и статус оплаты (ручной трекинг взноса).
   const entries = await prisma.eventEntry.findMany({
     where: { eventId },
-    include: { athlete: { select: { fullName: true } } },
+    include: { athlete: { select: { id: true, fullName: true, phone: true } } },
     orderBy: [{ paid: "asc" }, { createdAt: "asc" }], // неоплаченные сверху
   });
   const paidCount = entries.filter((e) => e.paid).length;
@@ -105,16 +105,23 @@ export default async function OrganizerConsole({ params }: { params: Promise<{ e
               <thead className="bg-gray-50 text-left text-xs uppercase tracking-wide text-gray-500">
                 <tr>
                   <th className="px-3 py-2">Участник</th>
+                  <th className="px-3 py-2">Телефон</th>
                   <th className="px-3 py-2">Источник</th>
                   <th className="px-3 py-2">Взнос</th>
                   <th className="px-3 py-2">Статус</th>
                   <th className="px-3 py-2">Оплата</th>
+                  <th className="px-3 py-2"></th>
                 </tr>
               </thead>
               <tbody className="divide-y">
                 {entries.map((e) => (
                   <tr key={e.id} className={e.paid ? "" : "bg-amber-50"}>
                     <td className="px-3 py-2">{e.athlete.fullName}</td>
+                    <td className="px-3 py-2 whitespace-nowrap">
+                      {e.athlete.phone
+                        ? <a href={`tel:${e.athlete.phone}`} className="text-blue-600">{e.athlete.phone}</a>
+                        : <span className="text-gray-300">—</span>}
+                    </td>
                     <td className="px-3 py-2 text-gray-500">{e.source === "referral" ? "по тренеру" : e.source === "coach" ? "список тренера" : "сам"}</td>
                     <td className="px-3 py-2 tabular-nums">{e.priceTotal} ₽</td>
                     <td className="px-3 py-2">
@@ -123,6 +130,7 @@ export default async function OrganizerConsole({ params }: { params: Promise<{ e
                       </span>
                     </td>
                     <td className="px-3 py-2"><PaidToggle entryId={e.id} paid={e.paid} /></td>
+                    <td className="px-3 py-2"><Link href={`/participant/${e.athlete.id}/edit?next=/organizer/${eventId}`} className="text-blue-600 text-xs">изменить</Link></td>
                   </tr>
                 ))}
               </tbody>

@@ -6,7 +6,7 @@ import { allowedCategories, suggestedCategories, type SelectableCat } from "@/li
 
 type CatDTO = SelectableCat & { label: string };
 
-const empty = (): GroupRow => ({ fullName: "", birthDate: "", sex: "M", weight: 0, categoryIds: [] });
+const empty = (): GroupRow => ({ fullName: "", birthDate: "", sex: "M", phone: "", weight: 0, categoryIds: [] });
 const isEmpty = (r: GroupRow) => !r.fullName.trim() && !r.birthDate && !r.weight;
 
 export default function RegisterGrid({ eventId, categories }: { eventId: string; categories: CatDTO[] }) {
@@ -76,6 +76,7 @@ export default function RegisterGrid({ eventId, categories }: { eventId: string;
           <thead className="bg-gray-50">
             <tr>
               <th className="border px-2 py-1 text-left">ФИО</th>
+              <th className="border px-2 py-1">Телефон</th>
               <th className="border px-2 py-1">Дата рожд.</th>
               <th className="border px-2 py-1">Пол</th>
               <th className="border px-2 py-1">Вес</th>
@@ -91,6 +92,7 @@ export default function RegisterGrid({ eventId, categories }: { eventId: string;
                 <Fragment key={i}>
                   <tr>
                     <td className="border px-1"><input className="w-44 px-1 py-1" value={row.fullName} onChange={(e) => upd(i, { fullName: e.target.value })} placeholder="Иванов Иван" /></td>
+                    <td className="border px-1"><input type="tel" className="w-32 px-1 py-1" value={row.phone ?? ""} onChange={(e) => upd(i, { phone: e.target.value })} placeholder="+7 900…" /></td>
                     <td className="border px-1"><input type="date" className="px-1 py-1" value={row.birthDate} onChange={(e) => upd(i, { birthDate: e.target.value })} /></td>
                     <td className="border px-1 text-center">
                       <select value={row.sex} onChange={(e) => upd(i, { sex: e.target.value as "M" | "F" })}>
@@ -113,7 +115,7 @@ export default function RegisterGrid({ eventId, categories }: { eventId: string;
                   </tr>
                   {open && (
                     <tr>
-                      <td colSpan={6} className="border bg-gray-50 px-3 py-2">
+                      <td colSpan={7} className="border bg-gray-50 px-3 py-2">
                         <div className="flex items-center justify-between mb-1">
                           <span className="text-xs font-semibold text-gray-600">Категории для «{row.fullName || "спортсмена"}» — отметьте нужные (можно несколько, есть абсолютка)</span>
                           <button type="button" className="text-xs text-blue-600" onClick={() => setShowAll((s) => ({ ...s, [i]: !s[i] }))}>

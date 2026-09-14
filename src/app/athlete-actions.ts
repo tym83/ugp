@@ -13,6 +13,7 @@ const schema = z.object({
   fullName: z.string().trim().min(2, "укажите ФИО"),
   birthDate: z.string().min(1, "укажите дату рождения"),
   sex: z.enum(["M", "F"]),
+  phone: z.string().trim().optional().default(""),
   belt: z.string().trim().optional().default(""),
   consent: z.coerce.boolean().default(false),
   parentName: z.string().trim().optional().default(""),
@@ -126,6 +127,7 @@ export async function selfRegister(formData: FormData): Promise<SelfRegisterResu
         where: { id: existingAth.id },
         data: {
           sex: d.sex,
+          ...(d.phone ? { phone: d.phone } : {}),
           ...(d.belt ? { belt: d.belt } : {}),
           ...(isMinor ? { parentName: d.parentName, parentConsent: true } : {}),
           ...(user && !existingAth.userId ? { userId: user.id } : {}),
@@ -135,6 +137,7 @@ export async function selfRegister(formData: FormData): Promise<SelfRegisterResu
       const ath = await prisma.athlete.create({
         data: {
           fullName: d.fullName, birthDate: dob, sex: d.sex,
+          phone: d.phone || null,
           belt: d.belt || null,
           userId: user?.id ?? null,
           parentName: isMinor ? d.parentName : null,

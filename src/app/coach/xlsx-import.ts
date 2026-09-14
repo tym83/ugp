@@ -4,15 +4,16 @@ import type { GroupRow } from "@/app/coach-actions";
 // Ожидаемые колонки (RU или EN, регистр не важен):
 // ФИО / name · дата рождения (дата) / birthDate · пол / sex (М/Ж/M/F) · вес / weight
 // Категории тренер выбирает в таблице после импорта (по каждому спортсмену).
-export const TEMPLATE_HINT = "Колонки: ФИО, дата рождения, пол (М/Ж), вес. Категории выберете в таблице после импорта.";
+export const TEMPLATE_HINT = "Колонки: ФИО, телефон, дата рождения, пол (М/Ж), вес. Категории выберете в таблице после импорта.";
 
 const norm = (s: string) => s.toLowerCase().replace(/[\s._-]/g, "");
 
-const COLS: Record<"fullName" | "birthDate" | "sex" | "weight", string[]> = {
+const COLS: Record<"fullName" | "birthDate" | "sex" | "weight" | "phone", string[]> = {
   fullName: ["фио", "имя", "name", "fullname"],
   birthDate: ["датарождения", "дата", "birthdate", "dob"],
   sex: ["пол", "sex", "gender"],
   weight: ["вес", "weight"],
+  phone: ["телефон", "тел", "phone", "номер"],
 };
 
 const toSex = (v: unknown): "M" | "F" => {
@@ -53,7 +54,7 @@ const toDate = (v: unknown): string => {
 };
 
 // сопоставляем реальные заголовки листа с полями GroupRow
-type ImportField = "fullName" | "birthDate" | "sex" | "weight";
+type ImportField = "fullName" | "birthDate" | "sex" | "weight" | "phone";
 
 const buildKeyMap = (headers: string[]): Partial<Record<ImportField, string>> => {
   const map: Partial<Record<ImportField, string>> = {};
@@ -85,6 +86,7 @@ export function parseXlsx(buf: ArrayBuffer): GroupRow[] {
       birthDate: toDate(pick("birthDate")),
       sex: toSex(pick("sex")),
       weight: toWeight(pick("weight")),
+      phone: String(pick("phone") ?? "").trim(),
       categoryIds: [],
     };
   });
