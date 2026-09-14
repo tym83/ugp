@@ -127,7 +127,7 @@ export function suggestedCategories(
   const groups = new Map<string, SelectableCat[]>();
   for (const c of eligible) {
     if (c.isAbsolute) continue; // абсолютку не режем по весу
-    const key = `${c.ageGroupCode}|${c.discipline}`;
+    const key = `${c.ageGroupCode}|${c.discipline}|${c.level ?? "all"}`;
     const arr = groups.get(key) ?? [];
     arr.push(c);
     groups.set(key, arr);

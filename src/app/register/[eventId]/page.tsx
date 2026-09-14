@@ -3,6 +3,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import SelfRegisterForm from "@/components/SelfRegisterForm";
 import { getCurrentUser } from "@/lib/auth/session";
+import { levelLabel } from "@/lib/domain/levelLabel";
 
 export const dynamic = "force-dynamic";
 
@@ -64,7 +65,7 @@ export default async function RegisterPage({
 
   const categories = event.categories.map((c) => ({
     id: c.id,
-    label: `${c.ageGroupLabel} · ${c.sex === "M" ? "муж" : "жен"} · ${c.discipline === "gi" ? "ги" : "ноу-ги"}${
+    label: `${c.ageGroupLabel}${levelLabel(c.level) ? " · " + levelLabel(c.level) : ""} · ${c.sex === "M" ? "муж" : "жен"} · ${c.discipline === "gi" ? "ги" : "ноу-ги"}${
       c.isAbsolute ? " · АБСОЛЮТКА" : c.isOpenTop ? ` · +${c.weightMin ?? 0} кг` : c.weightMax != null ? ` · до ${c.weightMax} кг` : ""
     }`,
     sex: c.sex as "M" | "F",

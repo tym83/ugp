@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
 import { headers } from "next/headers";
+import { levelLabel } from "@/lib/domain/levelLabel";
 import { redirect } from "next/navigation";
 import { togglePaidAction } from "@/app/coach-actions";
 import { signOutAction } from "@/app/auth-actions";
@@ -31,7 +32,7 @@ export default async function CoachPage() {
   });
   const categories = catRows.map((c) => ({
     id: c.id,
-    label: `${c.ageGroupLabel} · ${c.sex === "M" ? "муж" : "жен"} · ${c.discipline === "gi" ? "ги" : "ноу-ги"}${
+    label: `${c.ageGroupLabel}${levelLabel(c.level) ? " · " + levelLabel(c.level) : ""} · ${c.sex === "M" ? "муж" : "жен"} · ${c.discipline === "gi" ? "ги" : "ноу-ги"}${
       c.isAbsolute ? " · АБСОЛЮТКА" : c.isOpenTop ? ` · +${c.weightMin ?? 0} кг` : c.weightMax != null ? ` · до ${c.weightMax} кг` : ""
     }`,
     sex: c.sex as "M" | "F",
@@ -92,7 +93,7 @@ export default async function CoachPage() {
                   <Link href={`/participant/${e.athlete.id}/edit?next=/coach`} className="ml-2 text-xs text-blue-600">изменить</Link>
                 </td>
                 <td className="border px-2 py-1 text-center">{e.disciplines}</td>
-                <td className="border px-2 py-1 text-xs">{e.registrations.map((r) => r.category.ageGroupLabel + " " + (r.category.isOpenTop ? "св." + r.category.weightMin : "до" + r.category.weightMax)).join("; ")}</td>
+                <td className="border px-2 py-1 text-xs">{e.registrations.map((r) => r.category.ageGroupLabel + (levelLabel(r.category.level) ? " (" + levelLabel(r.category.level) + ")" : "") + " " + (r.category.isAbsolute ? "абс" : r.category.isOpenTop ? "св." + r.category.weightMin : "до" + r.category.weightMax)).join("; ")}</td>
                 <td className="border px-2 py-1 text-center">{e.priceTotal} ₽</td>
                 <td className="border px-2 py-1 text-center">
                   <form action={togglePaidAction.bind(null, e.id, !e.paidToCoach)}>

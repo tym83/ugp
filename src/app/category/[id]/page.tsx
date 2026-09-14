@@ -5,6 +5,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import LiveMatches from "@/components/LiveMatches";
 import { isMinor, maskName } from "@/lib/privacy";
+import { levelLabel } from "@/lib/domain/levelLabel";
 
 export const dynamic = "force-dynamic";
 
@@ -19,7 +20,8 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
       : `до ${category.weightMax} кг`;
   const sex = category.sex === "M" ? "муж" : "жен";
   const dateStr = new Date(category.event.date).toLocaleDateString("ru-RU");
-  const title = `${category.ageGroupLabel} · ${sex} · ${category.discipline} · ${weight} — ${category.event.name}`;
+  const lvl = levelLabel(category.level) ? ` · ${levelLabel(category.level)}` : "";
+  const title = `${category.ageGroupLabel}${lvl} · ${sex} · ${category.discipline} · ${weight} — ${category.event.name}`;
   const description = `Сетка категории ${category.ageGroupLabel} (${sex}, ${category.discipline}, ${weight}) на турнире «${category.event.name}» · ${category.event.city} · ${dateStr}.`;
   return {
     title,
@@ -63,7 +65,7 @@ export default async function CategoryPage({ params }: { params: Promise<{ id: s
     <div className="mx-auto max-w-4xl px-6 py-8">
       <Link href={`/event/${category.eventId}`} className="text-sm text-[#e3863d] hover:brightness-125">← {category.event.name}</Link>
       <h1 className="mt-2 text-2xl font-black uppercase tracking-tight">
-        {category.ageGroupLabel} · {category.sex === "M" ? "муж" : "жен"} · {category.discipline} ·{" "}
+        {category.ageGroupLabel}{levelLabel(category.level) ? ` · ${levelLabel(category.level)}` : ""} · {category.sex === "M" ? "муж" : "жен"} · {category.discipline} ·{" "}
         {category.isAbsolute ? "абсолютка" : category.isOpenTop ? `свыше ${category.weightMin}` : `до ${category.weightMax}`} кг
       </h1>
       <p className="text-sm text-[#cec8bc]">
