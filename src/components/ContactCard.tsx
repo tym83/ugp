@@ -9,15 +9,14 @@ export default function ContactCard({ className = "" }: { className?: string }) 
       <a href={CONTACT.phoneHref} className="mt-3 block text-xl font-bold text-[#e3863d] hover:underline">
         {CONTACT.phoneDisplay}
       </a>
-      <div className="mt-3 flex flex-wrap gap-2">
-        <a href={CONTACT.whatsapp} target="_blank" rel="noopener noreferrer"
-          className="rounded border border-white/20 px-3 py-1.5 text-sm font-semibold text-[#f4f0e8] hover:border-[#e3863d] hover:text-[#e3863d]">
-          WhatsApp
-        </a>
+      <div className="mt-3 flex flex-wrap items-center gap-2">
         <a href={CONTACT.telegram} target="_blank" rel="noopener noreferrer"
           className="rounded border border-white/20 px-3 py-1.5 text-sm font-semibold text-[#f4f0e8] hover:border-[#e3863d] hover:text-[#e3863d]">
           Telegram
         </a>
+        <span className="rounded border border-white/20 px-3 py-1.5 text-sm font-semibold text-[#cec8bc]">
+          {CONTACT.maxLabel}
+        </span>
       </div>
     </div>
   );

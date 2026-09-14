@@ -70,7 +70,7 @@ export default async function OrganizerConsole({ params }: { params: Promise<{ e
   const entries = await prisma.eventEntry.findMany({
     where: { eventId },
     include: { athlete: { select: { fullName: true } } },
-    orderBy: { createdAt: "asc" },
+    orderBy: [{ paid: "asc" }, { createdAt: "asc" }], // неоплаченные сверху
   });
   const paidCount = entries.filter((e) => e.paid).length;
   const paidSum = entries.filter((e) => e.paid).reduce((s, e) => s + e.priceTotal, 0);
@@ -107,15 +107,21 @@ export default async function OrganizerConsole({ params }: { params: Promise<{ e
                   <th className="px-3 py-2">Участник</th>
                   <th className="px-3 py-2">Источник</th>
                   <th className="px-3 py-2">Взнос</th>
+                  <th className="px-3 py-2">Статус</th>
                   <th className="px-3 py-2">Оплата</th>
                 </tr>
               </thead>
               <tbody className="divide-y">
                 {entries.map((e) => (
-                  <tr key={e.id}>
+                  <tr key={e.id} className={e.paid ? "" : "bg-amber-50"}>
                     <td className="px-3 py-2">{e.athlete.fullName}</td>
                     <td className="px-3 py-2 text-gray-500">{e.source === "referral" ? "по тренеру" : e.source === "coach" ? "список тренера" : "сам"}</td>
                     <td className="px-3 py-2 tabular-nums">{e.priceTotal} ₽</td>
+                    <td className="px-3 py-2">
+                      <span className={"rounded px-2 py-0.5 text-xs font-semibold " + (e.paid ? "bg-green-100 text-green-800" : "bg-amber-200 text-amber-900")}>
+                        {e.paid ? "оплачено" : "не оплачено"}
+                      </span>
+                    </td>
                     <td className="px-3 py-2"><PaidToggle entryId={e.id} paid={e.paid} /></td>
                   </tr>
                 ))}
