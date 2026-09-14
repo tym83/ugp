@@ -95,10 +95,10 @@ export default async function AthletesPage() {
             </p>
             <div className="mt-8 flex flex-wrap gap-4">
               <Link
-                href="/"
+                href={openEvent ? `/register/${openEvent.id}` : "/"}
                 className="inline-block rounded bg-[#e3863d] px-6 py-3 font-bold uppercase tracking-wide text-black hover:brightness-110"
               >
-                Регистрация откроется позже
+                {openEvent ? "Зарегистрироваться" : "К турниру"}
               </Link>
               <Link
                 href="/coach"

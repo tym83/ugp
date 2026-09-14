@@ -52,9 +52,7 @@ export default async function CoachPage() {
     orderBy: { createdAt: "desc" },
   });
   const gross = entries.reduce((s, e) => s + e.priceTotal, 0);
-  const commission = event.coachCommission * entries.length;
-  const net = gross - commission;
-  const paidSum = entries.filter((e) => e.paidToCoach).reduce((s, e) => s + e.priceTotal - event.coachCommission, 0);
+  const paidSum = entries.filter((e) => e.paidToCoach).reduce((s, e) => s + e.priceTotal, 0);
 
   return (
     <main className="mx-auto max-w-4xl p-6">
@@ -78,7 +76,7 @@ export default async function CoachPage() {
         <div className="flex items-baseline justify-between">
           <h2 className="text-lg font-semibold">Мои спортсмены ({entries.length})</h2>
           <div className="text-sm">
-            К переводу оргам: <b>{net} ₽</b> <span className="text-gray-400">(взносы {gross} − комиссия {commission})</span>
+            Взносы всего: <b>{gross} ₽</b>
           </div>
         </div>
         <table className="mt-2 text-sm w-full border">
@@ -88,21 +86,23 @@ export default async function CoachPage() {
           </tr></thead>
           <tbody>
             {entries.map((e) => (
-              <tr key={e.id}>
+              <tr key={e.id} className={e.paidToCoach ? "" : "bg-amber-50"}>
                 <td className="border px-2 py-1">{e.athlete.fullName}</td>
                 <td className="border px-2 py-1 text-center">{e.disciplines}</td>
                 <td className="border px-2 py-1 text-xs">{e.registrations.map((r) => r.category.ageGroupLabel + " " + (r.category.isOpenTop ? "св." + r.category.weightMin : "до" + r.category.weightMax)).join("; ")}</td>
                 <td className="border px-2 py-1 text-center">{e.priceTotal} ₽</td>
                 <td className="border px-2 py-1 text-center">
                   <form action={togglePaidAction.bind(null, e.id, !e.paidToCoach)}>
-                    <button className={e.paidToCoach ? "text-green-600" : "text-gray-300"}>{e.paidToCoach ? "✓ оплатил" : "отметить"}</button>
+                    <button className={"rounded px-2 py-0.5 text-xs font-semibold " + (e.paidToCoach ? "bg-green-100 text-green-800" : "bg-amber-200 text-amber-900")}>
+                      {e.paidToCoach ? "✓ оплачено" : "не оплачено — отметить"}
+                    </button>
                   </form>
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
-        <p className="text-xs text-gray-500 mt-1">Собрано (оплатившие мне, за вычетом комиссии): {paidSum} ₽</p>
+        <p className="text-xs text-gray-500 mt-1">Собрано (оплатившие мне): {paidSum} ₽</p>
       </section>
     </main>
   );

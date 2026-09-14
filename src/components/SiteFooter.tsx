@@ -2,7 +2,7 @@ import Link from "next/link";
 import { CONTACT } from "@/lib/contact";
 
 /** Глобальный футер — на всех страницах, включая личные кабинеты.
- *  Единый контакт турнира (Эмиль): звонок, WhatsApp, Telegram. */
+ *  Единый контакт турнира (Эмиль): звонок, Telegram, MAX. */
 export default function SiteFooter() {
   return (
     <footer className="mt-auto border-t border-white/10 bg-[#0d0b08] text-[#cec8bc]">
@@ -23,14 +23,13 @@ export default function SiteFooter() {
               {CONTACT.phoneDisplay}
             </a>
             <div className="mt-2 flex gap-2 sm:justify-end">
-              <a href={CONTACT.whatsapp} target="_blank" rel="noopener noreferrer"
-                className="rounded border border-white/20 px-3 py-1 text-sm font-semibold text-[#f4f0e8] hover:border-[#e3863d] hover:text-[#e3863d]">
-                WhatsApp
-              </a>
               <a href={CONTACT.telegram} target="_blank" rel="noopener noreferrer"
                 className="rounded border border-white/20 px-3 py-1 text-sm font-semibold text-[#f4f0e8] hover:border-[#e3863d] hover:text-[#e3863d]">
                 Telegram
               </a>
+              <span className="rounded border border-white/20 px-3 py-1 text-sm font-semibold text-[#cec8bc]">
+                {CONTACT.maxLabel}
+              </span>
             </div>
           </div>
         </div>

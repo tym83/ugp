@@ -4,6 +4,7 @@ export const CONTACT = {
   role: "Организатор турнира — по всем вопросам",
   phoneDisplay: "+7 951 441 2510",
   phoneHref: "tel:+79514412510",
-  whatsapp: "https://wa.me/79514412510",
   telegram: "https://t.me/+79514412510",
+  // MAX — по этому же номеру (у мессенджера нет универсальной ссылки по номеру, поэтому показываем меткой).
+  maxLabel: "MAX по номеру",
 } as const;
