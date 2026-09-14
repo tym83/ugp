@@ -30,9 +30,10 @@ export default function SelfRegisterForm({
   coach?: { id: string; name: string } | null;
   refDiscount?: number;
   paymentInfo?: string | null;
-  defaults?: { fullName?: string; birthDate?: string; sex?: "M" | "F"; belt?: string };
+  defaults?: { fullName?: string; phone?: string; birthDate?: string; sex?: "M" | "F"; belt?: string };
 }) {
   const [fullName, setFullName] = useState(defaults?.fullName ?? "");
+  const [phone, setPhone] = useState(defaults?.phone ?? "");
   const [birthDate, setBirthDate] = useState(defaults?.birthDate ?? "");
   const [sex, setSex] = useState<"M" | "F">(defaults?.sex ?? "M");
   const [weight, setWeight] = useState("");
@@ -134,6 +135,13 @@ export default function SelfRegisterForm({
         <span className="text-sm text-gray-600">ФИО</span>
         <input name="fullName" value={fullName} onChange={(e) => setFullName(e.target.value)}
           placeholder="Иванов Иван Иванович" required className="mt-1 w-full border rounded px-3 py-2" />
+      </label>
+
+      <label className="block">
+        <span className="text-sm text-gray-600">Телефон</span>
+        <input name="phone" value={phone} onChange={(e) => setPhone(e.target.value)} type="tel"
+          placeholder="+7 900 000-00-00" required className="mt-1 w-full border rounded px-3 py-2" />
+        <span className="mt-1 block text-xs text-gray-400">Нужен организаторам для связи по оплате и участию.</span>
       </label>
 
       <div className="flex gap-3">

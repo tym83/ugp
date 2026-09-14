@@ -157,6 +157,7 @@ model Athlete {
   club          Club?    @relation(fields: [clubId], references: [id])
   clubId        String?
   coachUserId   String?
+  phone         String?  // контакт участника — виден только организаторам/админам (для связи по оплате)
   belt          String?
   level         String?
   rank          String?

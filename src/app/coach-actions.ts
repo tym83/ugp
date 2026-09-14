@@ -7,7 +7,7 @@ import { revalidatePath } from "next/cache";
 
 // Категории теперь выбирает тренер САМ по каждому спортсмену (как в self-select),
 // включая абсолютку. Вес — необязательная подсказка для фильтра.
-export type GroupRow = { fullName: string; birthDate: string; sex: "M" | "F"; weight?: number; categoryIds: string[] };
+export type GroupRow = { fullName: string; birthDate: string; sex: "M" | "F"; phone?: string; weight?: number; categoryIds: string[] };
 export type RowResult = { name: string; ok: boolean; msg: string };
 
 export async function registerGroup(rowsJson: string, eventId: string): Promise<RowResult[]> {
@@ -60,7 +60,7 @@ export async function registerGroup(rowsJson: string, eventId: string): Promise<
         athleteId = existingAth.id;
       } else {
         const ath = await prisma.athlete.create({
-          data: { fullName: row.fullName.trim(), birthDate: new Date(row.birthDate), sex: row.sex, clubId, coachUserId: user.id },
+          data: { fullName: row.fullName.trim(), birthDate: new Date(row.birthDate), sex: row.sex, phone: row.phone?.trim() || null, clubId, coachUserId: user.id },
         });
         athleteId = ath.id;
       }
