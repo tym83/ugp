@@ -11,6 +11,8 @@ type Group = {
   f: number[]; // веса девочек/женщин
   mOpenTop?: boolean;
   fOpenTop?: boolean;
+  // split: у взрослых/ветеранов весовые дублируются на «новичков» и «опытных».
+  split?: boolean;
 };
 
 // Значение "N+" (свыше N) задаём как обычное N + флаг openTop на последнем элементе.
@@ -28,10 +30,12 @@ const GROUPS: Group[] = [
   { code: "juniors-2009-2010", label: "Юниоры 2009–2010", from: 2009, to: 2010, rule: "AGP",
     m: [46, 50, 55, 60, 66, 73, 81], f: [40, 44, 48, 52, 57, 63, 79, 82] },
   { code: "adults-2008", label: "Взрослые 2008 и ст.", from: 1930, to: 2008, rule: "SUBMISSION_ONLY",
-    m: [66, 77, 88, 99], f: [60, 70, 80], mOpenTop: true, fOpenTop: true },
+    m: [66, 77, 88, 99], f: [60, 70, 80], mOpenTop: true, fOpenTop: true, split: true },
   { code: "veterans-1991", label: "Ветераны 1991 и ст.", from: 1930, to: 1991, rule: "SUBMISSION_ONLY",
-    m: [66, 77, 88, 99], f: [], mOpenTop: true },
+    m: [66, 77, 88, 99], f: [], mOpenTop: true, split: true },
 ];
+
+export type CategoryLevel = "all" | "novice" | "experienced";
 
 export type CategorySpec = {
   ageGroupCode: string;
@@ -44,6 +48,7 @@ export type CategorySpec = {
   weightMax: number | null;
   isOpenTop: boolean;
   ruleFormat: "AGP" | "SUBMISSION_ONLY";
+  level: CategoryLevel;
   boutSeconds: number;
   order: number;
 };
@@ -54,6 +59,7 @@ function expandWeights(
   weights: number[],
   openTop: boolean,
   discipline: "gi" | "nogi",
+  level: CategoryLevel,
   startOrder: number
 ): CategorySpec[] {
   const out: CategorySpec[] = [];
@@ -72,6 +78,7 @@ function expandWeights(
       weightMax: open ? null : w,
       isOpenTop: open,
       ruleFormat: g.rule,
+      level,
       boutSeconds: g.rule === "SUBMISSION_ONLY" ? 300 : 240,
       order: startOrder + i,
     });
@@ -80,14 +87,18 @@ function expandWeights(
   return out;
 }
 
-/** Все категории пресета для обеих дисциплин. */
+/** Все категории пресета для обеих дисциплин.
+ *  У split-групп (взрослые/ветераны) весовые дублируются на новичков и опытных. */
 export function tankogradCategories(): CategorySpec[] {
   const out: CategorySpec[] = [];
   let order = 0;
   for (const g of GROUPS) {
-    for (const disc of ["gi", "nogi"] as const) {
-      if (g.m.length) out.push(...expandWeights(g, "M", g.m, !!g.mOpenTop, disc, order)), (order += g.m.length);
-      if (g.f.length) out.push(...expandWeights(g, "F", g.f, !!g.fOpenTop, disc, order)), (order += g.f.length);
+    const levels: CategoryLevel[] = g.split ? ["novice", "experienced"] : ["all"];
+    for (const level of levels) {
+      for (const disc of ["gi", "nogi"] as const) {
+        if (g.m.length) out.push(...expandWeights(g, "M", g.m, !!g.mOpenTop, disc, level, order)), (order += g.m.length);
+        if (g.f.length) out.push(...expandWeights(g, "F", g.f, !!g.fOpenTop, disc, level, order)), (order += g.f.length);
+      }
     }
   }
   return out;

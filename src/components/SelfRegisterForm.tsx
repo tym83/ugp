@@ -5,6 +5,11 @@ import { selfRegister, type SelfRegisterResult } from "@/app/athlete-actions";
 import { selectTier, priceEntry, type Tier } from "@/lib/domain/pricing";
 import { allowedCategories, suggestedCategories, type SelectableCat } from "@/lib/domain/eligibility";
 
+// TODO: заменить на дословный текст из положения (пришлёт организатор).
+const LEVEL_INFO =
+  "Новичок — начинающий спортсмен (по критериям положения). Опытный — участник с соревновательным опытом. " +
+  "Точные критерии — см. положение турнира.";
+
 type TierDTO = { name: string; startsAt: string; priceFirstCategory: number; priceExtraCategory: number | null };
 type CatDTO = SelectableCat & { label: string; ageGroupLabel: string };
 
@@ -38,6 +43,7 @@ export default function SelfRegisterForm({
   const [sex, setSex] = useState<"M" | "F">(defaults?.sex ?? "M");
   const [weight, setWeight] = useState("");
   const [belt, setBelt] = useState(defaults?.belt ?? "");
+  const [level, setLevel] = useState<"novice" | "experienced">("novice");
   const [showAll, setShowAll] = useState(false);
   const [picked, setPicked] = useState<Set<string>>(new Set());
   const [consent, setConsent] = useState(false);
@@ -50,13 +56,21 @@ export default function SelfRegisterForm({
   const isMinor = useMemo(() => !!dob && !Number.isNaN(dob.getTime()) && ageYears(dob) < 18, [dob]);
 
   // Список категорий: сужённый (пол+возраст+вес±2) или полный (пол+возраст) по кнопке «Показать все».
+  // Есть ли у атлета выбор уровня (новички/опытные) — т.е. категории с level ≠ "all" (взрослые/ветераны).
+  const hasLevelChoice = useMemo(() => {
+    if (!dob || Number.isNaN(dob.getTime())) return false;
+    const a = { sex, birthYear: dob.getFullYear() };
+    return allowedCategories(a, categories).some((c) => c.level && c.level !== "all");
+  }, [dob, sex, categories]);
+
   const visible = useMemo(() => {
     if (!dob || Number.isNaN(dob.getTime())) return [];
     const a = { sex, birthYear: dob.getFullYear(), weight: weight ? Number(weight) : null };
     const base = showAll ? allowedCategories(a, categories) : suggestedCategories(a, categories);
     const ids = new Set(base.map((c) => c.id));
-    return categories.filter((c) => ids.has(c.id));
-  }, [dob, sex, weight, showAll, categories]);
+    // Категории уровня показываем только выбранного уровня; «all» (дети/абсолютка) — всегда.
+    return categories.filter((c) => ids.has(c.id) && (!c.level || c.level === "all" || c.level === level));
+  }, [dob, sex, weight, showAll, categories, level]);
 
   const grouped = useMemo(() => {
     const g = new Map<string, CatDTO[]>();
@@ -181,6 +195,21 @@ export default function SelfRegisterForm({
           <option value="чёрный">Чёрный</option>
         </select>
       </label>
+
+      {hasLevelChoice && (
+        <div className="rounded border border-blue-200 bg-blue-50 p-3">
+          <span className="text-sm font-medium text-gray-800">Уровень</span>
+          <div className="mt-1 flex gap-6 text-sm">
+            <label className="flex items-center gap-2">
+              <input type="radio" name="levelChoice" checked={level === "novice"} onChange={() => setLevel("novice")} /> Новичок
+            </label>
+            <label className="flex items-center gap-2">
+              <input type="radio" name="levelChoice" checked={level === "experienced"} onChange={() => setLevel("experienced")} /> Опытный
+            </label>
+          </div>
+          <p className="mt-2 whitespace-pre-line text-xs text-blue-900">{LEVEL_INFO}</p>
+        </div>
+      )}
 
       <fieldset>
         <div className="flex items-center justify-between">

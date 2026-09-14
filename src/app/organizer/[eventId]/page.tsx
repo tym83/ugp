@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { requirePageRole } from "@/lib/auth/session";
+import { levelLabel } from "@/lib/domain/levelLabel";
 import { buildBracketAction } from "@/app/actions";
 import { needsMerge, suggestMergeTarget, type MergeCat } from "@/lib/domain/merge";
 import Link from "next/link";
@@ -30,7 +31,7 @@ export default async function OrganizerConsole({ params }: { params: Promise<{ e
   });
 
   const catLabel = (c: (typeof categories)[number]) =>
-    `${c.ageGroupLabel} · ${c.sex === "M" ? "муж" : "жен"} · ${c.discipline} · ${
+    `${c.ageGroupLabel}${levelLabel(c.level) ? " · " + levelLabel(c.level) : ""} · ${c.sex === "M" ? "муж" : "жен"} · ${c.discipline} · ${
       c.isAbsolute ? "абс" : c.isOpenTop ? `св.${c.weightMin}` : `до${c.weightMax}`
     }`;
 

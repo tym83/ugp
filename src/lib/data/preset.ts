@@ -159,6 +159,7 @@ export async function createEventFromPreset(
         isOpenTop: s.isOpenTop,
         discipline: s.discipline,
         ruleFormat: s.ruleFormat,
+        level: s.level,
         boutSeconds: s.boutSeconds,
         order: s.order,
       },

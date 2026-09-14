@@ -40,7 +40,7 @@ export default async function EventPage({ params }: { params: Promise<{ id: stri
     orderBy: { order: "asc" },
   });
   const divisions: Division[] = cats.map((c) => ({
-    id: c.id, ageGroupLabel: c.ageGroupLabel, ageGroupCode: c.ageGroupCode, order: c.order,
+    id: c.id, ageGroupLabel: c.ageGroupLabel, ageGroupCode: c.ageGroupCode, level: c.level, order: c.order,
     sex: c.sex as "M" | "F", discipline: c.discipline as "gi" | "nogi",
     weightMin: c.weightMin, weightMax: c.weightMax, isOpenTop: c.isOpenTop, isAbsolute: c.isAbsolute,
     count: c._count.registrations, hasBracket: c._count.matches > 0,

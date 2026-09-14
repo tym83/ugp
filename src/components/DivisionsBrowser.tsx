@@ -2,11 +2,13 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { categoryParticipants, type CategoryParticipant } from "@/app/category-actions";
+import { levelLabel } from "@/lib/domain/levelLabel";
 
 export type Division = {
   id: string;
   ageGroupLabel: string;
   ageGroupCode: string;
+  level: string;
   order: number;
   sex: "M" | "F";
   discipline: "gi" | "nogi";
@@ -68,7 +70,7 @@ export default function DivisionsBrowser({ divisions }: { divisions: Division[] 
   const groups = useMemo(() => {
     const map = new Map<string, Division[]>();
     for (const d of [...filtered].sort((a, b) => a.order - b.order || (a.weightMax ?? 1e9) - (b.weightMax ?? 1e9))) {
-      const key = d.ageGroupLabel;
+      const key = d.ageGroupLabel + (levelLabel(d.level) ? " — " + levelLabel(d.level) : "");
       (map.get(key) ?? map.set(key, []).get(key)!).push(d);
     }
     return [...map.entries()];

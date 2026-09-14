@@ -973,4 +973,14 @@ describe("Редактирование анкеты участника (S165–S
     const r = await updateAthlete(fd({ athleteId: a.id, fullName: "X", birthDate: base.birthDate, sex: "M" }));
     expect(r.ok).toBe(false);
   });
+  it("S169 взрослый заявляется в категорию уровня «опытные»", async () => {
+    const e = await makeEvent({ status: "REG_OPEN" });
+    await prisma.priceTier.create({ data: { eventId: e.id, name: "Р", startsAt: new Date("2026-09-01"), priceFirstCategory: 2000, priceExtraCategory: 1000 } });
+    const exp = await makeCategory(e.id, { ageGroupCode: "adults-2008", ageGroupLabel: "Взрослые 2008 и ст.", birthYearFrom: 1930, birthYearTo: 2008, sex: "M", discipline: "nogi", weightMin: 0, weightMax: 77, level: "experienced" });
+    const u = await makeUser(["ATHLETE"]); actAs(u.id);
+    const r = await selfRegister(selfFd({ eventId: e.id, fullName: "Опытный Боец", birthDate: "1990-01-01", sex: "M", consent: true }, [exp.id]));
+    expect(r.ok).toBe(true);
+    const reg = await prisma.registration.findFirst({ where: { athlete: { fullName: "Опытный Боец" } }, include: { category: true } });
+    expect(reg?.category.level).toBe("experienced");
+  });
 });
