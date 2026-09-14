@@ -6,6 +6,7 @@ const NAV = [
   { href: "/guide", label: "Грэпплинг" },
   { href: "/athletes", label: "Спортсменам" },
   { href: "/sponsors", label: "Спонсорам" },
+  { href: "/reglament", label: "Положение" },
 ];
 
 /** Брендовая шапка (тёмная, янтарный акцент). Отражает состояние входа. */
