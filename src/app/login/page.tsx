@@ -1,5 +1,6 @@
 import { signInAction } from "@/app/auth-actions";
 import Link from "next/link";
+import PasswordField from "@/components/PasswordField";
 
 export const dynamic = "force-dynamic";
 
@@ -13,7 +14,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
       <form action={signInAction} className="space-y-3">
         {next && <input type="hidden" name="next" value={next} />}
         <input name="email" type="email" placeholder="email" className="w-full border rounded px-3 py-2" required />
-        <input name="password" type="password" placeholder="пароль" className="w-full border rounded px-3 py-2" required />
+        <PasswordField placeholder="пароль" />
         <button className="w-full rounded bg-blue-600 px-4 py-2 text-white">Войти</button>
       </form>
       <p className="mt-4 text-sm text-gray-600">

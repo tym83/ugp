@@ -15,8 +15,11 @@ const CARDS: { role: string; href: string; t: string; d: string }[] = [
 export default async function DashboardPage() {
   const user = await requirePageRole();
   const roles = new Set(user.memberships.map((m) => m.role));
+  // ADMIN — суперроль: даём доступ к пульту организатора и кабинету тренера (заявки, оплата).
+  const isAdmin = roles.has("ADMIN");
+  const canSee = (role: string) => roles.has(role) || (isAdmin && ["ORGANIZER", "COACH", "ADMIN"].includes(role));
   const seen = new Set<string>();
-  const cards = CARDS.filter((c) => roles.has(c.role) && !seen.has(c.href) && seen.add(c.href));
+  const cards = CARDS.filter((c) => canSee(c.role) && !seen.has(c.href) && seen.add(c.href));
 
   return (
     <main className="min-h-screen bg-[#0d0b08] text-[#f4f0e8]">

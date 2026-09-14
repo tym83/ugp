@@ -121,7 +121,6 @@ export default async function EventPage({ params }: { params: Promise<{ id: stri
                 ))}
               </tbody>
             </table>
-            <p className="mt-1 text-xs text-[#8a8378]">Комиссия клубу: {event.coachCommission} ₽ с регистрации.</p>
           </section>
         </div>
 
