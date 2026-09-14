@@ -125,6 +125,8 @@ export default async function EventPage({ params }: { params: Promise<{ id: stri
         </div>
 
         <footer className="mt-10 border-t border-white/10 pt-4 text-xs text-[#8a8378]">
+          <Link href="/reglament" className="hover:text-[#e3863d]">Положение о соревнованиях</Link>
+          <span className="mx-2">·</span>
           <Link href="/privacy" className="hover:text-[#e3863d]">Политика обработки ПДн</Link>
         </footer>
       </div>

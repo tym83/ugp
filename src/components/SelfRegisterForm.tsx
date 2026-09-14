@@ -5,10 +5,8 @@ import { selfRegister, type SelfRegisterResult } from "@/app/athlete-actions";
 import { selectTier, priceEntry, type Tier } from "@/lib/domain/pricing";
 import { allowedCategories, suggestedCategories, type SelectableCat } from "@/lib/domain/eligibility";
 
-// TODO: заменить на дословный текст из положения (пришлёт организатор).
 const LEVEL_INFO =
-  "Новичок — начинающий спортсмен (по критериям положения). Опытный — участник с соревновательным опытом. " +
-  "Точные критерии — см. положение турнира.";
+  "Новичок — белый пояс, схватки 5 минут. Опытный — цветной пояс (синий и выше), схватки 7 минут.";
 
 type TierDTO = { name: string; startsAt: string; priceFirstCategory: number; priceExtraCategory: number | null };
 type CatDTO = SelectableCat & { label: string; ageGroupLabel: string };
@@ -208,6 +206,7 @@ export default function SelfRegisterForm({
             </label>
           </div>
           <p className="mt-2 whitespace-pre-line text-xs text-blue-900">{LEVEL_INFO}</p>
+          <Link href="/reglament" target="_blank" className="mt-1 inline-block text-xs text-blue-600 underline">Положение о соревнованиях →</Link>
         </div>
       )}
 

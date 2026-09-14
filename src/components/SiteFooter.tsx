@@ -12,6 +12,8 @@ export default function SiteFooter() {
             <span className="font-black uppercase tracking-wide text-[#f4f0e8]">♛ Underground Grappling</span>
             <div className="mt-1 text-sm">Челябинск · 18+ · грэпплинг — борьба без ударов в голову.</div>
             <div className="mt-2 text-sm">
+              <Link href="/reglament" className="hover:text-[#e3863d]">Положение</Link>
+              <span className="mx-2">·</span>
               <Link href="/privacy" className="hover:text-[#e3863d]">Политика обработки ПДн</Link>
               <span className="mx-2">·</span>© 2026 Underground Grappling
             </div>
