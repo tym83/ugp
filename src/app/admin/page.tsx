@@ -60,7 +60,11 @@ export default async function AdminPage() {
                 <td className="border px-2 py-1 text-center">{statusLabel(e.status)}</td>
                 <td className="border px-2 py-1 text-center">{e._count.categories}</td>
                 <td className="border px-2 py-1 text-center">{e._count.priceTiers}</td>
-                <td className="border px-2 py-1 text-center"><Link className="text-blue-600" href={`/admin/events/${e.id}`}>править</Link></td>
+                <td className="border px-2 py-1 text-center whitespace-nowrap">
+                  <Link className="text-blue-600" href={`/organizer/${e.id}`}>заявки·оплата</Link>
+                  <span className="mx-1 text-gray-300">·</span>
+                  <Link className="text-blue-600" href={`/admin/events/${e.id}`}>править</Link>
+                </td>
               </tr>
             ))}
             {events.length === 0 && <tr><td className="border px-2 py-2 text-gray-400 text-center" colSpan={7}>событий нет</td></tr>}

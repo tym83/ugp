@@ -1,5 +1,6 @@
 import { signUpAction } from "@/app/auth-actions";
 import Link from "next/link";
+import PasswordField from "@/components/PasswordField";
 
 export const dynamic = "force-dynamic";
 
@@ -24,7 +25,7 @@ export default async function SignupPage({ searchParams }: { searchParams: Promi
         {next && <input type="hidden" name="next" value={next} />}
         <input name="fullName" placeholder="Фамилия Имя" className="w-full border rounded px-3 py-2" required />
         <input name="email" type="email" placeholder="email" className="w-full border rounded px-3 py-2" required />
-        <input name="password" type="password" placeholder="пароль (минимум 6 символов)" className="w-full border rounded px-3 py-2" required minLength={6} />
+        <PasswordField placeholder="пароль (минимум 6 символов)" minLength={6} />
         <div className="flex gap-3">
           <label className="block flex-1">
             <span className="text-xs text-gray-500">Дата рождения</span>
