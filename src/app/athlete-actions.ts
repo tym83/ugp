@@ -14,6 +14,7 @@ const schema = z.object({
   birthDate: z.string().min(1, "укажите дату рождения"),
   sex: z.enum(["M", "F"]),
   phone: z.string().trim().optional().default(""),
+  club: z.string().trim().optional().default(""),
   belt: z.string().trim().optional().default(""),
   consent: z.coerce.boolean().default(false),
   parentName: z.string().trim().optional().default(""),
@@ -110,6 +111,13 @@ export async function selfRegister(formData: FormData): Promise<SelfRegisterResu
   const disciplines = [...new Set(chosen.map((id) => allowed.get(id)!.discipline))];
   const absoluteAdded = chosen.some((id) => allowed.get(id)!.isAbsolute);
 
+  // Клуб: находим по названию или создаём. Пусто — без клуба.
+  let clubId: string | null = null;
+  if (d.club) {
+    const ex = await prisma.club.findFirst({ where: { name: d.club } });
+    clubId = ex ? ex.id : (await prisma.club.create({ data: { name: d.club } })).id;
+  }
+
   try {
     let existingAth = user ? await prisma.athlete.findUnique({ where: { userId: user.id } }) : null;
     if (!existingAth) {
@@ -128,6 +136,7 @@ export async function selfRegister(formData: FormData): Promise<SelfRegisterResu
         data: {
           sex: d.sex,
           ...(d.phone ? { phone: d.phone } : {}),
+          ...(clubId ? { clubId } : {}),
           ...(d.belt ? { belt: d.belt } : {}),
           ...(isMinor ? { parentName: d.parentName, parentConsent: true } : {}),
           ...(user && !existingAth.userId ? { userId: user.id } : {}),
@@ -138,6 +147,7 @@ export async function selfRegister(formData: FormData): Promise<SelfRegisterResu
         data: {
           fullName: d.fullName, birthDate: dob, sex: d.sex,
           phone: d.phone || null,
+          clubId,
           belt: d.belt || null,
           userId: user?.id ?? null,
           parentName: isMinor ? d.parentName : null,

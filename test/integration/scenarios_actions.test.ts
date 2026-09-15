@@ -973,6 +973,14 @@ describe("Редактирование анкеты участника (S165–S
     const r = await updateAthlete(fd({ athleteId: a.id, fullName: "X", birthDate: base.birthDate, sex: "M" }));
     expect(r.ok).toBe(false);
   });
+  it("S172 само-регистрация сохраняет клуб (создаётся и привязывается)", async () => {
+    const { e, light } = await regEvent();
+    const u = await makeUser(["ATHLETE"]); actAs(u.id);
+    const r = await selfRegister(selfFd({ eventId: e.id, fullName: "Клубный Боец", birthDate: "1994-04-04", sex: "M", consent: true, club: "Клуб Гроза" }, [light.id]));
+    expect(r.ok).toBe(true);
+    const ath = await prisma.athlete.findFirst({ where: { fullName: "Клубный Боец" }, include: { club: true } });
+    expect(ath?.club?.name).toBe("Клуб Гроза");
+  });
   it("S170 организатор переносит регистрацию в другую категорию", async () => {
     const { e, light, heavy } = await regEvent();
     const a = await makeAthlete({ fullName: "Перенос Тест", sex: "M", birthDate: new Date("1995-01-01") });
