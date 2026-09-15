@@ -38,11 +38,12 @@ export default async function RegisterPage({
   const user = await getCurrentUser();
   // Профиль атлета (если уже есть) — чтобы не переспрашивать ФИО/ДР/пол в форме заявки.
   const profile = user
-    ? await prisma.athlete.findUnique({ where: { userId: user.id }, select: { fullName: true, phone: true, birthDate: true, sex: true, belt: true } })
+    ? await prisma.athlete.findUnique({ where: { userId: user.id }, select: { fullName: true, phone: true, birthDate: true, sex: true, belt: true, club: { select: { name: true } } } })
     : null;
   const defaults = {
     fullName: profile?.fullName ?? user?.fullName ?? "",
     phone: profile?.phone ?? "",
+    club: profile?.club?.name ?? "",
     birthDate: profile?.birthDate ? profile.birthDate.toISOString().slice(0, 10) : "",
     sex: (profile?.sex === "F" ? "F" : "M") as "M" | "F",
     belt: profile?.belt ?? "",
