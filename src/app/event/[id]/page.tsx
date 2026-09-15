@@ -16,7 +16,7 @@ const STATUS: Record<string, { text: string; cls: string }> = {
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params;
-  const event = await prisma.event.findUnique({ where: { id } });
+  const event = await prisma.event.findFirst({ where: { OR: [{ slug: id }, { id }] } });
   if (!event) return { title: "Событие не найдено" };
   const dateStr = new Date(event.date).toLocaleDateString("ru-RU");
   const title = `${event.name} — ${event.city}, ${dateStr}`;
@@ -31,16 +31,16 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 
 export default async function EventPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const event = await prisma.event.findUnique({ where: { id }, include: { priceTiers: { orderBy: { order: "asc" } } } });
+  const event = await prisma.event.findFirst({ where: { OR: [{ slug: id }, { id }] }, include: { priceTiers: { orderBy: { order: "asc" } } } });
   if (!event) return <main className="p-8">Событие не найдено</main>;
   const timings: { t: string; what: string }[] = event.timings ? JSON.parse(event.timings) : [];
   const cats = await prisma.category.findMany({
-    where: { eventId: id, mergedIntoId: null },
+    where: { eventId: event.id, mergedIntoId: null },
     include: { _count: { select: { registrations: true, matches: true } } },
     orderBy: { order: "asc" },
   });
   const divisions: Division[] = cats.map((c) => ({
-    id: c.id, ageGroupLabel: c.ageGroupLabel, ageGroupCode: c.ageGroupCode, level: c.level, order: c.order,
+    id: c.id, slug: c.slug, ageGroupLabel: c.ageGroupLabel, ageGroupCode: c.ageGroupCode, level: c.level, order: c.order,
     sex: c.sex as "M" | "F", discipline: c.discipline as "gi" | "nogi",
     weightMin: c.weightMin, weightMax: c.weightMax, isOpenTop: c.isOpenTop, isAbsolute: c.isAbsolute,
     count: c._count.registrations, hasBracket: c._count.matches > 0,
@@ -67,7 +67,7 @@ export default async function EventPage({ params }: { params: Promise<{ id: stri
           )}
           <div className="mt-6 flex flex-wrap gap-3">
             {event.status === "REG_OPEN" && (
-              <Link href={`/register/${event.id}`} className="rounded bg-[#e3863d] px-6 py-2.5 font-bold uppercase tracking-wide text-black hover:brightness-110">
+              <Link href={`/register/${event.slug ?? event.id}`} className="rounded bg-[#e3863d] px-6 py-2.5 font-bold uppercase tracking-wide text-black hover:brightness-110">
                 Зарегистрироваться
               </Link>
             )}

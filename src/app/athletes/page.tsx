@@ -149,7 +149,7 @@ export default async function AthletesPage() {
             {openEvent && (
               <div className="mt-6">
                 <Link
-                  href={`/register/${openEvent.id}`}
+                  href={`/register/${openEvent.slug ?? openEvent.id}`}
                   className="inline-block rounded bg-[#e3863d] px-6 py-3 font-bold uppercase tracking-wide text-black hover:brightness-110"
                 >
                   Зарегистрироваться

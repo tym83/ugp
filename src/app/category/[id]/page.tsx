@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params;
-  const category = await prisma.category.findUnique({ where: { id }, include: { event: true } });
+  const category = await prisma.category.findFirst({ where: { OR: [{ slug: id }, { id }] }, include: { event: true } });
   if (!category) return { title: "Категория не найдена" };
   const weight = category.isAbsolute
     ? "абсолютка"
@@ -32,9 +32,10 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 }
 
 export default async function CategoryPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
-  const category = await prisma.category.findUnique({ where: { id }, include: { event: true } });
+  const { id: catParam } = await params;
+  const category = await prisma.category.findFirst({ where: { OR: [{ slug: catParam }, { id: catParam }] }, include: { event: true } });
   if (!category) return <main className="p-8">Категория не найдена</main>;
+  const id = category.id; // реальный id для запросов/действий
 
   const regs = await prisma.registration.findMany({
     where: { categoryId: id, status: "ADMITTED" },
@@ -63,7 +64,7 @@ export default async function CategoryPage({ params }: { params: Promise<{ id: s
   return (
     <main className="min-h-screen bg-[#0d0b08] text-[#f4f0e8]">
     <div className="mx-auto max-w-4xl px-6 py-8">
-      <Link href={`/event/${category.eventId}`} className="text-sm text-[#e3863d] hover:brightness-125">← {category.event.name}</Link>
+      <Link href={`/event/${category.event.slug ?? category.eventId}`} className="text-sm text-[#e3863d] hover:brightness-125">← {category.event.name}</Link>
       <h1 className="mt-2 text-2xl font-black uppercase tracking-tight">
         {category.ageGroupLabel}{levelLabel(category.level) ? ` · ${levelLabel(category.level)}` : ""} · {category.sex === "M" ? "муж" : "жен"} · {category.discipline} ·{" "}
         {category.isAbsolute ? "абсолютка" : category.isOpenTop ? `свыше ${category.weightMin}` : `до ${category.weightMax}`} кг
