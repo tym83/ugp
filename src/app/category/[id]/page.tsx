@@ -39,7 +39,7 @@ export default async function CategoryPage({ params }: { params: Promise<{ id: s
 
   const regs = await prisma.registration.findMany({
     where: { categoryId: id, status: "ADMITTED" },
-    include: { athlete: { include: { club: true } } },
+    include: { athlete: { include: { club: true } }, entry: { select: { paid: true } } },
     orderBy: { seed: "asc" },
   });
   const matches = await prisma.match.findMany({
@@ -84,7 +84,7 @@ export default async function CategoryPage({ params }: { params: Promise<{ id: s
             </form>
           )}
           {isReferee && matches.length > 0 && (
-            <Link href={`/judge/${id}`} className="rounded border border-white/25 px-4 py-2 text-sm hover:bg-white/10">Судейский пульт</Link>
+            <Link href={`/judge/${category.slug ?? id}`} className="rounded border border-white/25 px-4 py-2 text-sm hover:bg-white/10">Судейский пульт</Link>
           )}
         </div>
       )}
@@ -93,7 +93,9 @@ export default async function CategoryPage({ params }: { params: Promise<{ id: s
         <h2 className="mb-2 text-sm font-bold uppercase tracking-[0.25em] text-[#e3863d]">Участники</h2>
         <ol className="ml-6 list-decimal text-sm">
           {regs.map((r) => (
-            <li key={r.id}>{maskName(r.athlete.fullName, isMinor(r.athlete.birthDate))} <span className="text-[#8a8378]">({r.athlete.club?.name ?? "—"}, {r.actualWeight ?? r.declaredWeight} кг)</span></li>
+            <li key={r.id}>{maskName(r.athlete.fullName, isMinor(r.athlete.birthDate))} <span className="text-[#8a8378]">({r.athlete.club?.name ?? "—"}, {r.actualWeight ?? r.declaredWeight} кг)</span>
+              <span className={"ml-2 rounded px-1.5 py-0.5 text-[10px] font-semibold " + (r.entry?.paid ? "bg-green-500/20 text-green-400" : "bg-amber-500/20 text-amber-400")}>{r.entry?.paid ? "оплачено" : "не оплачено"}</span>
+            </li>
           ))}
         </ol>
       </section>

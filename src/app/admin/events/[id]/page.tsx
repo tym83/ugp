@@ -22,14 +22,14 @@ function statusLabel(s: string): string {
 }
 
 export default async function EditEventPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
+  const { id: eventParam } = await params;
   const user = await getCurrentUser();
   if (!user) redirect("/login");
   const allowed = user.memberships.some((m) => m.role === "ADMIN" || m.role === "ORGANIZER");
   if (!allowed) return <main className="p-8">Недостаточно прав.</main>;
 
-  const event = await prisma.event.findUnique({
-    where: { id },
+  const event = await prisma.event.findFirst({
+    where: { OR: [{ slug: eventParam }, { id: eventParam }] },
     include: {
       priceTiers: { orderBy: { order: "asc" } },
       categories: { orderBy: { order: "asc" } },

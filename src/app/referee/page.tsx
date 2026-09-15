@@ -20,12 +20,12 @@ export default async function RefereePage() {
   });
 
   // группируем по категории
-  const byCat = new Map<string, { label: string; event: string; count: number }>();
+  const byCat = new Map<string, { label: string; event: string; count: number; slug: string | null }>();
   for (const m of ready) {
     const c = m.category;
     const w = c.isAbsolute ? "абсолютка" : c.isOpenTop ? `+${c.weightMin}` : `до ${c.weightMax} кг`;
     const label = `${c.ageGroupLabel} · ${c.sex === "M" ? "муж" : "жен"} · ${c.discipline} · ${w}`;
-    const cur = byCat.get(c.id) ?? { label, event: c.event.name, count: 0 };
+    const cur = byCat.get(c.id) ?? { label, event: c.event.name, count: 0, slug: c.slug };
     cur.count++;
     byCat.set(c.id, cur);
   }
@@ -59,7 +59,7 @@ export default async function RefereePage() {
           <ul className="space-y-2">
             {cats.map(([id, c]) => (
               <li key={id}>
-                <Link href={`/judge/${id}`} className="flex items-center justify-between rounded-lg border border-white/10 bg-white/5 p-4 hover:border-[#e3863d]/60">
+                <Link href={`/judge/${c.slug ?? id}`} className="flex items-center justify-between rounded-lg border border-white/10 bg-white/5 p-4 hover:border-[#e3863d]/60">
                   <div className="min-w-0">
                     <div className="truncate font-semibold">{c.label}</div>
                     <div className="text-xs text-[#8a8378]">{c.event}</div>

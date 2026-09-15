@@ -63,7 +63,7 @@ export default async function AdminPage() {
                 <td className="border px-2 py-1 text-center whitespace-nowrap">
                   <Link className="text-blue-600" href={`/organizer/${e.slug ?? e.id}`}>заявки·оплата</Link>
                   <span className="mx-1 text-gray-300">·</span>
-                  <Link className="text-blue-600" href={`/admin/events/${e.id}`}>править</Link>
+                  <Link className="text-blue-600" href={`/admin/events/${e.slug ?? e.id}`}>править</Link>
                 </td>
               </tr>
             ))}

@@ -25,12 +25,13 @@ export default async function JudgePage({ params }: { params: Promise<{ category
     return <main className="p-8">Нужна роль судьи или организатора.</main>;
   }
   const isHeadJudge = hasRole(user, "ORGANIZER", "ADMIN");
-  const category = await prisma.category.findUnique({ where: { id: categoryId } });
+  const category = await prisma.category.findFirst({ where: { OR: [{ slug: categoryId }, { id: categoryId }] } });
   if (!category) return <main className="p-8">Категория не найдена</main>;
+  const catId = category.id;
 
-  const regs = await prisma.registration.findMany({ where: { categoryId, status: "ADMITTED" }, include: { athlete: true } });
+  const regs = await prisma.registration.findMany({ where: { categoryId: catId, status: "ADMITTED" }, include: { athlete: true } });
   const nameById = new Map(regs.map((r) => [r.athleteId, r.athlete.fullName]));
-  const matches = await prisma.match.findMany({ where: { categoryId }, orderBy: [{ roundNumber: "asc" }, { positionInRound: "asc" }] });
+  const matches = await prisma.match.findMany({ where: { categoryId: catId }, orderBy: [{ roundNumber: "asc" }, { positionInRound: "asc" }] });
 
   const ready = matches.filter((m) => m.slotAAthleteId && m.slotBAthleteId && m.status !== "COMPLETED");
   const done = matches.filter((m) => m.status === "COMPLETED");
@@ -38,7 +39,7 @@ export default async function JudgePage({ params }: { params: Promise<{ category
 
   return (
     <main className="mx-auto max-w-2xl p-6">
-      <Link href={`/category/${categoryId}`} className="text-sm text-blue-600">← сетка</Link>
+      <Link href={`/category/${category.slug ?? catId}`} className="text-sm text-blue-600">← сетка</Link>
       <h1 className="text-xl font-bold mt-2">Судейский пульт</h1>
       <p className="text-sm text-gray-500 mb-4">{category.ageGroupLabel} · {category.discipline} · схватка {category.boutSeconds}s</p>
 
@@ -48,7 +49,7 @@ export default async function JudgePage({ params }: { params: Promise<{ category
           <BoutForm
             key={m.id}
             matchId={m.id}
-            categoryId={categoryId}
+            categoryId={catId}
             cmid={randomUUID()}
             aId={m.slotAAthleteId!}
             bId={m.slotBAthleteId!}
@@ -73,7 +74,7 @@ export default async function JudgePage({ params }: { params: Promise<{ category
               {isHeadJudge && a && b && other && (
                 <form action={correctResultAction} className="mt-1 flex flex-wrap items-center gap-2">
                   <input type="hidden" name="matchId" value={m.id} />
-                  <input type="hidden" name="categoryId" value={categoryId} />
+                  <input type="hidden" name="categoryId" value={catId} />
                   <span className="text-xs text-gray-500">гл. судья:</span>
                   <select name="winnerAthleteId" className="border rounded px-1 py-0.5 text-xs" defaultValue={m.winnerAthleteId ?? ""}>
                     <option value={a}>{nm(a)}</option>

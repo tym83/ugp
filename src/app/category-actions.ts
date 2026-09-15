@@ -8,6 +8,7 @@ export type CategoryParticipant = {
   club: string | null;
   weight: number | null;
   admitted: boolean;
+  paid: boolean;
 };
 
 /** Публичный список участников категории для инлайн-раскрытия в браузере категорий.
@@ -15,7 +16,7 @@ export type CategoryParticipant = {
 export async function categoryParticipants(categoryId: string): Promise<CategoryParticipant[]> {
   const regs = await prisma.registration.findMany({
     where: { categoryId, status: { in: ["ENTERED", "ADMITTED"] } },
-    include: { athlete: { include: { club: true } } },
+    include: { athlete: { include: { club: true } }, entry: { select: { paid: true } } },
     orderBy: [{ status: "asc" }, { seed: "asc" }, { createdAt: "asc" }],
   });
   return regs.map((r) => ({
@@ -24,5 +25,6 @@ export async function categoryParticipants(categoryId: string): Promise<Category
     club: r.athlete.club?.name ?? null,
     weight: r.actualWeight ?? r.declaredWeight ?? null,
     admitted: r.status === "ADMITTED",
+    paid: r.entry?.paid ?? false,
   }));
 }

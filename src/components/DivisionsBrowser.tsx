@@ -154,6 +154,9 @@ export default function DivisionsBrowser({ divisions }: { divisions: Division[] 
                                 <li key={p.id}>
                                   {p.name}
                                   <span className="text-[#8a8378]"> — {p.club ?? "без клуба"}{p.weight != null ? `, ${p.weight} кг` : ""}{p.admitted ? "" : " · заявлен"}</span>
+                                  <span className={"ml-2 rounded px-1.5 py-0.5 text-[10px] font-semibold " + (p.paid ? "bg-green-500/20 text-green-400" : "bg-amber-500/20 text-amber-400")}>
+                                    {p.paid ? "оплачено" : "не оплачено"}
+                                  </span>
                                 </li>
                               ))}
                             </ol>
