@@ -205,7 +205,7 @@ export default async function OrganizerConsole({ params }: { params: Promise<{ e
                 <div className="flex items-center gap-2">
                   {c._count.matches > 0 && (
                     <Link
-                      href={`/organizer/${eventId}/bracket/${c.id}`}
+                      href={`/organizer/${event.slug ?? eventId}/bracket/${c.slug ?? c.id}`}
                       className="rounded border px-3 py-1 text-xs text-blue-700"
                     >
                       Правка сетки

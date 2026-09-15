@@ -11,7 +11,7 @@ export default async function BracketEditPage({
 }: {
   params: Promise<{ eventId: string; categoryId: string }>;
 }) {
-  const { eventId, categoryId } = await params;
+  const { eventId: eventParam, categoryId } = await params;
   const user = await getCurrentUser();
   if (!hasRole(user, "ORGANIZER", "ADMIN")) {
     return (
@@ -21,21 +21,23 @@ export default async function BracketEditPage({
     );
   }
 
-  const category = await prisma.category.findUnique({ where: { id: categoryId } });
-  if (!category || category.eventId !== eventId) return <main className="p-8">Категория не найдена</main>;
+  const event = await prisma.event.findFirst({ where: { OR: [{ slug: eventParam }, { id: eventParam }] } });
+  const category = await prisma.category.findFirst({ where: { OR: [{ slug: categoryId }, { id: categoryId }] } });
+  if (!event || !category || category.eventId !== event.id) return <main className="p-8">Категория не найдена</main>;
+  const catId = category.id;
 
   const label = `${category.ageGroupLabel} · ${category.sex === "M" ? "муж" : "жен"} · ${category.discipline} · ${
     category.isAbsolute ? "абс" : category.isOpenTop ? `св.${category.weightMin}` : `до${category.weightMax}`
   }`;
 
-  const { seeds, conflicts } = await findBracketConflicts(categoryId);
+  const { seeds, conflicts } = await findBracketConflicts(catId);
 
   return (
     <main className="mx-auto max-w-3xl p-6">
-      <Link href={`/organizer/${eventId}`} className="text-sm text-blue-600">← Пульт организатора</Link>
+      <Link href={`/organizer/${event.slug ?? event.id}`} className="text-sm text-blue-600">← Пульт организатора</Link>
       <h1 className="text-2xl font-bold mt-2">Правка сетки</h1>
       <p className="text-sm text-gray-500 mb-4">{label}</p>
-      <BracketEdit categoryId={categoryId} seeds={seeds} conflicts={conflicts} />
+      <BracketEdit categoryId={catId} seeds={seeds} conflicts={conflicts} />
     </main>
   );
 }
