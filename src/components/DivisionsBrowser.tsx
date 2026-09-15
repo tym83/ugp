@@ -6,6 +6,7 @@ import { levelLabel } from "@/lib/domain/levelLabel";
 
 export type Division = {
   id: string;
+  slug: string | null;
   ageGroupLabel: string;
   ageGroupCode: string;
   level: string;
@@ -156,7 +157,7 @@ export default function DivisionsBrowser({ divisions }: { divisions: Division[] 
                                 </li>
                               ))}
                             </ol>
-                            <Link href={`/category/${d.id}`} className="mt-2 inline-block text-[#e3863d] hover:brightness-125">Открыть полную сетку →</Link>
+                            <Link href={`/category/${d.slug ?? d.id}`} className="mt-2 inline-block text-[#e3863d] hover:brightness-125">Открыть полную сетку →</Link>
                           </>
                         ) : (
                           <p className="text-[#8a8378]">Пока нет участников.</p>

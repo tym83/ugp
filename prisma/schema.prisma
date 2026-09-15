@@ -70,6 +70,7 @@ model Club {
 // ---------- Событие ----------
 model Event {
   id                   String   @id @default(cuid())
+  slug                 String?  @unique // человекочитаемый URL: /event/<slug>
   name                 String
   series               String?
   city                 String
@@ -113,6 +114,7 @@ model PriceTier {
 // ---------- Категория ----------
 model Category {
   id              String   @id @default(cuid())
+  slug            String?  @unique // человекочитаемый URL: /category/<slug>
   event           Event    @relation(fields: [eventId], references: [id])
   eventId         String
   ageGroupCode    String

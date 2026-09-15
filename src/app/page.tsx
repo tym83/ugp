@@ -34,7 +34,8 @@ export default async function Home() {
   });
   const ev = events.find((e) => e.status === "REG_OPEN") ?? events.find((e) => e.status === "LIVE") ?? events[0];
   const st = ev ? STATUS[ev.status] ?? { text: ev.status, cls: "bg-white/15 text-white" } : null;
-  const regHref = ev ? `/register/${ev.id}` : "/login";
+  const evPath = ev ? (ev.slug ?? ev.id) : "";
+  const regHref = ev ? `/register/${evPath}` : "/login";
   const canReg = ev?.status === "REG_OPEN";
 
   const RegBtn = ({ big }: { big?: boolean }) =>
@@ -69,7 +70,7 @@ export default async function Home() {
               )}
               <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
                 <RegBtn big />
-                <Link href={`/event/${ev.id}#divisions`} className="rounded border border-white/30 bg-white/5 px-7 py-4 font-bold uppercase tracking-wide backdrop-blur hover:bg-white/15">
+                <Link href={`/event/${evPath}#divisions`} className="rounded border border-white/30 bg-white/5 px-7 py-4 font-bold uppercase tracking-wide backdrop-blur hover:bg-white/15">
                   Сетки и категории
                 </Link>
                 <Link href="/guide" className="px-4 py-4 font-semibold text-[#e7e2d8] underline-offset-4 hover:text-[#e3863d] hover:underline">Что такое грэпплинг →</Link>

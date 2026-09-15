@@ -64,7 +64,7 @@ export default async function CoachPage() {
       <p className="text-sm text-gray-500">Событие: {event.name}</p>
 
       <section className="mt-6">
-        <RefLink eventId={event.id} coachId={user.id} origin={origin} />
+        <RefLink eventId={event.slug ?? event.id} coachId={user.id} origin={origin} />
       </section>
 
       <section className="mt-6">

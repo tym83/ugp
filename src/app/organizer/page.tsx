@@ -39,7 +39,7 @@ export default async function OrganizerIndex() {
           <ul className="mt-6 space-y-2">
             {events.map((e) => (
               <li key={e.id}>
-                <Link href={`/organizer/${e.id}`} className="flex items-center justify-between rounded-lg border border-white/10 bg-white/5 p-4 hover:border-[#e3863d]/60">
+                <Link href={`/organizer/${e.slug ?? e.id}`} className="flex items-center justify-between rounded-lg border border-white/10 bg-white/5 p-4 hover:border-[#e3863d]/60">
                   <div>
                     <div className="font-bold uppercase">{e.name}</div>
                     <div className="text-sm text-[#8a8378]">{new Date(e.date).toLocaleDateString("ru-RU")} · {e.city}</div>

@@ -8,9 +8,10 @@ export const dynamic = "force-dynamic";
 const PRIZE = [30000, 20000, 10000];
 
 export default async function StandingsPage({ params }: { params: Promise<{ eventId: string }> }) {
-  const { eventId } = await params;
-  const event = await prisma.event.findUnique({ where: { id: eventId } });
+  const { eventId: eventParam } = await params;
+  const event = await prisma.event.findFirst({ where: { OR: [{ slug: eventParam }, { id: eventParam }] } });
   if (!event) return <main className="p-8">Событие не найдено</main>;
+  const eventId = event.id;
 
   const categories = await prisma.category.findMany({
     where: { eventId, mergedIntoId: null },

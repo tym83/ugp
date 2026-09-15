@@ -16,11 +16,12 @@ export const dynamic = "force-dynamic";
 const WEIGH_IN_OPEN_STATUSES = ["DRAFT", "REG_OPEN", "REG_CLOSED"];
 
 export default async function OrganizerConsole({ params }: { params: Promise<{ eventId: string }> }) {
-  const { eventId } = await params;
+  const { eventId: eventParam } = await params;
   await requirePageRole("ORGANIZER", "ADMIN", "MAT_COORDINATOR");
 
-  const event = await prisma.event.findUnique({ where: { id: eventId } });
+  const event = await prisma.event.findFirst({ where: { OR: [{ slug: eventParam }, { id: eventParam }] } });
   if (!event) return <main className="p-8">Событие не найдено</main>;
+  const eventId = event.id; // дальше работаем с реальным id (queries/actions/revalidate)
 
   const categories = await prisma.category.findMany({
     where: { eventId, mergedIntoId: null },
@@ -87,7 +88,7 @@ export default async function OrganizerConsole({ params }: { params: Promise<{ e
     <main className="mx-auto max-w-5xl p-6">
       <div className="flex items-center justify-between">
         <div>
-          <Link href={`/event/${eventId}`} className="text-sm text-blue-600">← {event.name}</Link>
+          <Link href={`/event/${event.slug ?? eventId}`} className="text-sm text-blue-600">← {event.name}</Link>
           <h1 className="text-2xl font-bold">Пульт организатора</h1>
           <p className="text-sm text-gray-500">Статус: {event.status}</p>
         </div>

@@ -4,6 +4,15 @@
 
 import type { PrismaClient } from "@prisma/client";
 import { tankogradCategories, TANKOGRAD_EVENT, TANKOGRAD_TIERS, type CategorySpec } from "./tankograd";
+import { slugify, categorySlug } from "@/lib/slug";
+
+/** Уникальный слаг события: base, base-2, base-3… */
+async function uniqueEventSlug(prisma: PrismaClient, base: string): Promise<string> {
+  const root = base || "event";
+  let s = root;
+  for (let i = 2; await prisma.event.findUnique({ where: { slug: s } }); i++) s = `${root}-${i}`;
+  return s;
+}
 
 // ---------- Жизненный цикл события (EventStatus) ----------
 // Хранится строкой (SQLite), валидируется приложением.
@@ -110,8 +119,10 @@ export async function createEventFromPreset(
   });
   if (existing) return existing;
 
+  const eventSlug = await uniqueEventSlug(prisma, slugify(e.series || e.name));
   const event = await prisma.event.create({
     data: {
+      slug: eventSlug,
       name: e.name,
       series: e.series ?? null,
       city: e.city,
@@ -149,6 +160,7 @@ export async function createEventFromPreset(
     await prisma.category.create({
       data: {
         eventId: event.id,
+        slug: categorySlug(eventSlug, s),
         ageGroupCode: s.ageGroupCode,
         ageGroupLabel: s.ageGroupLabel,
         birthYearFrom: s.birthYearFrom,

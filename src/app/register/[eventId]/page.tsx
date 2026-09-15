@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: { params: Promise<{ eventId: string }> }): Promise<Metadata> {
   const { eventId } = await params;
-  const event = await prisma.event.findUnique({ where: { id: eventId } });
+  const event = await prisma.event.findFirst({ where: { OR: [{ slug: eventId }, { id: eventId }] } });
   if (!event) return { title: "Регистрация" };
   return {
     title: `Регистрация — ${event.name}`,
@@ -26,8 +26,8 @@ export default async function RegisterPage({
 }) {
   const { eventId } = await params;
   const { ref } = await searchParams;
-  const event = await prisma.event.findUnique({
-    where: { id: eventId },
+  const event = await prisma.event.findFirst({
+    where: { OR: [{ slug: eventId }, { id: eventId }] },
     include: {
       priceTiers: { orderBy: { order: "asc" } },
       categories: { where: { mergedIntoId: null }, orderBy: { order: "asc" } },
@@ -103,7 +103,7 @@ export default async function RegisterPage({
           </div>
         </div>
       ) : (
-        <SelfRegisterForm eventId={eventId} tiers={tiers} categories={categories} coach={coach} refDiscount={refDiscount} paymentInfo={event.paymentInfo} defaults={defaults} />
+        <SelfRegisterForm eventId={event.id} tiers={tiers} categories={categories} coach={coach} refDiscount={refDiscount} paymentInfo={event.paymentInfo} defaults={defaults} />
       )}
 
       <footer className="mt-10 border-t pt-4 text-xs text-gray-500">
