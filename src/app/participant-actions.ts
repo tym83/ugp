@@ -70,3 +70,32 @@ export async function updateAthlete(formData: FormData): Promise<EditResult> {
   revalidatePath("/coach");
   return { ok: true, msg: "Анкета обновлена" };
 }
+
+/** Перенос регистрации в другую категорию (новички↔опытные, веса и т.п.). Только организатор/админ. */
+export async function moveRegistration(registrationId: string, categoryId: string): Promise<EditResult> {
+  const user = await getCurrentUser();
+  if (!user) return { ok: false, msg: "Войдите в аккаунт" };
+  const roles = new Set(user.memberships.map((m) => m.role));
+  if (!roles.has("ORGANIZER") && !roles.has("ADMIN")) return { ok: false, msg: "Только организатор может переносить заявки" };
+
+  const reg = await prisma.registration.findUnique({ where: { id: registrationId }, include: { category: true } });
+  if (!reg) return { ok: false, msg: "Регистрация не найдена" };
+  const target = await prisma.category.findUnique({ where: { id: categoryId } });
+  if (!target) return { ok: false, msg: "Категория не найдена" };
+  if (target.eventId !== reg.category.eventId) return { ok: false, msg: "Категория из другого события" };
+  if (target.mergedIntoId) return { ok: false, msg: "Категория объединена — выберите конечную" };
+
+  const oldCatId = reg.categoryId;
+  await prisma.registration.update({
+    where: { id: registrationId },
+    data: {
+      categoryId,
+      ...(reg.effectiveCategoryId === oldCatId ? { effectiveCategoryId: categoryId } : {}),
+    },
+  });
+
+  revalidatePath(`/organizer/${reg.category.eventId}`);
+  revalidatePath(`/category/${oldCatId}`);
+  revalidatePath(`/category/${categoryId}`);
+  return { ok: true, msg: "Заявка перенесена" };
+}

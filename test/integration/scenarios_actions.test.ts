@@ -22,7 +22,7 @@ import { prisma } from "@/lib/prisma";
 import { makeToken, makeUser, makeEvent, makeCategory, makeAthlete, registerAthlete, uniq } from "./_harness";
 import { selfRegister } from "@/app/athlete-actions";
 import { registerGroup, togglePaidAction } from "@/app/coach-actions";
-import { updateAthlete } from "@/app/participant-actions";
+import { updateAthlete, moveRegistration } from "@/app/participant-actions";
 import { weighInAndAdmit, setWeighInLock, applyMerge, swapSeeds, moveAthleteSeed, findBracketConflicts, resolveConflict, addToAbsolute, generateAbsoluteBracket } from "@/app/organizer-actions";
 import { createEvent, setEventStatus, addCategory, addPriceTier, createUser, assignRefereeToMat } from "@/app/admin-actions";
 import { buildBracketAction, submitResultAction } from "@/app/actions";
@@ -971,6 +971,26 @@ describe("Редактирование анкеты участника (S165–S
     actAnon();
     const a = await makeAthlete({ fullName: base.fullName, sex: base.sex, birthDate: new Date(base.birthDate) });
     const r = await updateAthlete(fd({ athleteId: a.id, fullName: "X", birthDate: base.birthDate, sex: "M" }));
+    expect(r.ok).toBe(false);
+  });
+  it("S170 организатор переносит регистрацию в другую категорию", async () => {
+    const { e, light, heavy } = await regEvent();
+    const a = await makeAthlete({ fullName: "Перенос Тест", sex: "M", birthDate: new Date("1995-01-01") });
+    const entry = await prisma.eventEntry.create({ data: { athleteId: a.id, eventId: e.id, source: "self", priceTotal: 2000 } });
+    const reg = await prisma.registration.create({ data: { entryId: entry.id, athleteId: a.id, categoryId: light.id, status: "ENTERED" } });
+    const org = await makeUser(["ORGANIZER"]); actAs(org.id);
+    const r = await moveRegistration(reg.id, heavy.id);
+    expect(r.ok).toBe(true);
+    const after = await prisma.registration.findUnique({ where: { id: reg.id } });
+    expect(after?.categoryId).toBe(heavy.id);
+  });
+  it("S171 тренер не может переносить заявку → отказ", async () => {
+    const { e, light, heavy } = await regEvent();
+    const a = await makeAthlete({ fullName: "Перенос Нет", sex: "M", birthDate: new Date("1995-01-01") });
+    const entry = await prisma.eventEntry.create({ data: { athleteId: a.id, eventId: e.id, source: "self", priceTotal: 2000 } });
+    const reg = await prisma.registration.create({ data: { entryId: entry.id, athleteId: a.id, categoryId: light.id, status: "ENTERED" } });
+    const coach = await makeUser(["COACH"]); actAs(coach.id);
+    const r = await moveRegistration(reg.id, heavy.id);
     expect(r.ok).toBe(false);
   });
   it("S169 взрослый заявляется в категорию уровня «опытные»", async () => {

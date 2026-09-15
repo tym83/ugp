@@ -6,6 +6,7 @@ import { needsMerge, suggestMergeTarget, type MergeCat } from "@/lib/domain/merg
 import Link from "next/link";
 import WeighInForm from "./WeighInForm";
 import { MergeButton, LockButton, PaidToggle } from "./OrganizerButtons";
+import MoveRegistration from "./MoveRegistration";
 import AbsolutePanel from "./AbsolutePanel";
 import { absoluteRoster } from "@/app/organizer-actions";
 
@@ -70,9 +71,14 @@ export default async function OrganizerConsole({ params }: { params: Promise<{ e
   // Заявки и статус оплаты (ручной трекинг взноса).
   const entries = await prisma.eventEntry.findMany({
     where: { eventId },
-    include: { athlete: { select: { id: true, fullName: true, phone: true } } },
+    include: {
+      athlete: { select: { id: true, fullName: true, phone: true, club: { select: { name: true } } } },
+      registrations: { include: { category: true } },
+    },
     orderBy: [{ paid: "asc" }, { createdAt: "asc" }], // неоплаченные сверху
   });
+  // Опции для переноса заявки между категориями (все категории события).
+  const catOptions = categories.map((c) => ({ id: c.id, label: catLabel(c) }));
   const paidCount = entries.filter((e) => e.paid).length;
   const paidSum = entries.filter((e) => e.paid).reduce((s, e) => s + e.priceTotal, 0);
   const totalSum = entries.reduce((s, e) => s + e.priceTotal, 0);
@@ -93,7 +99,7 @@ export default async function OrganizerConsole({ params }: { params: Promise<{ e
 
       <section className="mt-6">
         <div className="flex items-baseline justify-between">
-          <h2 className="text-lg font-semibold mb-2">Оплата заявок</h2>
+          <h2 className="text-lg font-semibold mb-2">Заявки участников</h2>
           <span className="text-sm text-gray-500">
             оплачено {paidCount} из {entries.length} · {paidSum} / {totalSum} ₽
           </span>
@@ -107,30 +113,38 @@ export default async function OrganizerConsole({ params }: { params: Promise<{ e
                 <tr>
                   <th className="px-3 py-2">Участник</th>
                   <th className="px-3 py-2">Телефон</th>
-                  <th className="px-3 py-2">Источник</th>
+                  <th className="px-3 py-2">Клуб</th>
+                  <th className="px-3 py-2">Категории (перенос)</th>
                   <th className="px-3 py-2">Взнос</th>
-                  <th className="px-3 py-2">Статус</th>
                   <th className="px-3 py-2">Оплата</th>
                   <th className="px-3 py-2"></th>
                 </tr>
               </thead>
               <tbody className="divide-y">
                 {entries.map((e) => (
-                  <tr key={e.id} className={e.paid ? "" : "bg-amber-50"}>
-                    <td className="px-3 py-2">{e.athlete.fullName}</td>
+                  <tr key={e.id} className={e.paid ? "align-top" : "align-top bg-amber-50"}>
+                    <td className="px-3 py-2 font-medium">{e.athlete.fullName}</td>
                     <td className="px-3 py-2 whitespace-nowrap">
                       {e.athlete.phone
                         ? <a href={`tel:${e.athlete.phone}`} className="text-blue-600">{e.athlete.phone}</a>
                         : <span className="text-gray-300">—</span>}
                     </td>
-                    <td className="px-3 py-2 text-gray-500">{e.source === "referral" ? "по тренеру" : e.source === "coach" ? "список тренера" : "сам"}</td>
-                    <td className="px-3 py-2 tabular-nums">{e.priceTotal} ₽</td>
+                    <td className="px-3 py-2">{e.athlete.club?.name ?? <span className="text-gray-300">—</span>}</td>
                     <td className="px-3 py-2">
-                      <span className={"rounded px-2 py-0.5 text-xs font-semibold " + (e.paid ? "bg-green-100 text-green-800" : "bg-amber-200 text-amber-900")}>
+                      <div className="space-y-1">
+                        {e.registrations.map((r) => (
+                          <MoveRegistration key={r.id} regId={r.id} currentCatId={r.categoryId} options={catOptions} />
+                        ))}
+                        {e.registrations.length === 0 && <span className="text-gray-300">—</span>}
+                      </div>
+                    </td>
+                    <td className="px-3 py-2 tabular-nums whitespace-nowrap">{e.priceTotal} ₽</td>
+                    <td className="px-3 py-2 whitespace-nowrap">
+                      <span className={"mr-2 rounded px-2 py-0.5 text-xs font-semibold " + (e.paid ? "bg-green-100 text-green-800" : "bg-amber-200 text-amber-900")}>
                         {e.paid ? "оплачено" : "не оплачено"}
                       </span>
+                      <PaidToggle entryId={e.id} paid={e.paid} />
                     </td>
-                    <td className="px-3 py-2"><PaidToggle entryId={e.id} paid={e.paid} /></td>
                     <td className="px-3 py-2"><Link href={`/participant/${e.athlete.id}/edit?next=/organizer/${eventId}`} className="text-blue-600 text-xs">изменить</Link></td>
                   </tr>
                 ))}
