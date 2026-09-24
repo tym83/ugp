@@ -91,8 +91,8 @@ export async function selfRegister(formData: FormData): Promise<SelfRegisterResu
   if (!chosen.length) return { ok: false, msg: "выбранные категории недоступны (пол/возраст)" };
   if (rejected.length) return { ok: false, msg: "часть выбранных категорий недоступна вам — обновите список" };
 
-  // Реф-код тренера (?ref=<userId тренера>): привязываем заявку к тренеру для зачёта комиссии
-  // и даём скидку. Валидируем, что это действительно тренер.
+  // Реф-код тренера (?ref=<userId тренера>): привязываем заявку к тренеру (командный зачёт)
+  // и даём скидку на взнос. Валидируем, что это действительно тренер.
   const refId = String(formData.get("ref") ?? "").trim();
   let coachUserId: string | null = null;
   if (refId) {

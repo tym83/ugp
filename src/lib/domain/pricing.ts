@@ -1,4 +1,4 @@
-// Движок цен: тир по дате × число разделов (ги/ноу-ги) + абсолютка. Комиссия клубу отдельно.
+// Движок цен: тир по дате × число разделов (ги/ноу-ги) + абсолютка.
 
 export type Tier = {
   name: string;
@@ -30,17 +30,4 @@ export function priceEntry(tier: Tier, e: EntryPricing): number {
   const gross = tier.priceFirstCategory + extra * (n - 1);
   const discount = Math.max(0, Math.trunc(e.discountPerCategory ?? 0)) * n;
   return Math.max(0, gross - discount);
-}
-
-/** Итог тренеру «к переводу»: сумма цен по атлетам минус комиссия за каждого. */
-export function coachTransferTotal(entryPrices: number[], commissionPerEntry: number): {
-  gross: number;
-  commission: number;
-  net: number;
-  count: number;
-} {
-  const gross = entryPrices.reduce((s, x) => s + x, 0);
-  const count = entryPrices.length;
-  const commission = commissionPerEntry * count;
-  return { gross, commission, net: gross - commission, count };
 }

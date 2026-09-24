@@ -1,9 +1,9 @@
 // Сценарии S001–S055 — чистая доменная логика (без авторизации/БД):
-// eligibility (вес/возраст/пол/дисциплина/уровень/play-up), pricing (тиры/разделы/абсолютка/комиссия),
+// eligibility (вес/возраст/пол/дисциплина/уровень/play-up), pricing (тиры/разделы/абсолютка),
 // merge (совместимость), статусные переходы события, teamscore, bracket.
 import { describe, it, expect } from "vitest";
 import { weightFits, ageEligible, eligibleCategories, nativeCategory, allowedCategories, suggestedCategories, athleteIsKid, type Cat, type SelectableCat } from "@/lib/domain/eligibility";
-import { selectTier, priceEntry, coachTransferTotal, type Tier } from "@/lib/domain/pricing";
+import { selectTier, priceEntry, type Tier } from "@/lib/domain/pricing";
 import { canMerge, ageBand, needsMerge, suggestMergeTarget, type MergeCat } from "@/lib/domain/merge";
 import { canTransition, nextStatuses } from "@/lib/data/preset";
 import { computeTeamScores, type Placement } from "@/lib/domain/teamscore";
@@ -149,13 +149,6 @@ describe("Pricing — цена по числу категорий (S023–S034)"
   });
   it("S032 priceEntry: 0 категорий → 0", () => {
     expect(priceEntry(t1, { categoryCount: 0 })).toBe(0);
-  });
-  it("S033 coachTransferTotal: комиссия за каждого атлета", () => {
-    const r = coachTransferTotal([3000, 2000, 4000], 200);
-    expect(r).toMatchObject({ gross: 9000, commission: 600, net: 8400, count: 3 });
-  });
-  it("S034 coachTransferTotal пустой список → нули", () => {
-    expect(coachTransferTotal([], 200)).toMatchObject({ gross: 0, commission: 0, net: 0, count: 0 });
   });
 });
 

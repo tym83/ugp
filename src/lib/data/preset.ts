@@ -70,7 +70,6 @@ export type EventPresetData = {
   disciplines?: string;
   matsCount?: number;
   timings?: string;
-  coachCommission?: number;
 };
 
 export type PriceTierSpec = {
@@ -132,7 +131,6 @@ export async function createEventFromPreset(
       disciplines: e.disciplines ?? "gi,nogi",
       matsCount: e.matsCount ?? 3,
       timings: e.timings ?? null,
-      coachCommission: e.coachCommission ?? 200,
       status: overrides.status ?? "DRAFT",
       registrationOpensAt: overrides.registrationOpensAt ?? null,
       registrationClosesAt: overrides.registrationClosesAt ?? null,

@@ -46,9 +46,6 @@ export default async function NewEventPage() {
           <label className="block text-sm text-gray-600 w-full">Ковров
             <input name="matsCount" type="number" min={1} defaultValue={3} className="w-full border rounded px-3 py-2" />
           </label>
-          <label className="block text-sm text-gray-600 w-full">Комиссия тренера (₽)
-            <input name="coachCommission" type="number" min={0} defaultValue={200} className="w-full border rounded px-3 py-2" />
-          </label>
           <label className="block text-sm text-gray-600 w-full">Разделы
             <input name="disciplines" defaultValue="gi,nogi" className="w-full border rounded px-3 py-2" />
           </label>
