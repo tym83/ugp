@@ -69,7 +69,7 @@ export default async function CoachPage() {
 
       <section className="mt-6">
         <h2 className="text-lg font-semibold mb-2">Заявить группу</h2>
-        <p className="text-xs text-gray-500 mb-2">Вводите спортсменов; в колонке «Категории» появятся подходящие по полу, году рождения и весу — отметьте нужные (можно несколько, включая абсолютку). Цена — по числу категорий, со скидкой тренерского списка.</p>
+        <p className="text-xs text-gray-500 mb-2">Вводите спортсменов; в колонке «Категории» появятся подходящие по полу, году рождения и весу — отметьте нужные (можно несколько, включая абсолютку). Цена — по числу категорий, единая для всех.</p>
         <RegisterGrid eventId={event.id} categories={categories} />
       </section>
 

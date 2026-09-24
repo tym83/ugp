@@ -17,17 +17,14 @@ export function selectTier(tiers: Tier[], at: Date): Tier | null {
 
 export type EntryPricing = {
   categoryCount: number; // число выбранных категорий (весовые + абсолютка) — каждая = отдельный старт
-  discountPerCategory?: number; // скидка ₽ с каждой категории (по ссылке/списку тренера); по умолчанию 0
 };
 
 /** Цена заявки атлета: первая категория по базовой цене, каждая следующая — по priceExtraCategory
  *  (по умолчанию = базовой). Абсолютка считается обычной доп. категорией.
- *  Тренерская скидка (discountPerCategory) вычитается с каждой выбранной категории. */
+ *  Единая цена регистрации для всех — без скидок. */
 export function priceEntry(tier: Tier, e: EntryPricing): number {
   const n = Math.max(0, Math.trunc(e.categoryCount));
   if (n === 0) return 0;
   const extra = tier.priceExtraCategory ?? tier.priceFirstCategory;
-  const gross = tier.priceFirstCategory + extra * (n - 1);
-  const discount = Math.max(0, Math.trunc(e.discountPerCategory ?? 0)) * n;
-  return Math.max(0, gross - discount);
+  return tier.priceFirstCategory + extra * (n - 1);
 }

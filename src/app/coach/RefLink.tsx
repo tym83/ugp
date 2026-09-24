@@ -2,7 +2,7 @@
 import { useState } from "react";
 
 /** Персональная реф-ссылка тренера на событие. Кто зарегистрируется по ней —
- *  идёт тренеру в зачёт и получает скидку. */
+ *  попадает в командный зачёт тренера. */
 export default function RefLink({ eventId, coachId, origin = "" }: { eventId: string; coachId: string; origin?: string }) {
   const path = `/register/${eventId}?ref=${coachId}`;
   const fullUrl = (origin || (typeof window !== "undefined" ? window.location.origin : "")) + path;
@@ -22,7 +22,7 @@ export default function RefLink({ eventId, coachId, origin = "" }: { eventId: st
     <div className="rounded border bg-blue-50 p-3">
       <p className="text-sm font-semibold text-blue-900">Ваша ссылка-приглашение</p>
       <p className="text-xs text-blue-800 mb-2">
-        Отправьте её ученикам: кто зарегистрируется по ней — попадёт в вашу команду и получит цену со скидкой.
+        Отправьте её ученикам: кто зарегистрируется по ней — попадёт в вашу команду (командный зачёт).
       </p>
       <div className="flex gap-2">
         <input readOnly value={fullUrl} onFocus={(e) => e.currentTarget.select()} className="flex-1 rounded border px-2 py-1 text-sm bg-white" />
