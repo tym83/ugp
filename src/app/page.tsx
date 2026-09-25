@@ -289,13 +289,13 @@ export default async function Home() {
         <div className="mx-auto max-w-5xl px-6 py-16">
           <div className={kicker}>Связаться</div>
           <h2 className="mt-3 text-3xl font-black uppercase tracking-tight">Хочешь стать частью турнира?</h2>
-          <p className="mt-3 text-lg text-[#cec8bc]">Спортсмен, школа, спонсор или медиа — напиши или позвони. По всем вопросам турнира — Эмиль.</p>
+          <p className="mt-3 text-lg text-[#cec8bc]">Спортсмен, школа, партнёр или медиа — напиши или позвони. По всем вопросам турнира — Эмиль.</p>
           <div className="mt-6 max-w-md">
             <ContactCard />
           </div>
           <div className="mt-8 flex flex-wrap items-center gap-3">
             <RegBtn big />
-            <Link href="/sponsors" className="rounded border border-white/25 px-6 py-4 font-bold uppercase tracking-wide hover:bg-white/10">Стать спонсором</Link>
+            <Link href="/sponsors" className="rounded border border-white/25 px-6 py-4 font-bold uppercase tracking-wide hover:bg-white/10">Стать партнёром</Link>
           </div>
         </div>
       </section>

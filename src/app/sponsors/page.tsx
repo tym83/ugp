@@ -3,11 +3,11 @@ import type { Metadata } from "next";
 import ContactCard from "@/components/ContactCard";
 
 export const metadata: Metadata = {
-  title: "Спонсорам — партнёрство и пакеты",
+  title: "Партнёрам — партнёрство и пакеты",
   description:
     "Встаньте у истоков большого события: охваты по пяти городам Урала, молодая платёжеспособная аудитория 20–45, пакеты партнёрства от Supporter до Title Partner. Скачайте презентацию.",
   openGraph: {
-    title: "Спонсорам — Underground Grappling",
+    title: "Партнёрам — Underground Grappling",
     description:
       "Охваты по Уралу, молодая аудитория, живой контакт с брендом и пакеты партнёрства. Скачайте презентацию.",
     images: ["/brand/hero-cover.jpg"],
@@ -69,7 +69,7 @@ const tiers: Tier[] = [
     items: [
       "Presenting одного блока: main card / Team Challenge / трансляция",
       "Логотип в digital и офлайне, presenting booth",
-      "Sponsor reads от ведущего, зона на площадке",
+      "Упоминания партнёра от ведущего, зона на площадке",
       "Гостевые билеты, один корпоративный формат",
     ],
   },
@@ -114,7 +114,7 @@ export default function SponsorsPage() {
           <Link href="/" className="text-sm text-[#cec8bc] hover:text-[#e3863d]">
             ← на главную
           </Link>
-          <p className={`${kicker} mt-8`}>Спонсорам</p>
+          <p className={`${kicker} mt-8`}>Партнёрам</p>
           <h1 className="mt-4 max-w-3xl font-black uppercase tracking-tight text-4xl sm:text-5xl md:text-6xl leading-[1.05]">
             Встаньте у истоков большого события
           </h1>
