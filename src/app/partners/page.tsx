@@ -97,7 +97,7 @@ const tiers: Tier[] = [
   },
 ];
 
-export default function SponsorsPage() {
+export default function PartnersPage() {
   return (
     <main className="min-h-screen bg-[#0d0b08] text-[#f4f0e8]">
       {/* Hero */}
@@ -125,7 +125,7 @@ export default function SponsorsPage() {
           </p>
           <div className="mt-8 flex flex-wrap gap-4">
             <a
-              href="/underground-grappling-sponsors.pdf"
+              href="/underground-grappling-partners.pdf"
               download
               className="inline-block rounded bg-[#e3863d] px-6 py-3 font-bold uppercase tracking-wide text-black hover:brightness-110"
             >
@@ -216,7 +216,7 @@ export default function SponsorsPage() {
           <div className="rounded border border-white/10 bg-white/5 p-8">
             <ContactCard className="border-0 bg-transparent p-0" />
             <a
-              href="/underground-grappling-sponsors.pdf"
+              href="/underground-grappling-partners.pdf"
               download
               className="mt-6 inline-block rounded bg-[#e3863d] px-6 py-3 font-bold uppercase tracking-wide text-black hover:brightness-110"
             >

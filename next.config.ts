@@ -40,6 +40,14 @@ const nextConfig: NextConfig = {
   // Emit a self-contained server bundle (.next/standalone/server.js) for Docker.
   output: "standalone",
 
+  // Старые адреса раздела «Спонсорам» (раздел переименован в «Партнёрам»).
+  async redirects() {
+    return [
+      { source: "/sponsors", destination: "/partners", permanent: true },
+      { source: "/underground-grappling-sponsors.pdf", destination: "/underground-grappling-partners.pdf", permanent: true },
+    ];
+  },
+
   async headers() {
     return [
       {
