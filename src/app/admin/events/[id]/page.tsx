@@ -99,9 +99,6 @@ export default async function EditEventPage({ params }: { params: Promise<{ id: 
               <input name="registrationClosesAt" type="datetime-local" defaultValue={dtLocal(event.registrationClosesAt)} className="w-full border rounded px-3 py-2" />
             </label>
           </div>
-          <label className="block text-sm text-gray-600 w-40">Комиссия тренера (₽)
-            <input name="coachCommission" type="number" min={0} defaultValue={event.coachCommission} className="w-full border rounded px-3 py-2" />
-          </label>
           <button className="rounded bg-blue-600 px-4 py-2 text-white">Сохранить</button>
         </form>
       </section>

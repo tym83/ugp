@@ -245,7 +245,7 @@ export default async function Home() {
             <div className="rounded-lg border border-white/10 bg-white/5 p-6">
               <div className="font-bold uppercase tracking-wide">Тренерам</div>
               <ul className="mt-3 space-y-1.5 text-sm text-[#cec8bc]">
-                <li>• Персональная ссылка — ученики регистрируются по ней дешевле</li>
+                <li>• Персональная ссылка — ученики идут в ваш командный зачёт</li>
                 <li>• Заявка всей команды в пару кликов, единый список</li>
                 <li>• Видите статусы заявок и оплаты своих спортсменов</li>
               </ul>

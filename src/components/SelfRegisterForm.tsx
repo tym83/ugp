@@ -23,7 +23,6 @@ export default function SelfRegisterForm({
   tiers,
   categories,
   coach = null,
-  refDiscount = 0,
   paymentInfo = null,
   defaults,
 }: {
@@ -31,7 +30,6 @@ export default function SelfRegisterForm({
   tiers: TierDTO[];
   categories: CatDTO[];
   coach?: { id: string; name: string } | null;
-  refDiscount?: number;
   paymentInfo?: string | null;
   defaults?: { fullName?: string; phone?: string; club?: string; birthDate?: string; sex?: "M" | "F"; belt?: string };
 }) {
@@ -94,10 +92,9 @@ export default function SelfRegisterForm({
 
   const pricePreview = useMemo(() => {
     if (!picked.size || !activeTier) return null;
-    const total = priceEntry(activeTier, { categoryCount: picked.size, discountPerCategory: refDiscount });
-    const full = priceEntry(activeTier, { categoryCount: picked.size });
-    return { total, full, tierName: activeTier.name };
-  }, [picked, activeTier, refDiscount]);
+    const total = priceEntry(activeTier, { categoryCount: picked.size });
+    return { total, tierName: activeTier.name };
+  }, [picked, activeTier]);
 
   const toggle = (id: string) =>
     setPicked((prev) => {
@@ -140,7 +137,7 @@ export default function SelfRegisterForm({
 
       {coach && (
         <div className="rounded border border-green-300 bg-green-50 p-3 text-sm text-green-800">
-          Вы регистрируетесь по приглашению тренера <b>{coach.name}</b> — цена со скидкой{refDiscount ? ` (−${refDiscount} ₽ за каждую категорию)` : ""}.
+          Вы регистрируетесь по приглашению тренера <b>{coach.name}</b> — заявка попадёт в его командный зачёт.
         </div>
       )}
 
@@ -258,13 +255,9 @@ export default function SelfRegisterForm({
         <div className="rounded bg-gray-100 border border-gray-300 px-3 py-2 text-sm text-gray-900">
           <div>
             Итого к оплате: <span className="font-bold text-base">{pricePreview.total} ₽</span>
-            {pricePreview.total < pricePreview.full && (
-              <span className="text-gray-500 line-through ml-2">{pricePreview.full} ₽</span>
-            )}
           </div>
           <div className="text-xs text-gray-600 mt-0.5">
             {picked.size} {picked.size === 1 ? "категория" : "категории(й)"} · тариф «{pricePreview.tierName}»
-            {refDiscount > 0 && coach ? ` · скидка тренера −${refDiscount} ₽/категория` : ""}
           </div>
         </div>
       )}

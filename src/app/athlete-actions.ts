@@ -91,8 +91,8 @@ export async function selfRegister(formData: FormData): Promise<SelfRegisterResu
   if (!chosen.length) return { ok: false, msg: "выбранные категории недоступны (пол/возраст)" };
   if (rejected.length) return { ok: false, msg: "часть выбранных категорий недоступна вам — обновите список" };
 
-  // Реф-код тренера (?ref=<userId тренера>): привязываем заявку к тренеру для зачёта комиссии
-  // и даём скидку. Валидируем, что это действительно тренер.
+  // Реф-код тренера (?ref=<userId тренера>): привязываем заявку к тренеру (командный зачёт).
+  // Валидируем, что это действительно тренер. Цена — единая, без скидок.
   const refId = String(formData.get("ref") ?? "").trim();
   let coachUserId: string | null = null;
   if (refId) {
@@ -105,8 +105,7 @@ export async function selfRegister(formData: FormData): Promise<SelfRegisterResu
   }));
   const tier = selectTier(tiers, new Date()) ?? tiers[0];
   if (!tier) return { ok: false, msg: "цены не настроены для события" };
-  const discountPerCategory = coachUserId ? event.coachReferralDiscount : 0;
-  const price = priceEntry(tier, { categoryCount: chosen.length, discountPerCategory });
+  const price = priceEntry(tier, { categoryCount: chosen.length });
 
   const disciplines = [...new Set(chosen.map((id) => allowed.get(id)!.discipline))];
   const absoluteAdded = chosen.some((id) => allowed.get(id)!.isAbsolute);

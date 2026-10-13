@@ -7,7 +7,7 @@ import {
   generateRoundRobin,
   type Participant,
 } from "./bracket";
-import { selectTier, priceEntry, coachTransferTotal, type Tier } from "./pricing";
+import { selectTier, priceEntry, type Tier } from "./pricing";
 import { weightFits, ageEligible, eligibleCategories, nativeCategory, type Cat } from "./eligibility";
 import { canMerge, needsMerge, suggestMergeTarget, ageBand, type MergeCat } from "./merge";
 import { computeTeamScores, type Placement } from "./teamscore";
@@ -98,13 +98,6 @@ describe("pricing", () => {
     expect(priceEntry(early, { categoryCount: 3 })).toBe(5000); // 2000 + 1500*2
     const late = tiers[1]; // extra=null → доп. по базовой
     expect(priceEntry(late, { categoryCount: 2 })).toBe(6000);
-  });
-  it("coachTransferTotal: комиссия 200 с каждого", () => {
-    const r = coachTransferTotal([2000, 3000, 3000], 200);
-    expect(r.gross).toBe(8000);
-    expect(r.commission).toBe(600);
-    expect(r.net).toBe(7400);
-    expect(r.count).toBe(3);
   });
 });
 
