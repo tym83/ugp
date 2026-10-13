@@ -7,12 +7,13 @@
 // Данные — JSON на stdin (персональные данные не хранятся в репозитории):
 //   { "event": "tankograd", "groups": [{ "club": "...", "clubMatch": "regex", "city": "...",
 //     "coach": "Фамилия", "disciplines": ["gi","nogi"],
-//     "athletes": [{ "fullName": "...", "birthDate": "YYYY-MM-DD", "sex": "M", "weight": 45.1 }] }] }
+//     "athletes": [{ "fullName": "...", "birthDate": "YYYY-MM-DD", "sex": "M", "weight": 45.1, "placeAsWeight"?: 62 }] }] }
 import { PrismaClient, type Prisma } from "@prisma/client";
 import { nativeCategory, type Cat } from "../../src/lib/domain/eligibility";
 import { selectTier, priceEntry, type Tier } from "../../src/lib/domain/pricing";
 
-type AthleteRow = { fullName: string; birthDate: string; sex: "M" | "F"; weight: number };
+// placeAsWeight — решение организатора поставить в категорию не по фактическому весу (перевес)
+type AthleteRow = { fullName: string; birthDate: string; sex: "M" | "F"; weight: number; placeAsWeight?: number };
 type Group = { club: string; clubMatch: string; city?: string; coach?: string; disciplines: ("gi" | "nogi")[]; athletes: AthleteRow[] };
 type Input = { event: string; groups: Group[] };
 
@@ -50,7 +51,7 @@ async function importGroup(tx: Prisma.TransactionClient, eventId: string, g: Gro
   for (const a of g.athletes) {
     const birthDate = new Date(a.birthDate);
     const birthYear = birthDate.getUTCFullYear();
-    const head = `- ${a.fullName}, ${a.birthDate.split("-").reverse().join(".")}, ${a.weight} кг`;
+    const head = `- ${a.fullName}, ${a.birthDate.split("-").reverse().join(".")}, ${a.weight} кг${a.placeAsWeight ? ` (ставим как ${a.placeAsWeight})` : ""}`;
 
     const same = await tx.athlete.findMany({ where: { fullName: a.fullName, birthDate } });
     const dup = same.length
@@ -63,7 +64,7 @@ async function importGroup(tx: Prisma.TransactionClient, eventId: string, g: Gro
 
     const chosen = g.disciplines.map((d) => ({
       d,
-      c: nativeCategory({ sex: a.sex, birthYear, weight: a.weight }, d, cats) as (Cat & { label: string }) | null,
+      c: nativeCategory({ sex: a.sex, birthYear, weight: a.placeAsWeight ?? a.weight }, d, cats) as (Cat & { label: string }) | null,
     }));
     const missing = chosen.filter((x) => !x.c).map((x) => x.d);
     if (missing.length) {
