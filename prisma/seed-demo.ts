@@ -1,8 +1,9 @@
 import type { PrismaClient } from "@prisma/client";
 import { hashPassword } from "../src/lib/auth/password";
 import { createEventFromPreset, tankogradPreset } from "../src/lib/data/preset";
+import { categorySlug } from "../src/lib/slug";
 
-/** Демо-наполнение (клуб, 5 ролевых аккаунтов, событие REG_OPEN, категории, абсолютка,
+/** Демо-наполнение (клуб, 5 ролевых аккаунтов, событие REG_OPEN, категории, абсолютка ги/ноу-ги,
  *  демо-регистрации). НЕ чистит БД — вызывающий решает про очистку.
  *  Используется и локальным сидом (с очисткой), и прод-сидом (только на пустой БД). */
 export async function seedDemo(prisma: PrismaClient) {
@@ -34,13 +35,18 @@ export async function seedDemo(prisma: PrismaClient) {
     ],
   });
 
-  const absolute = await prisma.category.create({
-    data: {
-      eventId: event.id, ageGroupCode: "adults-2008", ageGroupLabel: "Взрослые — Абсолютка",
-      birthYearFrom: 1930, birthYearTo: 2008, sex: "M", weightMin: null, weightMax: null, isOpenTop: true,
-      discipline: "gi", ruleFormat: "SUBMISSION_ONLY", isAbsolute: true, boutSeconds: 300, order: 9000,
-    },
-  });
+  const [absolute] = await Promise.all(
+    (["gi", "nogi"] as const).map((discipline, i) =>
+      prisma.category.create({
+        data: {
+          eventId: event.id, slug: categorySlug(event.slug!, { ageGroupCode: "adults-2008", sex: "M", discipline, weightMin: null, weightMax: null, isOpenTop: true, isAbsolute: true }),
+          ageGroupCode: "adults-2008", ageGroupLabel: "Взрослые — Абсолютка",
+          birthYearFrom: 1930, birthYearTo: 2008, sex: "M", weightMin: null, weightMax: null, isOpenTop: true,
+          discipline, ruleFormat: "SUBMISSION_ONLY", isAbsolute: true, boutSeconds: 300, order: 9000 + i,
+        },
+      })
+    )
+  );
 
   const kidCat = await prisma.category.findFirst({
     where: { eventId: event.id, ageGroupCode: "kids-2015-2016", sex: "M", discipline: "gi", weightMax: 27 },

@@ -7,15 +7,15 @@ type Group = {
   from: number; // birthYearFrom (ранний год)
   to: number; // birthYearTo (поздний год)
   rule: "AGP" | "SUBMISSION_ONLY";
-  m: number[]; // веса мальчиков/мужчин; последний с "+" пометкой ниже
-  f: number[]; // веса девочек/женщин
-  mOpenTop?: boolean;
+  m: number[]; // веса мальчиков/мужчин («до N»)
+  f: number[]; // веса девочек/женщин («до N»)
+  mOpenTop?: boolean; // добавить «свыше <последний вес>»
   fOpenTop?: boolean;
   // split: у взрослых/ветеранов весовые дублируются на «новичков» и «опытных».
   split?: boolean;
 };
 
-// Значение "N+" (свыше N) задаём как обычное N + флаг openTop на последнем элементе.
+// Флаг openTop добавляет после списка категорию «свыше <последний вес>».
 const GROUPS: Group[] = [
   { code: "kids-2019-2020", label: "Дети 2019–2020", from: 2019, to: 2020, rule: "AGP",
     m: [18, 20, 23, 26, 30, 34, 38, 46], f: [17, 19, 22, 25, 29, 33, 37, 44] },
@@ -30,9 +30,9 @@ const GROUPS: Group[] = [
   { code: "juniors-2009-2010", label: "Юниоры 2009–2010", from: 2009, to: 2010, rule: "AGP",
     m: [46, 50, 55, 60, 66, 73, 81], f: [40, 44, 48, 52, 57, 63, 79, 82] },
   { code: "adults-2008", label: "Взрослые 2008 и ст.", from: 1930, to: 2008, rule: "SUBMISSION_ONLY",
-    m: [66, 77, 88, 99], f: [60, 70, 80], mOpenTop: true, fOpenTop: true, split: true },
+    m: [66, 77, 88, 99], f: [60, 70], mOpenTop: true, fOpenTop: true, split: true },
   { code: "veterans-1991", label: "Ветераны 1991 и ст.", from: 1930, to: 1991, rule: "SUBMISSION_ONLY",
-    m: [66, 77, 88, 99], f: [], mOpenTop: true, split: true },
+    m: [66, 77, 88], f: [], mOpenTop: true, split: true },
 ];
 
 export type CategoryLevel = "all" | "novice" | "experienced";
@@ -62,30 +62,38 @@ function expandWeights(
   level: CategoryLevel,
   startOrder: number
 ): CategorySpec[] {
-  const out: CategorySpec[] = [];
-  let prev: number | null = null;
-  weights.forEach((w, i) => {
-    const isLast = i === weights.length - 1;
-    const open = isLast && openTop;
+  const base = {
+    ageGroupCode: g.code,
+    ageGroupLabel: g.label,
+    birthYearFrom: g.from,
+    birthYearTo: g.to,
+    sex,
+    discipline,
+    ruleFormat: g.rule,
+    level,
+    boutSeconds: g.rule === "SUBMISSION_ONLY" ? 300 : 240,
+  };
+  const out: CategorySpec[] = weights.map((w, i) => ({
+    ...base,
+    weightMin: i > 0 ? weights[i - 1] : null,
+    weightMax: w,
+    isOpenTop: false,
+    order: startOrder + i,
+  }));
+  if (openTop) {
     out.push({
-      ageGroupCode: g.code,
-      ageGroupLabel: g.label,
-      birthYearFrom: g.from,
-      birthYearTo: g.to,
-      sex,
-      discipline,
-      weightMin: prev,
-      weightMax: open ? null : w,
-      isOpenTop: open,
-      ruleFormat: g.rule,
-      level,
-      boutSeconds: g.rule === "SUBMISSION_ONLY" ? 300 : 240,
-      order: startOrder + i,
+      ...base,
+      weightMin: weights[weights.length - 1] ?? null,
+      weightMax: null,
+      isOpenTop: true,
+      order: startOrder + weights.length,
     });
-    prev = w;
-  });
+  }
   return out;
 }
+
+/** Число категорий, которое expandWeights создаёт для пола. */
+const countFor = (weights: number[], openTop?: boolean) => weights.length + (openTop ? 1 : 0);
 
 /** Все категории пресета для обеих дисциплин.
  *  У split-групп (взрослые/ветераны) весовые дублируются на новичков и опытных. */
@@ -96,8 +104,8 @@ export function tankogradCategories(): CategorySpec[] {
     const levels: CategoryLevel[] = g.split ? ["novice", "experienced"] : ["all"];
     for (const level of levels) {
       for (const disc of ["gi", "nogi"] as const) {
-        if (g.m.length) out.push(...expandWeights(g, "M", g.m, !!g.mOpenTop, disc, level, order)), (order += g.m.length);
-        if (g.f.length) out.push(...expandWeights(g, "F", g.f, !!g.fOpenTop, disc, level, order)), (order += g.f.length);
+        if (g.m.length) out.push(...expandWeights(g, "M", g.m, !!g.mOpenTop, disc, level, order)), (order += countFor(g.m, g.mOpenTop));
+        if (g.f.length) out.push(...expandWeights(g, "F", g.f, !!g.fOpenTop, disc, level, order)), (order += countFor(g.f, g.fOpenTop));
       }
     }
   }
