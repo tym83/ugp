@@ -31,8 +31,9 @@ function cloneable(c: Category): Omit<Category, (typeof NOT_CLONED)[number]> {
 
 async function splitTopCategory(tx: Prisma.TransactionClient, evSlug: string, top: Category) {
   const label = `${top.level}/${top.discipline}`;
+  // bracketVersion > 0 без матчей — пустая пересборка, она делению не мешает
   const hasMatches = await tx.match.count({ where: { categoryId: top.id } });
-  if (top.bracketVersion > 0 || hasMatches > 0) {
+  if (hasMatches > 0) {
     throw new Error(`${label}: у «свыше ${OLD_TOP}» уже есть сетка — делить нельзя`);
   }
 
