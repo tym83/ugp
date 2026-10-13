@@ -5,7 +5,7 @@ import { signOutAction } from "@/app/auth-actions";
 const NAV = [
   { href: "/guide", label: "Грэпплинг" },
   { href: "/athletes", label: "Спортсменам" },
-  { href: "/sponsors", label: "Партнёрам" },
+  { href: "/partners", label: "Партнёрам" },
   { href: "/reglament", label: "Положение" },
 ];
 

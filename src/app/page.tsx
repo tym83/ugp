@@ -295,7 +295,7 @@ export default async function Home() {
           </div>
           <div className="mt-8 flex flex-wrap items-center gap-3">
             <RegBtn big />
-            <Link href="/sponsors" className="rounded border border-white/25 px-6 py-4 font-bold uppercase tracking-wide hover:bg-white/10">Стать партнёром</Link>
+            <Link href="/partners" className="rounded border border-white/25 px-6 py-4 font-bold uppercase tracking-wide hover:bg-white/10">Стать партнёром</Link>
           </div>
         </div>
       </section>

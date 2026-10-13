@@ -12,7 +12,7 @@ async function login(page: Page, email: string) {
 }
 
 test("публичные страницы открываются", async ({ page }) => {
-  for (const path of ["/", "/login", "/coaches", "/sponsors", "/privacy"]) {
+  for (const path of ["/", "/login", "/coaches", "/partners", "/privacy"]) {
     const res = await page.goto(path);
     expect(res?.status(), `status ${path}`).toBeLessThan(400);
   }
