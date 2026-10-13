@@ -104,8 +104,14 @@ export function tankogradCategories(): CategorySpec[] {
     const levels: CategoryLevel[] = g.split ? ["novice", "experienced"] : ["all"];
     for (const level of levels) {
       for (const disc of ["gi", "nogi"] as const) {
-        if (g.m.length) out.push(...expandWeights(g, "M", g.m, !!g.mOpenTop, disc, level, order)), (order += countFor(g.m, g.mOpenTop));
-        if (g.f.length) out.push(...expandWeights(g, "F", g.f, !!g.fOpenTop, disc, level, order)), (order += countFor(g.f, g.fOpenTop));
+        if (g.m.length) {
+          out.push(...expandWeights(g, "M", g.m, !!g.mOpenTop, disc, level, order));
+          order += countFor(g.m, g.mOpenTop);
+        }
+        if (g.f.length) {
+          out.push(...expandWeights(g, "F", g.f, !!g.fOpenTop, disc, level, order));
+          order += countFor(g.f, g.fOpenTop);
+        }
       }
     }
   }

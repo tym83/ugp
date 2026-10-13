@@ -22,9 +22,11 @@ const eventSlug = eventArg > 0 ? process.argv[eventArg + 1] : "tankograd";
 class DryRun extends Error {}
 
 /** Поля категории для копии (без идентичности, связей и состояния сетки). */
-function cloneable(c: Category) {
-  const { id: _id, slug: _slug, mergedIntoId: _m, bracketVersion: _b, frozenAt: _f, ...rest } = c;
-  return rest;
+const NOT_CLONED = ["id", "slug", "mergedIntoId", "bracketVersion", "frozenAt"] as const;
+function cloneable(c: Category): Omit<Category, (typeof NOT_CLONED)[number]> {
+  const rest: Partial<Category> = { ...c };
+  for (const k of NOT_CLONED) delete rest[k];
+  return rest as Omit<Category, (typeof NOT_CLONED)[number]>;
 }
 
 async function splitTopCategory(tx: Prisma.TransactionClient, evSlug: string, top: Category) {
