@@ -7,13 +7,14 @@
 // Данные — JSON на stdin (персональные данные не хранятся в репозитории):
 //   { "event": "tankograd", "groups": [{ "club": "...", "clubMatch": "regex", "city": "...",
 //     "coach": "Фамилия", "disciplines": ["gi","nogi"],
-//     "athletes": [{ "fullName": "...", "birthDate": "YYYY-MM-DD", "sex": "M", "weight": 45.1, "placeAsWeight"?: 62 }] }] }
+//     "athletes": [{ "fullName": "...", "birthDate": "YYYY-MM-DD" | "birthYear": 2012, "sex": "M", "weight": 45.1, "placeAsWeight"?: 62 }] }] }
 import { PrismaClient, type Prisma } from "@prisma/client";
 import { nativeCategory, type Cat } from "../../src/lib/domain/eligibility";
 import { selectTier, priceEntry, type Tier } from "../../src/lib/domain/pricing";
 
 // placeAsWeight — решение организатора поставить в категорию не по фактическому весу (перевес)
-type AthleteRow = { fullName: string; birthDate: string; sex: "M" | "F"; weight: number; placeAsWeight?: number };
+// birthYear — когда в заявке только год: дата пишется как 1 января, дубли ищутся по году
+type AthleteRow = { fullName: string; birthDate?: string; birthYear?: number; sex: "M" | "F"; weight: number; placeAsWeight?: number };
 type Group = { club: string; clubMatch: string; city?: string; coach?: string; disciplines: ("gi" | "nogi")[]; athletes: AthleteRow[] };
 type Input = { event: string; groups: Group[] };
 
@@ -49,11 +50,16 @@ async function importGroup(tx: Prisma.TransactionClient, eventId: string, g: Gro
   console.log(`\n## ${club.name}${g.city ? ` (${g.city})` : ""} — ${clubNote}; тренер ${g.coach ?? "—"}: ${coachUserId ? "аккаунт найден" : "аккаунта нет"}`);
 
   for (const a of g.athletes) {
-    const birthDate = new Date(a.birthDate);
+    const birthDate = new Date(a.birthDate ?? `${a.birthYear}-01-01`);
     const birthYear = birthDate.getUTCFullYear();
-    const head = `- ${a.fullName}, ${a.birthDate.split("-").reverse().join(".")}, ${a.weight} кг${a.placeAsWeight ? ` (ставим как ${a.placeAsWeight})` : ""}`;
+    if (Number.isNaN(birthYear)) throw new Error(`${a.fullName}: нет даты/года рождения`);
+    const born = a.birthDate ? a.birthDate.split("-").reverse().join(".") : `${birthYear} г.р.`;
+    const head = `- ${a.fullName}, ${born}, ${a.weight} кг${a.placeAsWeight ? ` (ставим как ${a.placeAsWeight})` : ""}`;
 
-    const same = await tx.athlete.findMany({ where: { fullName: a.fullName, birthDate } });
+    const birthWhere = a.birthDate
+      ? birthDate
+      : { gte: new Date(`${birthYear}-01-01`), lt: new Date(`${birthYear + 1}-01-01`) };
+    const same = await tx.athlete.findMany({ where: { fullName: a.fullName, birthDate: birthWhere } });
     const dup = same.length
       ? await tx.eventEntry.findFirst({ where: { eventId, athleteId: { in: same.map((s) => s.id) } } })
       : null;
