@@ -129,6 +129,17 @@ describe("Саморегистрация: само-выбор категорий
     expect(r2.ok).toBe(false);
     expect(r2.msg).toMatch(/уже заявлен/i);
   });
+  it("S064a один аккаунт заявляет двух детей → две заявки, у второго свой профиль", async () => {
+    const { e, kids } = await regEvent();
+    const parent = { sex: "M", consent: true, parentName: "Родитель Братьев", parentConsent: true };
+    const r1 = await selfRegister(selfFd({ eventId: e.id, fullName: "Старший Брат", birthDate: "2015-03-03", ...parent }, [kids.id]));
+    const r2 = await selfRegister(selfFd({ eventId: e.id, fullName: "Младший Брат", birthDate: "2016-04-04", ...parent }, [kids.id]));
+    expect(r1.ok && r2.ok).toBe(true);
+    const older = await prisma.athlete.findFirst({ where: { fullName: "Старший Брат" } });
+    const younger = await prisma.athlete.findFirst({ where: { fullName: "Младший Брат" } });
+    expect(younger?.id).not.toBe(older?.id);
+    expect(await prisma.eventEntry.count({ where: { eventId: e.id } })).toBe(2);
+  });
   it("S065 взрослый выбирает ДЕТСКУЮ категорию → отказ (граница дети↔взрослые)", async () => {
     const { e, kids } = await regEvent();
     const r = await selfRegister(selfFd({ eventId: e.id, fullName: "Взрослый В Детской", ...adult }, [kids.id]));
