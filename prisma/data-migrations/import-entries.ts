@@ -1,6 +1,6 @@
 // Импорт групповых заявок, присланных организатору (docx/мессенджеры), в событие.
 // Категория — «родная» по полу, году рождения и весу (как подсказывает регистрация);
-// клуб ищется по шаблону и создаётся при отсутствии; тренер — по фамилии среди COACH.
+// клуб ищется по шаблону и создаётся при отсутствии (не указан — без клуба); тренер — по фамилии среди COACH.
 // Дубли (ФИО + дата рождения уже заявлены на событие) пропускаются.
 // По умолчанию dry-run (транзакция откатывается), запись — с флагом --apply.
 //
@@ -15,7 +15,7 @@ import { selectTier, priceEntry, type Tier } from "../../src/lib/domain/pricing"
 // placeAsWeight — решение организатора поставить в категорию не по фактическому весу (перевес)
 // birthYear — когда в заявке только год: дата пишется как 1 января, дубли ищутся по году
 type AthleteRow = { fullName: string; birthDate?: string; birthYear?: number; sex: "M" | "F"; weight: number; placeAsWeight?: number };
-type Group = { club: string; clubMatch: string; city?: string; coach?: string; disciplines: ("gi" | "nogi")[]; athletes: AthleteRow[] };
+type Group = { club?: string; clubMatch?: string; city?: string; coach?: string; disciplines: ("gi" | "nogi")[]; athletes: AthleteRow[] };
 type Input = { event: string; groups: Group[] };
 
 const prisma = new PrismaClient();
@@ -34,11 +34,14 @@ async function readStdin(): Promise<string> {
 }
 
 async function importGroup(tx: Prisma.TransactionClient, eventId: string, g: Group, cats: (Cat & { label: string })[], tier: Tier) {
-  const re = new RegExp(g.clubMatch, "i");
-  const clubs = await tx.club.findMany();
-  let club = clubs.find((c) => re.test(c.name));
-  const clubNote = club ? `клуб найден: «${club.name}»` : `клуб создан: «${g.club}»`;
-  if (!club) club = await tx.club.create({ data: { name: g.club, city: g.city ?? null } });
+  let club: { id: string; name: string } | null = null;
+  let clubNote = "без клуба";
+  if (g.club) {
+    const re = new RegExp(g.clubMatch ?? g.club, "i");
+    club = (await tx.club.findMany()).find((c) => re.test(c.name)) ?? null;
+    clubNote = club ? `клуб найден: «${club.name}»` : `клуб создан: «${g.club}»`;
+    if (!club) club = await tx.club.create({ data: { name: g.club, city: g.city ?? null } });
+  }
 
   let coachUserId: string | null = null;
   if (g.coach) {
@@ -47,7 +50,7 @@ async function importGroup(tx: Prisma.TransactionClient, eventId: string, g: Gro
     });
     coachUserId = coach?.id ?? null;
   }
-  console.log(`\n## ${club.name}${g.city ? ` (${g.city})` : ""} — ${clubNote}; тренер ${g.coach ?? "—"}: ${coachUserId ? "аккаунт найден" : "аккаунта нет"}`);
+  console.log(`\n## ${club?.name ?? "—"}${g.city ? ` (${g.city})` : ""} — ${clubNote}; тренер ${g.coach ?? "—"}: ${coachUserId ? "аккаунт найден" : "аккаунта нет"}`);
 
   for (const a of g.athletes) {
     const birthDate = new Date(a.birthDate ?? `${a.birthYear}-01-01`);
@@ -79,9 +82,9 @@ async function importGroup(tx: Prisma.TransactionClient, eventId: string, g: Gro
     }
 
     const athlete =
-      same.find((s) => s.clubId === club.id) ??
+      same.find((s) => s.clubId === (club?.id ?? null)) ??
       (await tx.athlete.create({
-        data: { fullName: a.fullName, birthDate, sex: a.sex, city: g.city ?? null, clubId: club.id, coachUserId },
+        data: { fullName: a.fullName, birthDate, sex: a.sex, city: g.city ?? null, clubId: club?.id ?? null, coachUserId },
       }));
     const found = chosen.map((x) => x.c!);
     const entry = await tx.eventEntry.create({

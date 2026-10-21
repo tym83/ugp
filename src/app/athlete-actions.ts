@@ -118,7 +118,11 @@ export async function selfRegister(formData: FormData): Promise<SelfRegisterResu
   }
 
   try {
-    let existingAth = user ? await prisma.athlete.findUnique({ where: { userId: user.id } }) : null;
+    // Один аккаунт может заявлять нескольких детей: профиль аккаунта берём, только если заявляют
+    // именно его, иначе ищем атлета по ФИО и дате рождения или создаём нового.
+    const own = await prisma.athlete.findUnique({ where: { userId: user.id } });
+    let existingAth =
+      own && own.fullName === d.fullName && own.birthDate.getTime() === dob.getTime() ? own : null;
     if (!existingAth) {
       existingAth = await prisma.athlete.findFirst({ where: { fullName: d.fullName, birthDate: dob } });
     }
@@ -138,7 +142,7 @@ export async function selfRegister(formData: FormData): Promise<SelfRegisterResu
           ...(clubId ? { clubId } : {}),
           ...(d.belt ? { belt: d.belt } : {}),
           ...(isMinor ? { parentName: d.parentName, parentConsent: true } : {}),
-          ...(user && !existingAth.userId ? { userId: user.id } : {}),
+          ...(!own && !existingAth.userId ? { userId: user.id } : {}),
         },
       });
     } else {
@@ -148,7 +152,7 @@ export async function selfRegister(formData: FormData): Promise<SelfRegisterResu
           phone: d.phone || null,
           clubId,
           belt: d.belt || null,
-          userId: user?.id ?? null,
+          userId: own ? null : user.id,
           parentName: isMinor ? d.parentName : null,
           parentConsent: isMinor ? true : false,
         },
