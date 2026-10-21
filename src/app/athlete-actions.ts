@@ -169,7 +169,7 @@ export async function selfRegister(formData: FormData): Promise<SelfRegisterResu
       data: {
         athleteId, eventId: d.eventId,
         source: coachUserId ? "referral" : "self",
-        coachUserId,
+        coachUserId, submittedByUserId: user.id,
         tierName: tier.name, disciplines: disciplines.join(","),
         absoluteAdded, priceTotal: price,
       },

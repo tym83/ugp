@@ -14,8 +14,13 @@ type Athlete = { id: string; fullName: string };
 async function resolveAthletes(searchId?: string): Promise<{ list: Athlete[]; via: string }> {
   const user = await getCurrentUser();
   if (user) {
-    const linked = await prisma.athlete.findUnique({ where: { userId: user.id }, select: { id: true, fullName: true } });
-    if (linked) return { list: [linked], via: "user" };
+    // свой профиль + все, кого заявили с этого аккаунта (родитель с несколькими детьми)
+    const linked = await prisma.athlete.findMany({
+      where: { OR: [{ userId: user.id }, { entries: { some: { submittedByUserId: user.id } } }] },
+      select: { id: true, fullName: true },
+      orderBy: { fullName: "asc" },
+    });
+    if (linked.length) return { list: linked, via: "user" };
     // авторизован, но профиль не привязан — попробуем по совпадению ФИО
     const byName = await prisma.athlete.findMany({ where: { fullName: user.fullName }, select: { id: true, fullName: true } });
     if (byName.length) return { list: byName, via: "name" };
@@ -106,6 +111,13 @@ export default async function MePage({ searchParams }: { searchParams: Promise<{
     return ahead;
   };
 
+  // при нескольких детях на аккаунте подписываем, чья схватка
+  const meOf = (m: (typeof matches)[number]) => {
+    if (list.length < 2) return null;
+    const meId = m.slotAAthleteId && athleteIds.includes(m.slotAAthleteId) ? m.slotAAthleteId : m.slotBAthleteId;
+    return meId ? (nameById.get(meId) ?? null) : null;
+  };
+
   const oppOf = (m: (typeof matches)[number]) => {
     const meIsA = m.slotAAthleteId && athleteIds.includes(m.slotAAthleteId);
     const oppId = meIsA ? m.slotBAthleteId : m.slotAAthleteId;
@@ -124,7 +136,10 @@ export default async function MePage({ searchParams }: { searchParams: Promise<{
             {entries.map((e) => (
               <li key={e.id} className="rounded-lg border p-3 text-sm">
                 <div className="flex items-center justify-between gap-3">
-                  <span className="min-w-0 break-words font-medium">{e.event.name}</span>
+                  <span className="min-w-0 break-words font-medium">
+                    {list.length > 1 && <span className="block">{nameById.get(e.athleteId)}</span>}
+                    <span className={list.length > 1 ? "font-normal text-gray-600" : undefined}>{e.event.name}</span>
+                  </span>
                   <span
                     className={
                       "shrink-0 rounded px-2 py-0.5 text-xs font-semibold " +
@@ -165,6 +180,7 @@ export default async function MePage({ searchParams }: { searchParams: Promise<{
                       </div>
                     )}
                     <div className="min-w-0 flex-1">
+                      {meOf(m) && <div className="text-xs font-semibold uppercase tracking-wide text-gray-500 break-words">{meOf(m)}</div>}
                       <div className="text-lg font-semibold break-words">{oppOf(m)}</div>
                       <div className="text-sm text-gray-600 break-words">
                         {m.category.event.name} · {matchLabel(m.roundNumber, m.isBronzeMatch)}
@@ -197,6 +213,7 @@ export default async function MePage({ searchParams }: { searchParams: Promise<{
               return (
                 <li key={m.id} className="flex flex-col gap-1 rounded-lg border p-3 sm:flex-row sm:items-center sm:justify-between">
                   <span className="min-w-0 break-words">
+                    {meOf(m) && <span className="font-medium">{meOf(m)} — </span>}
                     {oppOf(m)} <span className="text-gray-400">· {m.category.event.name}</span>
                   </span>
                   <span className={"shrink-0 font-semibold " + (won ? "text-green-700" : "text-red-600")}>

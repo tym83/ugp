@@ -129,8 +129,10 @@ describe("Саморегистрация: само-выбор категорий
     expect(r2.ok).toBe(false);
     expect(r2.msg).toMatch(/уже заявлен/i);
   });
-  it("S064a один аккаунт заявляет двух детей → две заявки, у второго свой профиль", async () => {
+  it("S064a один аккаунт заявляет двух детей → две заявки, у второго свой профиль, обе видны с аккаунта", async () => {
     const { e, kids } = await regEvent();
+    const u = await makeUser(["ATHLETE"]);
+    actAs(u.id);
     const parent = { sex: "M", consent: true, parentName: "Родитель Братьев", parentConsent: true };
     const r1 = await selfRegister(selfFd({ eventId: e.id, fullName: "Старший Брат", birthDate: "2015-03-03", ...parent }, [kids.id]));
     const r2 = await selfRegister(selfFd({ eventId: e.id, fullName: "Младший Брат", birthDate: "2016-04-04", ...parent }, [kids.id]));
@@ -139,6 +141,11 @@ describe("Саморегистрация: само-выбор категорий
     const younger = await prisma.athlete.findFirst({ where: { fullName: "Младший Брат" } });
     expect(younger?.id).not.toBe(older?.id);
     expect(await prisma.eventEntry.count({ where: { eventId: e.id } })).toBe(2);
+    // так их находит «Мой кабинет»
+    const mine = await prisma.athlete.findMany({
+      where: { OR: [{ userId: u.id }, { entries: { some: { submittedByUserId: u.id } } }] },
+    });
+    expect(mine.map((a) => a.fullName).sort()).toEqual(["Младший Брат", "Старший Брат"]);
   });
   it("S065 взрослый выбирает ДЕТСКУЮ категорию → отказ (граница дети↔взрослые)", async () => {
     const { e, kids } = await regEvent();
