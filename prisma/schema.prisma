@@ -182,6 +182,7 @@ model EventEntry {
   eventId            String
   source             String   @default("self")
   coachUserId        String?
+  submittedByUserId  String? // аккаунт, с которого подана самозаявка (родитель может заявить нескольких детей)
   tierName           String?
   disciplines        String   @default("")
   absoluteAdded      Boolean  @default(false)
@@ -197,6 +198,7 @@ model EventEntry {
   @@unique([athleteId, eventId])
   @@index([eventId])
   @@index([coachUserId])
+  @@index([submittedByUserId])
 }
 
 model Registration {
