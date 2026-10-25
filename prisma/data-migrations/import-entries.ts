@@ -6,7 +6,7 @@
 //
 // Данные — JSON на stdin (персональные данные не хранятся в репозитории):
 //   { "event": "tankograd", "groups": [{ "club": "...", "clubMatch": "regex", "city": "...",
-//     "coach": "Фамилия", "disciplines": ["gi","nogi"],
+//     "coach": "Фамилия", "disciplines": ["gi","nogi"], "level"?: "novice" | "experienced",
 //     "athletes": [{ "fullName": "...", "birthDate": "YYYY-MM-DD" | "birthYear": 2012, "sex": "M", "weight": 45.1, "placeAsWeight"?: 62 }] }] }
 import { PrismaClient, type Prisma } from "@prisma/client";
 import { nativeCategory, type Cat } from "../../src/lib/domain/eligibility";
@@ -15,7 +15,8 @@ import { selectTier, priceEntry, type Tier } from "../../src/lib/domain/pricing"
 // placeAsWeight — решение организатора поставить в категорию не по фактическому весу (перевес)
 // birthYear — когда в заявке только год: дата пишется как 1 января, дубли ищутся по году
 type AthleteRow = { fullName: string; birthDate?: string; birthYear?: number; sex: "M" | "F"; weight: number; placeAsWeight?: number };
-type Group = { club?: string; clubMatch?: string; city?: string; coach?: string; disciplines: ("gi" | "nogi")[]; athletes: AthleteRow[] };
+// level — линейка взрослых/ветеранов (новички/опытные); у детей категории «all», уровень не нужен
+type Group = { club?: string; clubMatch?: string; city?: string; coach?: string; disciplines: ("gi" | "nogi")[]; level?: string; athletes: AthleteRow[] };
 type Input = { event: string; groups: Group[] };
 
 const prisma = new PrismaClient();
@@ -73,7 +74,7 @@ async function importGroup(tx: Prisma.TransactionClient, eventId: string, g: Gro
 
     const chosen = g.disciplines.map((d) => ({
       d,
-      c: nativeCategory({ sex: a.sex, birthYear, weight: a.placeAsWeight ?? a.weight }, d, cats) as (Cat & { label: string }) | null,
+      c: nativeCategory({ sex: a.sex, birthYear, weight: a.placeAsWeight ?? a.weight, level: g.level }, d, cats) as (Cat & { label: string }) | null,
     }));
     const missing = chosen.filter((x) => !x.c).map((x) => x.d);
     if (missing.length) {
