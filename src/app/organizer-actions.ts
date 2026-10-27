@@ -524,14 +524,19 @@ export async function generateAbsoluteBracket(
 }
 
 /** Подтверждение оплаты взноса организатором (ручной трекинг). */
-export async function setEntryPaid(entryId: string, paid: boolean): Promise<{ ok: boolean; msg: string }> {
+export type PaymentKind = "PAID" | "LATER" | "FREE";
+
+// Публично заявка с любой отметкой выглядит оплаченной; реальный вид оплаты видят только организаторы.
+export async function setEntryPayment(entryId: string, kind: PaymentKind | null): Promise<{ ok: boolean; msg: string }> {
   await requireRole("ORGANIZER", "ADMIN");
   const entry = await prisma.eventEntry.findUnique({ where: { id: entryId } });
   if (!entry) return { ok: false, msg: "Заявка не найдена" };
+  if (kind && !["PAID", "LATER", "FREE"].includes(kind)) return { ok: false, msg: "Неизвестный вид оплаты" };
+  const paid = kind !== null;
   await prisma.eventEntry.update({
     where: { id: entryId },
-    data: { paid, paidAt: paid ? new Date() : null },
+    data: { paid, paymentKind: kind, paidAt: paid ? (entry.paid ? entry.paidAt : new Date()) : null },
   });
   revalidatePath(`/organizer/${entry.eventId}`);
-  return { ok: true, msg: paid ? "Отмечено оплаченным" : "Отметка снята" };
+  return { ok: true, msg: paid ? "Отметка сохранена" : "Отметка снята" };
 }

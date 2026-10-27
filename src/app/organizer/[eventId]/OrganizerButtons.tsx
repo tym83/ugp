@@ -1,6 +1,6 @@
 "use client";
 import { useTransition, useState } from "react";
-import { applyMerge, setWeighInLock, setEntryPaid } from "@/app/organizer-actions";
+import { applyMerge, setWeighInLock, setEntryPayment, type PaymentKind } from "@/app/organizer-actions";
 
 export function MergeButton({ sourceId, targetId, targetLabel }: { sourceId: string; targetId: string; targetLabel: string }) {
   const [pending, start] = useTransition();
@@ -19,25 +19,37 @@ export function MergeButton({ sourceId, targetId, targetLabel }: { sourceId: str
   );
 }
 
-export function PaidToggle({ entryId, paid }: { entryId: string; paid: boolean }) {
+const PAYMENT_OPTIONS: { value: PaymentKind | ""; label: string }[] = [
+  { value: "", label: "не оплачено" },
+  { value: "PAID", label: "оплатил" },
+  { value: "LATER", label: "оплатит позже" },
+  { value: "FREE", label: "бесплатно" },
+];
+
+// Любой вариант, кроме «не оплачено», публично показывается как «оплачено».
+export function PaymentSelect({ entryId, kind }: { entryId: string; kind: PaymentKind | null }) {
   const [pending, start] = useTransition();
-  const [state, setState] = useState(paid);
+  const [state, setState] = useState<PaymentKind | "">(kind ?? "");
   return (
-    <button
+    <select
       disabled={pending}
-      onClick={() =>
+      value={state}
+      onChange={(ev) => {
+        const next = ev.target.value as PaymentKind | "";
         start(async () => {
-          const r = await setEntryPaid(entryId, !state);
-          if (r.ok) setState(!state);
-        })
-      }
+          const r = await setEntryPayment(entryId, next || null);
+          if (r.ok) setState(next);
+        });
+      }}
       className={
-        "rounded px-2 py-0.5 text-xs font-semibold text-white disabled:opacity-50 " +
-        (state ? "bg-green-600" : "bg-gray-400")
+        "rounded border px-1 py-0.5 text-xs font-semibold disabled:opacity-50 " +
+        (state === "PAID" ? "bg-green-100 text-green-800" : state === "" ? "bg-amber-200 text-amber-900" : "bg-sky-100 text-sky-900")
       }
     >
-      {pending ? "…" : state ? "оплачено ✓" : "отметить оплату"}
-    </button>
+      {PAYMENT_OPTIONS.map((o) => (
+        <option key={o.value} value={o.value}>{o.label}</option>
+      ))}
+    </select>
   );
 }
 

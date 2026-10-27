@@ -23,7 +23,7 @@ import { makeToken, makeUser, makeEvent, makeCategory, makeAthlete, registerAthl
 import { selfRegister } from "@/app/athlete-actions";
 import { registerGroup, togglePaidAction } from "@/app/coach-actions";
 import { updateAthlete, moveRegistration } from "@/app/participant-actions";
-import { weighInAndAdmit, setWeighInLock, applyMerge, swapSeeds, moveAthleteSeed, findBracketConflicts, resolveConflict, addToAbsolute, generateAbsoluteBracket } from "@/app/organizer-actions";
+import { weighInAndAdmit, setWeighInLock, setEntryPayment, applyMerge, swapSeeds, moveAthleteSeed, findBracketConflicts, resolveConflict, addToAbsolute, generateAbsoluteBracket } from "@/app/organizer-actions";
 import { createEvent, setEventStatus, addCategory, addPriceTier, createUser, assignRefereeToMat } from "@/app/admin-actions";
 import { buildBracketAction, submitResultAction } from "@/app/actions";
 import { signUpAction } from "@/app/auth-actions";
@@ -311,6 +311,22 @@ describe("Регистрация тренером группы + оплата (S
     await togglePaidAction(entry!.id, false);
     const after = await prisma.eventEntry.findUnique({ where: { id: entry!.id } });
     expect(after?.paidToCoach).toBe(false);
+  });
+  it("S083a организатор: «оплатит позже» и «бесплатно» публично paid=true, вид оплаты сохраняется; судья — throw", async () => {
+    const { e, light } = await regEvent();
+    const ath = await makeAthlete({ fullName: "Вид Оплаты" });
+    const { entry } = await registerAthlete(e.id, light.id, ath.id);
+    actAs((await makeUser(["ORGANIZER"])).id);
+    for (const kind of ["LATER", "FREE", "PAID"] as const) {
+      expect((await setEntryPayment(entry.id, kind)).ok).toBe(true);
+      const after = await prisma.eventEntry.findUnique({ where: { id: entry.id } });
+      expect([after?.paid, after?.paymentKind]).toEqual([true, kind]);
+    }
+    await setEntryPayment(entry.id, null);
+    const cleared = await prisma.eventEntry.findUnique({ where: { id: entry.id } });
+    expect([cleared?.paid, cleared?.paymentKind, cleared?.paidAt]).toEqual([false, null, null]);
+    actAs((await makeUser(["REFEREE"])).id);
+    await expect(setEntryPayment(entry.id, "PAID")).rejects.toThrow();
   });
   it("S084 IDOR: чужую заявку тренер оплатить НЕ может → throw", async () => {
     const { e, light } = await regEvent();
