@@ -188,7 +188,8 @@ model EventEntry {
   absoluteAdded      Boolean  @default(false)
   priceTotal         Int      @default(0)
   paidToCoach        Boolean  @default(false)
-  paid               Boolean  @default(false) // подтверждение оплаты взноса организатором
+  paid               Boolean  @default(false) // подтверждение оплаты взноса организатором (видно всем)
+  paymentKind        String? // только для организаторов: PAID — реально оплатил, LATER — оплатит позже, FREE — бесплатно
   paidAt             DateTime?
   includedInTransfer Boolean  @default(false)
   createdAt          DateTime @default(now())

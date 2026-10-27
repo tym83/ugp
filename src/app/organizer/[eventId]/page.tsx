@@ -5,10 +5,10 @@ import { buildBracketAction } from "@/app/actions";
 import { needsMerge, suggestMergeTarget, type MergeCat } from "@/lib/domain/merge";
 import Link from "next/link";
 import WeighInForm from "./WeighInForm";
-import { MergeButton, LockButton, PaidToggle } from "./OrganizerButtons";
+import { MergeButton, LockButton, PaymentSelect } from "./OrganizerButtons";
 import MoveRegistration from "./MoveRegistration";
 import AbsolutePanel from "./AbsolutePanel";
-import { absoluteRoster } from "@/app/organizer-actions";
+import { absoluteRoster, type PaymentKind } from "@/app/organizer-actions";
 
 export const dynamic = "force-dynamic";
 
@@ -80,8 +80,14 @@ export default async function OrganizerConsole({ params }: { params: Promise<{ e
   });
   // Опции для переноса заявки между категориями (все категории события).
   const catOptions = categories.map((c) => ({ id: c.id, label: catLabel(c) }));
-  const paidCount = entries.filter((e) => e.paid).length;
-  const paidSum = entries.filter((e) => e.paid).reduce((s, e) => s + e.priceTotal, 0);
+  // Отметки до появления paymentKind считаем реальной оплатой.
+  const kindOf = (e: { paid: boolean; paymentKind: string | null }) =>
+    (e.paymentKind ?? (e.paid ? "PAID" : null)) as PaymentKind | null;
+  const reallyPaid = entries.filter((e) => kindOf(e) === "PAID");
+  const paidCount = reallyPaid.length;
+  const paidSum = reallyPaid.reduce((s, e) => s + e.priceTotal, 0);
+  const laterCount = entries.filter((e) => kindOf(e) === "LATER").length;
+  const freeCount = entries.filter((e) => kindOf(e) === "FREE").length;
   const totalSum = entries.reduce((s, e) => s + e.priceTotal, 0);
 
   return (
@@ -102,7 +108,9 @@ export default async function OrganizerConsole({ params }: { params: Promise<{ e
         <div className="flex items-baseline justify-between">
           <h2 className="text-lg font-semibold mb-2">Заявки участников</h2>
           <span className="text-sm text-gray-500">
-            оплачено {paidCount} из {entries.length} · {paidSum} / {totalSum} ₽
+            реально оплачено {paidCount} из {entries.length} · {paidSum} / {totalSum} ₽
+            {laterCount > 0 && <> · оплатят позже {laterCount}</>}
+            {freeCount > 0 && <> · бесплатно {freeCount}</>}
           </span>
         </div>
         {entries.length === 0 ? (
@@ -141,10 +149,7 @@ export default async function OrganizerConsole({ params }: { params: Promise<{ e
                     </td>
                     <td className="px-3 py-2 tabular-nums whitespace-nowrap">{e.priceTotal} ₽</td>
                     <td className="px-3 py-2 whitespace-nowrap">
-                      <span className={"mr-2 rounded px-2 py-0.5 text-xs font-semibold " + (e.paid ? "bg-green-100 text-green-800" : "bg-amber-200 text-amber-900")}>
-                        {e.paid ? "оплачено" : "не оплачено"}
-                      </span>
-                      <PaidToggle entryId={e.id} paid={e.paid} />
+                      <PaymentSelect entryId={e.id} kind={kindOf(e)} />
                     </td>
                     <td className="px-3 py-2"><Link href={`/participant/${e.athlete.id}/edit?next=/organizer/${eventId}`} className="text-blue-600 text-xs">изменить</Link></td>
                   </tr>
