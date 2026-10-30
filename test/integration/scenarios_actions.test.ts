@@ -23,7 +23,7 @@ import { makeToken, makeUser, makeEvent, makeCategory, makeAthlete, registerAthl
 import { selfRegister } from "@/app/athlete-actions";
 import { registerGroup, togglePaidAction } from "@/app/coach-actions";
 import { updateAthlete, moveRegistration } from "@/app/participant-actions";
-import { weighInAndAdmit, setWeighInLock, setEntryPayment, applyMerge, swapSeeds, moveAthleteSeed, findBracketConflicts, resolveConflict, addToAbsolute, generateAbsoluteBracket } from "@/app/organizer-actions";
+import { weighInAndAdmit, setWeighInLock, setEntryPayment, deleteEntry, applyMerge, swapSeeds, moveAthleteSeed, findBracketConflicts, resolveConflict, addToAbsolute, generateAbsoluteBracket } from "@/app/organizer-actions";
 import { createEvent, setEventStatus, addCategory, addPriceTier, createUser, assignRefereeToMat } from "@/app/admin-actions";
 import { buildBracketAction, submitResultAction } from "@/app/actions";
 import { signUpAction } from "@/app/auth-actions";
@@ -327,6 +327,42 @@ describe("Регистрация тренером группы + оплата (S
     expect([cleared?.paid, cleared?.paymentKind, cleared?.paidAt]).toEqual([false, null, null]);
     actAs((await makeUser(["REFEREE"])).id);
     await expect(setEntryPayment(entry.id, "PAID")).rejects.toThrow();
+  });
+  it("S083b организатор удаляет дубль: заявка, регистрации и осиротевший профиль уходят, профиль с аккаунтом остаётся, пишется аудит", async () => {
+    const { e, light, lightGi } = await regEvent();
+    const dup = await makeAthlete({ fullName: "Дубль Тренерский" });
+    const { entry } = await registerAthlete(e.id, light.id, dup.id);
+    await prisma.registration.create({ data: { entryId: entry.id, athleteId: dup.id, categoryId: lightGi.id, status: "ENTERED" } });
+    await prisma.consent.create({ data: { athleteId: dup.id, type: "pd", version: "1" } });
+    const owner = await makeUser([]);
+    const own = await makeAthlete({ fullName: "Дубль Сам", userId: owner.id });
+    const { entry: ownEntry } = await registerAthlete(e.id, light.id, own.id);
+    const org = await makeUser(["ORGANIZER"]);
+    actAs(org.id);
+
+    expect((await deleteEntry(entry.id)).ok).toBe(true);
+    expect(await prisma.eventEntry.findUnique({ where: { id: entry.id } })).toBeNull();
+    expect(await prisma.registration.count({ where: { entryId: entry.id } })).toBe(0);
+    expect(await prisma.athlete.findUnique({ where: { id: dup.id } })).toBeNull();
+    expect(await prisma.auditLog.count({ where: { action: "entry.delete", entityId: entry.id, actorId: org.id } })).toBe(1);
+
+    expect((await deleteEntry(ownEntry.id)).ok).toBe(true);
+    expect(await prisma.athlete.findUnique({ where: { id: own.id } })).not.toBeNull();
+  });
+  it("S083c удаление заявки: участник в сетке — отказ; судья и тренер — throw", async () => {
+    const { e, light } = await regEvent();
+    const a = await makeAthlete();
+    const { entry } = await registerAthlete(e.id, light.id, a.id);
+    await prisma.match.create({ data: { categoryId: light.id, roundNumber: 1, positionInRound: 0, slotAAthleteId: a.id } });
+    actAs((await makeUser(["ORGANIZER"])).id);
+    const r = await deleteEntry(entry.id);
+    expect(r.ok).toBe(false);
+    expect(r.msg).toMatch(/в сетке/);
+    for (const role of ["REFEREE", "COACH"]) {
+      actAs((await makeUser([role])).id);
+      await expect(deleteEntry(entry.id)).rejects.toThrow();
+    }
+    expect(await prisma.eventEntry.findUnique({ where: { id: entry.id } })).not.toBeNull();
   });
   it("S084 IDOR: чужую заявку тренер оплатить НЕ может → throw", async () => {
     const { e, light } = await regEvent();
