@@ -8,6 +8,7 @@ import WeighInForm from "./WeighInForm";
 import { MergeButton, LockButton, PaymentSelect, DeleteEntryButton } from "./OrganizerButtons";
 import MoveRegistration from "./MoveRegistration";
 import AbsolutePanel from "./AbsolutePanel";
+import EntrySearch from "./EntrySearch";
 import { absoluteRoster, type PaymentKind } from "@/app/organizer-actions";
 
 export const dynamic = "force-dynamic";
@@ -125,8 +126,10 @@ export default async function OrganizerConsole({ params }: { params: Promise<{ e
         {entries.length === 0 ? (
           <p className="text-sm text-gray-400">Заявок пока нет.</p>
         ) : (
+          <>
+          <EntrySearch tableId="entries-table" />
           <div className="overflow-x-auto rounded border">
-            <table className="w-full text-sm">
+            <table id="entries-table" className="w-full text-sm">
               <thead className="bg-gray-50 text-left text-xs uppercase tracking-wide text-gray-500">
                 <tr>
                   <th className="px-3 py-2">Участник</th>
@@ -140,7 +143,7 @@ export default async function OrganizerConsole({ params }: { params: Promise<{ e
               </thead>
               <tbody className="divide-y">
                 {entries.map((e) => (
-                  <tr key={e.id} className={e.paid ? "align-top" : "align-top bg-amber-50"}>
+                  <tr key={e.id} data-entry-name={e.athlete.fullName} className={e.paid ? "align-top" : "align-top bg-amber-50"}>
                     <td className="px-3 py-2">
                       <div className="font-medium">
                         {e.athlete.fullName}
@@ -179,6 +182,7 @@ export default async function OrganizerConsole({ params }: { params: Promise<{ e
               </tbody>
             </table>
           </div>
+          </>
         )}
       </section>
 
