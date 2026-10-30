@@ -5,7 +5,7 @@ import { buildBracketAction } from "@/app/actions";
 import { needsMerge, suggestMergeTarget, type MergeCat } from "@/lib/domain/merge";
 import Link from "next/link";
 import WeighInForm from "./WeighInForm";
-import { MergeButton, LockButton, PaymentSelect } from "./OrganizerButtons";
+import { MergeButton, LockButton, PaymentSelect, DeleteEntryButton } from "./OrganizerButtons";
 import MoveRegistration from "./MoveRegistration";
 import AbsolutePanel from "./AbsolutePanel";
 import { absoluteRoster, type PaymentKind } from "@/app/organizer-actions";
@@ -14,6 +14,8 @@ export const dynamic = "force-dynamic";
 
 // Взвешивание закрыто, как только турнир стартовал (см. organizer-actions.setWeighInLock).
 const WEIGH_IN_OPEN_STATUSES = ["DRAFT", "REG_OPEN", "REG_CLOSED"];
+
+const SOURCE_LABEL: Record<string, string> = { self: "сам", coach: "от тренера", organizer: "списком (импорт)" };
 
 export default async function OrganizerConsole({ params }: { params: Promise<{ eventId: string }> }) {
   const { eventId: eventParam } = await params;
@@ -73,7 +75,7 @@ export default async function OrganizerConsole({ params }: { params: Promise<{ e
   const entries = await prisma.eventEntry.findMany({
     where: { eventId },
     include: {
-      athlete: { select: { id: true, fullName: true, phone: true, club: { select: { name: true } } } },
+      athlete: { select: { id: true, fullName: true, birthDate: true, phone: true, club: { select: { name: true } } } },
       registrations: { include: { category: true } },
     },
     orderBy: [{ paid: "asc" }, { createdAt: "asc" }], // неоплаченные сверху
@@ -89,6 +91,12 @@ export default async function OrganizerConsole({ params }: { params: Promise<{ e
   const laterCount = entries.filter((e) => kindOf(e) === "LATER").length;
   const freeCount = entries.filter((e) => kindOf(e) === "FREE").length;
   const totalSum = entries.reduce((s, e) => s + e.priceTotal, 0);
+  // Возможные дубли: совпали фамилия и имя (в любом порядке) — человек заявился сам и его заявил тренер.
+  const nameKey = (n: string) => n.toLowerCase().replace(/ё/g, "е").split(/\s+/).slice(0, 2).sort().join(" ");
+  const nameCount = new Map<string, number>();
+  for (const e of entries) nameCount.set(nameKey(e.athlete.fullName), (nameCount.get(nameKey(e.athlete.fullName)) ?? 0) + 1);
+  const isDup = (e: (typeof entries)[number]) => (nameCount.get(nameKey(e.athlete.fullName)) ?? 0) > 1;
+  const dupCount = entries.filter(isDup).length;
 
   return (
     <main className="mx-auto max-w-5xl p-6">
@@ -111,6 +119,7 @@ export default async function OrganizerConsole({ params }: { params: Promise<{ e
             реально оплачено {paidCount} из {entries.length} · {paidSum} / {totalSum} ₽
             {laterCount > 0 && <> · оплатят позже {laterCount}</>}
             {freeCount > 0 && <> · бесплатно {freeCount}</>}
+            {dupCount > 0 && <> · <span className="text-red-600">возможных дублей {dupCount}</span></>}
           </span>
         </div>
         {entries.length === 0 ? (
@@ -132,7 +141,15 @@ export default async function OrganizerConsole({ params }: { params: Promise<{ e
               <tbody className="divide-y">
                 {entries.map((e) => (
                   <tr key={e.id} className={e.paid ? "align-top" : "align-top bg-amber-50"}>
-                    <td className="px-3 py-2 font-medium">{e.athlete.fullName}</td>
+                    <td className="px-3 py-2">
+                      <div className="font-medium">
+                        {e.athlete.fullName}
+                        {isDup(e) && <span className="ml-2 rounded bg-red-100 px-1.5 py-0.5 text-[10px] font-semibold text-red-700">дубль?</span>}
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        {e.athlete.birthDate.toLocaleDateString("ru-RU", { timeZone: "UTC" })} · {SOURCE_LABEL[e.source] ?? e.source}
+                      </div>
+                    </td>
                     <td className="px-3 py-2 whitespace-nowrap">
                       {e.athlete.phone
                         ? <a href={`tel:${e.athlete.phone}`} className="text-blue-600">{e.athlete.phone}</a>
@@ -151,7 +168,12 @@ export default async function OrganizerConsole({ params }: { params: Promise<{ e
                     <td className="px-3 py-2 whitespace-nowrap">
                       <PaymentSelect entryId={e.id} kind={kindOf(e)} />
                     </td>
-                    <td className="px-3 py-2"><Link href={`/participant/${e.athlete.id}/edit?next=/organizer/${eventId}`} className="text-blue-600 text-xs">изменить</Link></td>
+                    <td className="px-3 py-2">
+                      <div className="flex flex-col items-start gap-1">
+                        <Link href={`/participant/${e.athlete.id}/edit?next=/organizer/${eventId}`} className="text-blue-600 text-xs">изменить</Link>
+                        <DeleteEntryButton entryId={e.id} paid={e.paid} />
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>

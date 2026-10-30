@@ -1,6 +1,6 @@
 "use client";
 import { useTransition, useState } from "react";
-import { applyMerge, setWeighInLock, setEntryPayment, type PaymentKind } from "@/app/organizer-actions";
+import { applyMerge, setWeighInLock, setEntryPayment, deleteEntry, type PaymentKind } from "@/app/organizer-actions";
 
 export function MergeButton({ sourceId, targetId, targetLabel }: { sourceId: string; targetId: string; targetLabel: string }) {
   const [pending, start] = useTransition();
@@ -50,6 +50,37 @@ export function PaymentSelect({ entryId, kind }: { entryId: string; kind: Paymen
         <option key={o.value} value={o.value}>{o.label}</option>
       ))}
     </select>
+  );
+}
+
+// Подтверждение вторым нажатием, без браузерного confirm.
+export function DeleteEntryButton({ entryId, paid }: { entryId: string; paid: boolean }) {
+  const [pending, start] = useTransition();
+  const [confirming, setConfirming] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+  if (msg) return <span className="text-xs text-gray-500">{msg}</span>;
+  if (!confirming)
+    return (
+      <button onClick={() => setConfirming(true)} className="text-xs text-red-600">
+        удалить
+      </button>
+    );
+  return (
+    <span className="inline-flex flex-col gap-1 text-xs">
+      <span className="text-red-700">{paid ? "Заявка отмечена оплаченной. Удалить?" : "Удалить заявку?"}</span>
+      <span className="inline-flex gap-2">
+        <button
+          disabled={pending}
+          onClick={() => start(async () => setMsg((await deleteEntry(entryId)).msg))}
+          className="rounded bg-red-600 px-2 py-0.5 text-white disabled:opacity-50"
+        >
+          {pending ? "…" : "да"}
+        </button>
+        <button disabled={pending} onClick={() => setConfirming(false)} className="text-gray-500">
+          нет
+        </button>
+      </span>
+    </span>
   );
 }
 

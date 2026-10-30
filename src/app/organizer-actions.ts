@@ -1,12 +1,13 @@
 "use server";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { requireRole } from "@/lib/auth/session";
+import { requireRole, requireEventRole } from "@/lib/auth/session";
 import { weightFits, eligibleCategories, type Cat, type AthleteInfo } from "@/lib/domain/eligibility";
 import { canMerge, type MergeCat } from "@/lib/domain/merge";
 import { canTransition } from "@/lib/data/preset";
 import { buildBracketForCategory } from "@/lib/domain/persistBracket";
 import { selectTier, priceEntry, type Tier } from "@/lib/domain/pricing";
+import { appendAudit } from "@/lib/domain/audit";
 
 const ORG_ROLES = ["ORGANIZER", "ADMIN", "MAT_COORDINATOR"] as const;
 
@@ -539,4 +540,57 @@ export async function setEntryPayment(entryId: string, kind: PaymentKind | null)
   });
   revalidatePath(`/organizer/${entry.eventId}`);
   return { ok: true, msg: paid ? "Отметка сохранена" : "Отметка снята" };
+}
+
+/** Удаление заявки организатором (дубли: человек заявился сам и его же заявил тренер).
+ *  Нельзя, если участник уже стоит в сверстанной сетке. Профиль без аккаунта и без других
+ *  заявок удаляется вместе с согласиями; снимок заявки пишется в аудит. */
+export async function deleteEntry(entryId: string): Promise<{ ok: boolean; msg: string }> {
+  await requireRole("ORGANIZER", "ADMIN");
+  const entry = await prisma.eventEntry.findUnique({
+    where: { id: entryId },
+    include: { athlete: { include: { club: true } }, registrations: { include: { category: true } } },
+  });
+  if (!entry) return { ok: false, msg: "Заявка не найдена" };
+  const user = await requireEventRole(entry.eventId, "ORGANIZER", "ADMIN");
+
+  const athleteId = entry.athleteId;
+  const inBracket = await prisma.match.count({
+    where: {
+      categoryId: { in: entry.registrations.map((r) => r.categoryId) },
+      OR: [{ slotAAthleteId: athleteId }, { slotBAthleteId: athleteId }, { winnerAthleteId: athleteId }, { loserAthleteId: athleteId }],
+    },
+  });
+  if (inBracket) return { ok: false, msg: "Участник уже в сетке — сначала уберите его из сетки" };
+
+  await prisma.$transaction(async (tx) => {
+    const regIds = entry.registrations.map((r) => r.id);
+    await tx.weighInAttempt.deleteMany({ where: { registrationId: { in: regIds } } });
+    await tx.registration.deleteMany({ where: { id: { in: regIds } } });
+    await tx.eventEntry.delete({ where: { id: entryId } });
+    const orphan = !entry.athlete.userId && (await tx.eventEntry.count({ where: { athleteId } })) === 0;
+    if (orphan) {
+      await tx.consent.deleteMany({ where: { athleteId } });
+      await tx.athlete.delete({ where: { id: athleteId } });
+    }
+    await appendAudit(tx, {
+      actorId: user.id,
+      action: "entry.delete",
+      entity: "EventEntry",
+      entityId: entryId,
+      before: {
+        athlete: entry.athlete.fullName,
+        birthDate: entry.athlete.birthDate,
+        club: entry.athlete.club?.name ?? null,
+        source: entry.source,
+        priceTotal: entry.priceTotal,
+        paid: entry.paid,
+        paymentKind: entry.paymentKind,
+        categories: entry.registrations.map((r) => r.category.id),
+        athleteDeleted: orphan,
+      },
+    });
+  });
+  revalidatePath(`/organizer/${entry.eventId}`);
+  return { ok: true, msg: "Заявка удалена" };
 }
