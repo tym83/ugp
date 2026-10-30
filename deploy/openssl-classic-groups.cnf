@@ -1,0 +1,14 @@
+# Node 22 ships OpenSSL 3.5, which offers a post-quantum key share (X25519MLKEM768)
+# by default. On the prod server's network path TLS handshakes with that larger
+# ClientHello to Cloudflare-hosted hosts (npm registry, Prisma engine binaries)
+# are reset, so the build limits key exchange to classic groups.
+nodejs_conf = nodejs_init
+
+[nodejs_init]
+ssl_conf = ssl_sect
+
+[ssl_sect]
+system_default = sys_default
+
+[sys_default]
+Groups = X25519:P-256:P-384

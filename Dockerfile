@@ -8,19 +8,27 @@
 # ─────────────────────────────────────────────────────────────────────────────
 
 ARG NODE_VERSION=22-alpine
+# See deploy/openssl-classic-groups.cnf.
+ARG OPENSSL_CONF_PATH=/etc/ssl/openssl-classic-groups.cnf
 
 # ---------- deps: install full dependencies (incl. dev, needed for build) ----
 FROM node:${NODE_VERSION} AS deps
+ARG OPENSSL_CONF_PATH
 WORKDIR /app
 # libc compat for Prisma engines on Alpine
 RUN apk add --no-cache libc6-compat openssl
+COPY deploy/openssl-classic-groups.cnf ${OPENSSL_CONF_PATH}
+ENV OPENSSL_CONF=${OPENSSL_CONF_PATH}
 COPY package.json package-lock.json* ./
 RUN npm ci
 
 # ---------- build: generate Prisma client + compile Next ---------------------
 FROM node:${NODE_VERSION} AS build
+ARG OPENSSL_CONF_PATH
 WORKDIR /app
 RUN apk add --no-cache libc6-compat openssl
+COPY deploy/openssl-classic-groups.cnf ${OPENSSL_CONF_PATH}
+ENV OPENSSL_CONF=${OPENSSL_CONF_PATH}
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 # Prod runs on PostgreSQL. The committed schema is sqlite (for local dev);
@@ -37,8 +45,11 @@ RUN npm run build
 
 # ---------- runner: minimal standalone runtime ------------------------------
 FROM node:${NODE_VERSION} AS runner
+ARG OPENSSL_CONF_PATH
 WORKDIR /app
 RUN apk add --no-cache libc6-compat openssl
+COPY deploy/openssl-classic-groups.cnf ${OPENSSL_CONF_PATH}
+ENV OPENSSL_CONF=${OPENSSL_CONF_PATH}
 
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
