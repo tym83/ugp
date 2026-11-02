@@ -138,7 +138,6 @@ export default async function OrganizerConsole({ params }: { params: Promise<{ e
                   <th className="px-3 py-2">Категории (перенос)</th>
                   <th className="px-3 py-2">Взнос</th>
                   <th className="px-3 py-2">Оплата</th>
-                  <th className="px-3 py-2"></th>
                 </tr>
               </thead>
               <tbody className="divide-y">
@@ -151,6 +150,10 @@ export default async function OrganizerConsole({ params }: { params: Promise<{ e
                       </div>
                       <div className="text-xs text-gray-500">
                         {e.athlete.birthDate.toLocaleDateString("ru-RU", { timeZone: "UTC" })} · {SOURCE_LABEL[e.source] ?? e.source}
+                      </div>
+                      <div className="mt-1 flex items-center gap-3">
+                        <Link href={`/participant/${e.athlete.id}/edit?next=/organizer/${eventId}`} className="text-blue-600 text-xs">изменить</Link>
+                        <DeleteEntryButton entryId={e.id} paid={e.paid} />
                       </div>
                     </td>
                     <td className="px-3 py-2 whitespace-nowrap">
@@ -170,12 +173,6 @@ export default async function OrganizerConsole({ params }: { params: Promise<{ e
                     <td className="px-3 py-2 tabular-nums whitespace-nowrap">{e.priceTotal} ₽</td>
                     <td className="px-3 py-2 whitespace-nowrap">
                       <PaymentSelect entryId={e.id} kind={kindOf(e)} />
-                    </td>
-                    <td className="px-3 py-2">
-                      <div className="flex flex-col items-start gap-1">
-                        <Link href={`/participant/${e.athlete.id}/edit?next=/organizer/${eventId}`} className="text-blue-600 text-xs">изменить</Link>
-                        <DeleteEntryButton entryId={e.id} paid={e.paid} />
-                      </div>
                     </td>
                   </tr>
                 ))}
