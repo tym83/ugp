@@ -49,3 +49,6 @@ dev.db
 /test-results/
 /e2e.db
 /test-int.db
+
+# local ops journal, may contain personal data
+SESSION_LOG.md
