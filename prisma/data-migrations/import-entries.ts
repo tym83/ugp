@@ -10,7 +10,7 @@
 //     "athletes": [{ "fullName": "...", "birthDate": "YYYY-MM-DD" | "birthYear": 2012, "sex": "M", "weight": 45.1, "placeAsWeight"?: 62 }] }] }
 import { PrismaClient, type Prisma } from "@prisma/client";
 import { nativeCategory, type Cat } from "../../src/lib/domain/eligibility";
-import { selectTier, priceEntry, type Tier } from "../../src/lib/domain/pricing";
+import { selectTier, tierFor, priceEntry, type Tier } from "../../src/lib/domain/pricing";
 
 // placeAsWeight — решение организатора поставить в категорию не по фактическому весу (перевес)
 // birthYear — когда в заявке только год: дата пишется как 1 января, дубли ищутся по году
@@ -34,8 +34,8 @@ async function readStdin(): Promise<string> {
   return Buffer.concat(chunks).toString("utf8");
 }
 
-async function importGroup(tx: Prisma.TransactionClient, eventId: string, g: Group, cats: (Cat & { label: string })[], tier: Tier) {
-  let club: { id: string; name: string } | null = null;
+async function importGroup(tx: Prisma.TransactionClient, eventId: string, g: Group, cats: (Cat & { label: string })[], tiers: Tier[]) {
+  let club: { id: string; name: string; earlyPricing: boolean } | null = null;
   let clubNote = "без клуба";
   if (g.club) {
     const re = new RegExp(g.clubMatch ?? g.club, "i");
@@ -43,6 +43,8 @@ async function importGroup(tx: Prisma.TransactionClient, eventId: string, g: Gro
     clubNote = club ? `клуб найден: «${club.name}»` : `клуб создан: «${g.club}»`;
     if (!club) club = await tx.club.create({ data: { name: g.club, city: g.city ?? null } });
   }
+  // Клубам с ранней ценой взнос считается по самому раннему тиру.
+  const tier = tierFor(tiers, new Date(), club?.earlyPricing ?? false)!;
 
   let coachUserId: string | null = null;
   if (g.coach) {
@@ -119,12 +121,12 @@ async function main() {
     isOpenTop: c.isOpenTop, isAbsolute: c.isAbsolute, level: c.level,
     label: `${c.ageGroupLabel} · ${c.discipline === "gi" ? "ги" : "ноу-ги"} · ${weightLabel(c)}`,
   }));
-  console.log(`[import] ${event.name}, статус ${event.status}, тир «${tier.name}», режим: ${apply ? "APPLY" : "dry-run"}`);
+  console.log(`[import] ${event.name}, статус ${event.status}, тир «${tier.name}» (клубам с ранней ценой — самый ранний), режим: ${apply ? "APPLY" : "dry-run"}`);
 
   try {
     await prisma.$transaction(
       async (tx) => {
-        for (const g of input.groups) await importGroup(tx, event.id, g, cats, tier);
+        for (const g of input.groups) await importGroup(tx, event.id, g, cats, tiers);
         if (!apply) throw new DryRun();
       },
       { timeout: 60_000 }

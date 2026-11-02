@@ -140,6 +140,20 @@ export async function addPriceTier(eventId: string, formData: FormData): Promise
   revalidatePath(`/admin/events/${eventId}`);
 }
 
+// ---------- Клубы с ранней ценой ----------
+/** Включить/выключить клубу взнос по самому раннему тиру (действует на новые заявки). */
+export async function setClubEarlyPricing(eventId: string, clubId: string, on: boolean): Promise<void> {
+  await requireEventRole(eventId, "ADMIN", "ORGANIZER");
+  await prisma.club.update({ where: { id: clubId }, data: { earlyPricing: on } });
+  revalidatePath(`/admin/events/${eventId}`);
+}
+
+export async function addClubEarlyPricing(eventId: string, formData: FormData): Promise<void> {
+  const clubId = String(formData.get("clubId") ?? "");
+  if (!clubId) throw new Error("выберите клуб");
+  await setClubEarlyPricing(eventId, clubId, true);
+}
+
 // ---------- Категория (ручная, одна) ----------
 const categorySchema = z.object({
   ageGroupCode: z.string().trim().min(1, "код группы"),

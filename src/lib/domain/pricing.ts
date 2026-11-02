@@ -28,3 +28,9 @@ export function priceEntry(tier: Tier, e: EntryPricing): number {
   const extra = tier.priceExtraCategory ?? tier.priceFirstCategory;
   return tier.priceFirstCategory + extra * (n - 1);
 }
+
+/** Тир для заявки: клубам с ранней ценой — самый ранний тир, остальным — активный на дату. */
+export function tierFor(tiers: Tier[], at: Date, earlyPricing: boolean): Tier | null {
+  if (!earlyPricing) return selectTier(tiers, at);
+  return tiers.slice().sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime())[0] ?? null;
+}

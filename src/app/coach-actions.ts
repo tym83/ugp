@@ -2,7 +2,7 @@
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/auth/session";
 import { allowedCategories, type SelectableCat } from "@/lib/domain/eligibility";
-import { selectTier, priceEntry, type Tier } from "@/lib/domain/pricing";
+import { tierFor, priceEntry, type Tier } from "@/lib/domain/pricing";
 import { revalidatePath } from "next/cache";
 
 // Категории теперь выбирает тренер САМ по каждому спортсмену (как в self-select),
@@ -27,7 +27,9 @@ export async function registerGroup(rowsJson: string, eventId: string): Promise<
   const tiers: Tier[] = event.priceTiers.map((t) => ({
     name: t.name, startsAt: t.startsAt, priceFirstCategory: t.priceFirstCategory, priceExtraCategory: t.priceExtraCategory,
   }));
-  const tier = selectTier(tiers, new Date()) ?? tiers[0];
+  // Клубам с ранней ценой взнос считается по самому раннему тиру.
+  const club = clubId ? await prisma.club.findUnique({ where: { id: clubId } }) : null;
+  const tier = tierFor(tiers, new Date(), club?.earlyPricing ?? false) ?? tiers[0];
 
   const results: RowResult[] = [];
   for (const row of rows) {

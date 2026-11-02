@@ -61,6 +61,7 @@ model Club {
   id        String    @id @default(cuid())
   name      String
   city      String?
+  earlyPricing Boolean   @default(false) // взнос по самому раннему тиру независимо от даты (клубы, которым организатор оставил раннюю цену)
   owner     User?     @relation("ClubOwner", fields: [ownerId], references: [id])
   ownerId   String?
   athletes  Athlete[]
