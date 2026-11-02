@@ -3,6 +3,8 @@ import { getCurrentUser } from "@/lib/auth/session";
 import {
   updateEvent,
   addPriceTier,
+  setClubEarlyPricing,
+  addClubEarlyPricing,
   addCategory,
   setEventStatusForm,
   assignRefereeToMatForm,
@@ -37,6 +39,9 @@ export default async function EditEventPage({ params }: { params: Promise<{ id: 
     },
   });
   if (!event) notFound();
+  const clubs = await prisma.club.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true, city: true, earlyPricing: true } });
+  const earlyClubs = clubs.filter((c) => c.earlyPricing);
+  const earliestTier = event.priceTiers.slice().sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime())[0];
 
   // судьи (пользователи с любой REFEREE-мембершипой) + их назначение на это событие
   const refMemberships = await prisma.membership.findMany({
@@ -130,6 +135,34 @@ export default async function EditEventPage({ params }: { params: Promise<{ id: 
           <input name="priceExtraCategory" type="number" placeholder="доп. (= 1-й)" className="border rounded px-2 py-1 text-sm w-28" />
           <input name="order" type="number" placeholder="порядок" defaultValue={event.priceTiers.length} className="border rounded px-2 py-1 text-sm w-20" />
           <button className="rounded bg-gray-800 text-white px-3 py-1 text-sm">+ тир</button>
+        </form>
+      </section>
+
+      {/* Клубы с ранней ценой */}
+      <section>
+        <h2 className="text-lg font-semibold mb-1">Клубы по ранней цене ({earlyClubs.length})</h2>
+        <p className="text-xs text-gray-500 mb-2">
+          Новые заявки спортсменов этих клубов считаются по тиру «{earliestTier?.name ?? "—"}» независимо от даты. Уже поданные заявки не пересчитываются.
+        </p>
+        <ul className="text-sm mb-3 space-y-1">
+          {earlyClubs.map((c) => (
+            <li key={c.id} className="flex items-center gap-2">
+              <span>{c.name}{c.city ? ` (${c.city})` : ""}</span>
+              <form action={setClubEarlyPricing.bind(null, event.id, c.id, false)}>
+                <button className="text-xs text-red-600">убрать</button>
+              </form>
+            </li>
+          ))}
+          {earlyClubs.length === 0 && <li className="text-gray-400">клубов нет</li>}
+        </ul>
+        <form action={addClubEarlyPricing.bind(null, event.id)} className="flex flex-wrap gap-2 items-end">
+          <select name="clubId" className="border rounded px-2 py-1 text-sm" required defaultValue="">
+            <option value="" disabled>выберите клуб</option>
+            {clubs.filter((c) => !c.earlyPricing).map((c) => (
+              <option key={c.id} value={c.id}>{c.name}{c.city ? ` (${c.city})` : ""}</option>
+            ))}
+          </select>
+          <button className="rounded bg-gray-800 text-white px-3 py-1 text-sm">+ клуб</button>
         </form>
       </section>
 

@@ -83,6 +83,19 @@ describe("Саморегистрация: само-выбор категорий
     expect(entry?.priceTotal).toBe(3500);
     expect(await prisma.registration.count({ where: { entryId: entry!.id } })).toBe(2);
   });
+  it("S057a клуб с ранней ценой платит по самому раннему тиру, остальные — по текущему", async () => {
+    const { e, light } = await regEvent();
+    await prisma.priceTier.create({
+      data: { eventId: e.id, name: "Стандартная", startsAt: new Date(Date.now() - 86_400_000), priceFirstCategory: 2500, priceExtraCategory: 1000 },
+    });
+    const club = await prisma.club.create({ data: { name: uniq("Гладиатор"), earlyPricing: true } });
+    await selfRegister(selfFd({ eventId: e.id, fullName: "Ранний Клубный", club: club.name, ...adult }, [light.id]));
+    await selfRegister(selfFd({ eventId: e.id, fullName: "Обычный Участник", ...adult }, [light.id]));
+    const early = await prisma.eventEntry.findFirst({ where: { athlete: { fullName: "Ранний Клубный" } } });
+    const usual = await prisma.eventEntry.findFirst({ where: { athlete: { fullName: "Обычный Участник" } } });
+    expect(early).toMatchObject({ tierName: "Ранняя", priceTotal: 2000 });
+    expect(usual).toMatchObject({ tierName: "Стандартная", priceTotal: 2500 });
+  });
   it("S058 без согласия 152-ФЗ → отказ", async () => {
     const { e, light } = await regEvent();
     const r = await selfRegister(selfFd({ eventId: e.id, fullName: "Без Согласия", birthDate: "1995-05-05", sex: "M", consent: false }, [light.id]));

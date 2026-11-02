@@ -7,7 +7,7 @@ import {
   generateRoundRobin,
   type Participant,
 } from "./bracket";
-import { selectTier, priceEntry, type Tier } from "./pricing";
+import { selectTier, tierFor, priceEntry, type Tier } from "./pricing";
 import { weightFits, ageEligible, eligibleCategories, nativeCategory, type Cat } from "./eligibility";
 import { canMerge, needsMerge, suggestMergeTarget, ageBand, type MergeCat } from "./merge";
 import { computeTeamScores, type Placement } from "./teamscore";
@@ -90,6 +90,10 @@ describe("pricing", () => {
   it("selectTier по дате", () => {
     expect(selectTier(tiers, new Date("2026-09-15"))?.name).toBe("Ранняя");
     expect(selectTier(tiers, new Date("2026-11-05"))?.name).toBe("Поздняя");
+  });
+  it("tierFor: клубу с ранней ценой — самый ранний тир независимо от даты", () => {
+    expect(tierFor(tiers, new Date("2026-11-05"), true)?.name).toBe("Ранняя");
+    expect(tierFor(tiers, new Date("2026-11-05"), false)?.name).toBe("Поздняя");
   });
   it("priceEntry: первая + доп. категории", () => {
     const early = tiers[0];

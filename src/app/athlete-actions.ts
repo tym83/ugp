@@ -1,7 +1,7 @@
 "use server";
 import { prisma } from "@/lib/prisma";
 import { allowedCategories, type SelectableCat } from "@/lib/domain/eligibility";
-import { selectTier, priceEntry, type Tier } from "@/lib/domain/pricing";
+import { tierFor, priceEntry, type Tier } from "@/lib/domain/pricing";
 import { getCurrentUser } from "@/lib/auth/session";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
@@ -103,19 +103,22 @@ export async function selfRegister(formData: FormData): Promise<SelfRegisterResu
   const tiers: Tier[] = event.priceTiers.map((t) => ({
     name: t.name, startsAt: t.startsAt, priceFirstCategory: t.priceFirstCategory, priceExtraCategory: t.priceExtraCategory,
   }));
-  const tier = selectTier(tiers, new Date()) ?? tiers[0];
-  if (!tier) return { ok: false, msg: "цены не настроены для события" };
-  const price = priceEntry(tier, { categoryCount: chosen.length });
+  if (!tiers.length) return { ok: false, msg: "цены не настроены для события" };
 
   const disciplines = [...new Set(chosen.map((id) => allowed.get(id)!.discipline))];
   const absoluteAdded = chosen.some((id) => allowed.get(id)!.isAbsolute);
 
   // Клуб: находим по названию или создаём. Пусто — без клуба.
+  // Клубам с ранней ценой взнос считается по самому раннему тиру.
   let clubId: string | null = null;
+  let earlyPricing = false;
   if (d.club) {
     const ex = await prisma.club.findFirst({ where: { name: d.club } });
     clubId = ex ? ex.id : (await prisma.club.create({ data: { name: d.club } })).id;
+    earlyPricing = ex?.earlyPricing ?? false;
   }
+  const tier = tierFor(tiers, new Date(), earlyPricing) ?? tiers[0];
+  const price = priceEntry(tier, { categoryCount: chosen.length });
 
   try {
     // Один аккаунт может заявлять нескольких детей: профиль аккаунта берём, только если заявляют
