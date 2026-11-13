@@ -57,7 +57,7 @@ export default async function Home() {
           {ev ? (
             <>
               <p className="mt-7 max-w-2xl text-lg text-[#e7e2d8] sm:text-xl">
-                Борьба без ударов. Шоу с характером. Кульминация турнира — <b className="text-white">сборная Екатеринбурга против Челябинска, 5 на 5</b>.
+                Борьба без ударов. Шоу с характером.
               </p>
               <div className="mt-4 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-[#e7e2d8]">
                 {st && <span className={`rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wide ${st.cls}`}>{st.text}</span>}
@@ -86,10 +86,10 @@ export default async function Home() {
       <section className="border-t border-white/10">
         <div className="mx-auto max-w-5xl px-6 py-16">
           <div className={kicker}>Это будет крутейшее шоу</div>
-          <h2 className="mt-3 text-3xl font-black uppercase tracking-tight sm:text-4xl">Один вечер. Три акта. Битва городов в финале.</h2>
+          <h2 className="mt-3 text-3xl font-black uppercase tracking-tight sm:text-4xl">Целый день борьбы на трёх коврах.</h2>
           <p className="mt-4 max-w-3xl text-lg text-[#cec8bc]">
-            Целый день борьбы, а вечером — большое шоу: именные поединки и Битва городов — сборная
-            Екатеринбурга против Челябинска, 5 на 5. Без ударов в голову, но с настоящим накалом. Мы делаем Урал
+            Дети, юниоры, взрослые и ветераны, в ги и ноу-ги. Без ударов в голову, но с настоящим накалом.
+            Награждение — сразу по окончании каждой категории. Мы делаем Урал
             столицей грэпплинга и зовём всех: спортсменов, зрителей, школы, бренды и медиа.
           </p>
           <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -155,39 +155,6 @@ export default async function Home() {
         </div>
       </section>
 
-      {/* БИТВА ГОРОДОВ */}
-      <section className="border-t border-white/10">
-        <div className="mx-auto max-w-5xl px-6 py-16">
-          <div className={kicker}>Главное шоу вечера</div>
-          <h2 className="mt-3 text-3xl font-black uppercase tracking-tight sm:text-5xl">Битва городов — Екатеринбург против Челябинска</h2>
-          <p className="mt-4 max-w-3xl text-lg text-[#cec8bc]">
-            Вечернее шоу в трёх актах: именные поединки, командная битва город на город 5 на 5 и награждение чемпионов.
-          </p>
-          <div className="mt-8 grid gap-4 md:grid-cols-3">
-            {[
-              { n: "01", t: "Именные поединки", d: "Топовые бойцы один на один. Известные имена и живая интрига — то, ради чего приходят зрители." },
-              { n: "02", t: "Битва городов · 5×5", d: "Сборная Екатеринбурга против сборной Челябинска. Победитель остаётся на татами, проигравший уходит. Кульминация вечера." },
-              { n: "03", t: "Награждение чемпионов", d: "Итоги дня и вечернего шоу, призы и чествование сильнейших под финал вечера." },
-            ].map((c) => (
-              <div key={c.n} className="rounded-lg border border-white/10 bg-white/5 p-6">
-                <div className="text-4xl font-black text-[#e3863d]">{c.n}</div>
-                <div className="mt-2 text-lg font-bold uppercase leading-tight">{c.t}</div>
-                <p className="mt-2 text-sm text-[#cec8bc]">{c.d}</p>
-              </div>
-            ))}
-          </div>
-          <div className="mt-6 rounded-lg border border-white/10 bg-white/[0.03] p-6">
-            <div className="mb-2 font-bold uppercase tracking-wide text-[#e3863d]">Как работает Битва городов</div>
-            <ul className="grid gap-2 text-sm text-[#cec8bc] sm:grid-cols-2">
-              <li>• Две сборные по 5 бойцов: Екатеринбург и Челябинск.</li>
-              <li>• Бьются по очереди: кто выиграл — остаётся на татами и встречает следующего. Каждый бой до сдачи, максимум 3 минуты.</li>
-              <li>• Город, чьи бойцы наберут больше побед, забирает Битву городов.</li>
-              <li>• Отдельные призы за самую быструю победу и за наибольшее число побед.</li>
-            </ul>
-          </div>
-        </div>
-      </section>
-
       {/* КАК УСТРОЕНО СОБЫТИЕ */}
       <section className="border-t border-white/10 bg-white/[0.02]">
         <div className="mx-auto max-w-5xl px-6 py-16">
@@ -200,7 +167,7 @@ export default async function Home() {
           <div className="mt-8 grid gap-4 md:grid-cols-3">
             {[
               { h: "До турнира · лето–осень", t: "Грэпплинг едет в города", li: ["20+ локальных событий: Челябинск, Екатеринбург, Уфа, Пермь, Тюмень", "Открытые тренировки и мастер-классы со школами", "Зачёт городов: кто выставит больше спортсменов"] },
-              { h: "День турнира", t: "Турнир днём, шоу вечером", li: ["Открытый турнир: мужчины, женщины, новички и опытные", "Фестиваль: активности, фотозоны, еда, семейная атмосфера", "Вечером — шоу: именные поединки и Битва городов, со звёздами и трансляцией"] },
+              { h: "День турнира", t: "Турнир и фестиваль", li: ["Открытый турнир: мужчины, женщины, новички и опытные", "Фестиваль: активности, фотозоны, еда, семейная атмосфера", "Награждение — сразу по окончании каждой категории"] },
               { h: "После турнира", t: "Движение не заканчивается", li: ["Нарезки лучших моментов и фильм о турнире", "Локальные события в городах после турнира", "Рейтинг спортсменов и планы на следующий сезон"] },
             ].map((c) => (
               <div key={c.h} className="rounded-lg border border-white/10 bg-white/5 p-6">
