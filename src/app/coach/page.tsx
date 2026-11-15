@@ -17,8 +17,12 @@ export default async function CoachPage() {
   const isCoach = user.memberships.some((m) => m.role === "COACH");
   if (!isCoach) return <main className="p-8">Нужна роль тренера. <Link className="text-blue-600" href="/login">Войти</Link></main>;
 
-  const event = await prisma.event.findFirst({ where: { status: "REG_OPEN" }, orderBy: { date: "asc" } });
+  // После закрытия регистрации кабинет остаётся: список и правка анкет подопечных, без новой заявки.
+  const event =
+    (await prisma.event.findFirst({ where: { status: "REG_OPEN" }, orderBy: { date: "asc" } })) ??
+    (await prisma.event.findFirst({ where: { status: "REG_CLOSED" }, orderBy: { date: "asc" } }));
   if (!event) return <main className="p-8">Нет открытых событий.</main>;
+  const regOpen = event.status === "REG_OPEN";
 
   // Полный адрес сайта для реф-ссылки (в проде NEXT_PUBLIC_SITE_URL не задан — берём хост запроса).
   const h = await headers();
@@ -63,15 +67,23 @@ export default async function CoachPage() {
       </div>
       <p className="text-sm text-gray-500">Событие: {event.name}</p>
 
-      <section className="mt-6">
-        <RefLink eventId={event.slug ?? event.id} coachId={user.id} origin={origin} />
-      </section>
+      {regOpen ? (
+        <>
+          <section className="mt-6">
+            <RefLink eventId={event.slug ?? event.id} coachId={user.id} origin={origin} />
+          </section>
 
-      <section className="mt-6">
-        <h2 className="text-lg font-semibold mb-2">Заявить группу</h2>
-        <p className="text-xs text-gray-500 mb-2">Вводите спортсменов; в колонке «Категории» появятся подходящие по полу, году рождения и весу — отметьте нужные (можно несколько, включая абсолютку). Цена — по числу категорий, единая для всех.</p>
-        <RegisterGrid eventId={event.id} categories={categories} />
-      </section>
+          <section className="mt-6">
+            <h2 className="text-lg font-semibold mb-2">Заявить группу</h2>
+            <p className="text-xs text-gray-500 mb-2">Вводите спортсменов; в колонке «Категории» появятся подходящие по полу, году рождения и весу — отметьте нужные (можно несколько, включая абсолютку). Цена — по числу категорий, единая для всех.</p>
+            <RegisterGrid eventId={event.id} categories={categories} />
+          </section>
+        </>
+      ) : (
+        <p className="mt-6 rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+          Регистрация закрыта — новых спортсменов заявить нельзя. Анкеты уже заявленных можно исправить по ссылке «изменить».
+        </p>
+      )}
 
       <section className="mt-8">
         <div className="flex items-baseline justify-between">

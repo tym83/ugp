@@ -2,6 +2,7 @@
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
 import { revalidatePath } from "next/cache";
+import { athleteAccess } from "@/lib/auth/athleteAccess";
 import { z } from "zod";
 
 export type EditResult = { ok: boolean; msg: string };
@@ -17,15 +18,10 @@ const schema = z.object({
   phone: z.string().trim().optional().default(""),
 });
 
-/** Редактирование анкеты участника.
- *  Организатор/админ — все поля (в т.ч. телефон и клуб).
- *  Тренер — только своих спортсменов (coachUserId), без телефона (телефон видят только организаторы). */
+/** Редактирование анкеты участника — права в athleteAccess; от статуса события не зависит. */
 export async function updateAthlete(formData: FormData): Promise<EditResult> {
   const user = await getCurrentUser();
   if (!user) return { ok: false, msg: "Войдите в аккаунт" };
-  const roles = new Set(user.memberships.map((m) => m.role));
-  const isOrg = roles.has("ORGANIZER") || roles.has("ADMIN");
-  const isCoach = roles.has("COACH");
 
   const parsed = schema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) {
@@ -37,8 +33,8 @@ export async function updateAthlete(formData: FormData): Promise<EditResult> {
   const athlete = await prisma.athlete.findUnique({ where: { id: d.athleteId } });
   if (!athlete) return { ok: false, msg: "Участник не найден" };
 
-  const owns = isCoach && athlete.coachUserId === user.id;
-  if (!isOrg && !owns) return { ok: false, msg: "Нет прав на редактирование этого участника" };
+  const access = await athleteAccess(user, athlete);
+  if (!access.canEdit) return { ok: false, msg: "Нет прав на редактирование этого участника" };
 
   const dob = new Date(d.birthDate);
   if (Number.isNaN(dob.getTime())) return { ok: false, msg: "неверная дата рождения" };
@@ -62,12 +58,12 @@ export async function updateAthlete(formData: FormData): Promise<EditResult> {
       city: d.city || null,
       belt: d.belt || null,
       clubId,
-      // Телефон меняет только организатор/админ.
-      ...(isOrg ? { phone: d.phone || null } : {}),
+      ...(access.canEditPhone ? { phone: d.phone || null } : {}),
     },
   });
 
   revalidatePath("/coach");
+  revalidatePath("/me");
   return { ok: true, msg: "Анкета обновлена" };
 }
 
