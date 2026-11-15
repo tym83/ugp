@@ -1050,6 +1050,43 @@ describe("Редактирование анкеты участника (S165–S
     expect(r.ok).toBe(false);
     expect(r.msg).toMatch(/прав/i);
   });
+  it("S168a участник правит свою анкету (вместе с телефоном) после закрытия регистрации", async () => {
+    const e = await makeEvent({ status: "REG_CLOSED" });
+    const u = await makeUser(["ATHLETE"]); actAs(u.id);
+    const a = await makeAthlete({ fullName: base.fullName, sex: base.sex, birthDate: new Date(base.birthDate), userId: u.id });
+    await prisma.eventEntry.create({ data: { athleteId: a.id, eventId: e.id, source: "self", priceTotal: 2000 } });
+    const r = await updateAthlete(fd({ athleteId: a.id, fullName: "Своя Анкета", birthDate: base.birthDate, sex: "M", phone: "+7 111" }));
+    expect(r.ok).toBe(true);
+    const after = await prisma.athlete.findUnique({ where: { id: a.id } });
+    expect(after?.fullName).toBe("Своя Анкета");
+    expect(after?.phone).toBe("+7 111");
+  });
+  it("S168b родитель правит анкету ребёнка, заявленного с его аккаунта", async () => {
+    const e = await makeEvent({ status: "REG_CLOSED" });
+    const parent = await makeUser(["ATHLETE"]); actAs(parent.id);
+    const child = await makeAthlete({ fullName: "Ребёнок Родителя", sex: "M", birthDate: new Date("2015-02-02") });
+    await prisma.eventEntry.create({ data: { athleteId: child.id, eventId: e.id, source: "self", priceTotal: 2000, submittedByUserId: parent.id } });
+    const r = await updateAthlete(fd({ athleteId: child.id, fullName: "Ребёнок Исправлен", birthDate: "2015-03-03", sex: "M" }));
+    expect(r.ok).toBe(true);
+    expect((await prisma.athlete.findUnique({ where: { id: child.id } }))?.fullName).toBe("Ребёнок Исправлен");
+  });
+  it("S168c чужой аккаунт участника не правит анкету", async () => {
+    const owner = await makeUser(["ATHLETE"]);
+    const a = await makeAthlete({ fullName: base.fullName, sex: base.sex, birthDate: new Date(base.birthDate), userId: owner.id });
+    const other = await makeUser(["ATHLETE"]); actAs(other.id);
+    const r = await updateAthlete(fd({ athleteId: a.id, fullName: "Взлом", birthDate: base.birthDate, sex: "M" }));
+    expect(r.ok).toBe(false);
+    expect(r.msg).toMatch(/прав/i);
+  });
+  it("S168d после закрытия регистрации новую заявку подать нельзя", async () => {
+    const { e, light } = await regEvent();
+    await prisma.event.update({ where: { id: e.id }, data: { status: "REG_CLOSED" } });
+    const u = await makeUser(["ATHLETE"]); actAs(u.id);
+    const r = await selfRegister(selfFd({ eventId: e.id, fullName: "Опоздавший Боец", birthDate: "1995-05-05", sex: "M", consent: true }, [light.id]));
+    expect(r.ok).toBe(false);
+    const coach = await makeUser(["COACH"]); actAs(coach.id);
+    await expect(registerGroup(JSON.stringify([{ fullName: "Опоздавший Список", birthDate: "1995-05-05", sex: "M", categoryIds: [light.id] }]), e.id)).rejects.toThrow(/закрыта/);
+  });
   it("S168 аноним → отказ", async () => {
     actAnon();
     const a = await makeAthlete({ fullName: base.fullName, sex: base.sex, birthDate: new Date(base.birthDate) });

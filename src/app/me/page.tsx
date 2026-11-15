@@ -40,7 +40,7 @@ function matchLabel(round: number, isBronze: boolean) {
 export default async function MePage({ searchParams }: { searchParams: Promise<{ athleteId?: string }> }) {
   const { athleteId } = await searchParams;
   const user = await getCurrentUser();
-  const { list } = await resolveAthletes(athleteId);
+  const { list, via } = await resolveAthletes(athleteId);
 
   if (!list.length) {
     return (
@@ -128,6 +128,20 @@ export default async function MePage({ searchParams }: { searchParams: Promise<{
     <main className="mx-auto max-w-lg px-4 py-6 sm:p-8">
       <h1 className="text-2xl font-bold mb-1">Мой кабинет</h1>
       <p className="text-sm text-gray-500 mb-6 break-words">{list.map((a) => a.fullName).join(", ")}</p>
+
+      {via === "user" && (
+        <section className="mb-8">
+          <h2 className="text-lg font-semibold mb-2">Анкеты</h2>
+          <ul className="space-y-2 text-sm">
+            {list.map((a) => (
+              <li key={a.id} className="flex items-center justify-between gap-3 rounded-lg border p-3">
+                <span className="min-w-0 break-words">{a.fullName}</span>
+                <Link href={`/participant/${a.id}/edit?next=/me`} className="shrink-0 text-blue-600">изменить</Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {entries.length > 0 && (
         <section className="mb-8">
