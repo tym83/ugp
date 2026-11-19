@@ -72,6 +72,12 @@ export function hasRole(
   return !!user?.memberships.some((m) => roles.includes(m.role));
 }
 
+/** Marker membership (role HIDE_FINANCE, event- or platform-scoped): the user keeps their other
+ *  rights but does not see entry fees and payment totals. */
+export function seesFinance(user: { memberships: { role: string; scope: string; eventId: string | null }[] }, eventId: string): boolean {
+  return !user.memberships.some((m) => m.role === "HIDE_FINANCE" && (m.scope === "PLATFORM" || m.eventId === eventId));
+}
+
 /** Гард для server actions / API: требует хотя бы одну из ролей. Бросает при отказе. */
 export async function requireRole(...roles: string[]): Promise<SessionUser> {
   const user = await getCurrentUser();
