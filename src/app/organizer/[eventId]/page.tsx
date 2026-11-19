@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { requirePageRole } from "@/lib/auth/session";
+import { requirePageRole, seesFinance } from "@/lib/auth/session";
 import { levelLabel } from "@/lib/domain/levelLabel";
 import { buildBracketAction } from "@/app/actions";
 import { needsMerge, suggestMergeTarget, type MergeCat } from "@/lib/domain/merge";
@@ -20,11 +20,12 @@ const SOURCE_LABEL: Record<string, string> = { self: "сам", coach: "от тр
 
 export default async function OrganizerConsole({ params }: { params: Promise<{ eventId: string }> }) {
   const { eventId: eventParam } = await params;
-  await requirePageRole("ORGANIZER", "ADMIN", "MAT_COORDINATOR");
+  const user = await requirePageRole("ORGANIZER", "ADMIN", "MAT_COORDINATOR");
 
   const event = await prisma.event.findFirst({ where: { OR: [{ slug: eventParam }, { id: eventParam }] } });
   if (!event) return <main className="p-8">Событие не найдено</main>;
   const eventId = event.id; // дальше работаем с реальным id (queries/actions/revalidate)
+  const showMoney = seesFinance(user, eventId);
 
   const categories = await prisma.category.findMany({
     where: { eventId, mergedIntoId: null },
@@ -119,7 +120,7 @@ export default async function OrganizerConsole({ params }: { params: Promise<{ e
         <div className="flex items-baseline justify-between">
           <h2 className="text-lg font-semibold mb-2">Заявки участников</h2>
           <span className="text-sm text-gray-500">
-            реально оплачено {paidCount} из {entries.length} · {paidSum} / {totalSum} ₽
+            реально оплачено {paidCount} из {entries.length}{showMoney && <> · {paidSum} / {totalSum} ₽</>}
             {laterCount > 0 && <> · оплатят позже {laterCount}</>}
             {freeCount > 0 && <> · бесплатно {freeCount}</>}
             {dupCount > 0 && <> · <span className="text-red-600">возможных дублей {dupCount}</span></>}
@@ -138,7 +139,7 @@ export default async function OrganizerConsole({ params }: { params: Promise<{ e
                   <th className="px-3 py-2">Телефон</th>
                   <th className="px-3 py-2">Клуб</th>
                   <th className="px-3 py-2">Категории (перенос)</th>
-                  <th className="px-3 py-2">Взнос</th>
+                  {showMoney && <th className="px-3 py-2">Взнос</th>}
                   <th className="px-3 py-2">Оплата</th>
                 </tr>
               </thead>
@@ -172,7 +173,7 @@ export default async function OrganizerConsole({ params }: { params: Promise<{ e
                         {e.registrations.length === 0 && <span className="text-gray-300">—</span>}
                       </div>
                     </td>
-                    <td className="px-3 py-2 tabular-nums whitespace-nowrap">{e.priceTotal} ₽</td>
+                    {showMoney && <td className="px-3 py-2 tabular-nums whitespace-nowrap">{e.priceTotal} ₽</td>}
                     <td className="px-3 py-2 whitespace-nowrap">
                       <PaymentSelect entryId={e.id} kind={kindOf(e)} />
                     </td>

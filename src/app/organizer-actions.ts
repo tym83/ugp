@@ -1,7 +1,7 @@
 "use server";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { requireRole, requireEventRole } from "@/lib/auth/session";
+import { requireRole, requireEventRole, seesFinance } from "@/lib/auth/session";
 import { weightFits, eligibleCategories, type Cat, type AthleteInfo } from "@/lib/domain/eligibility";
 import { canMerge, type MergeCat } from "@/lib/domain/merge";
 import { canTransition } from "@/lib/data/preset";
@@ -455,7 +455,7 @@ export async function addToAbsolute(
   absoluteCategoryId: string,
   athleteId: string
 ): Promise<{ ok: boolean; msg: string }> {
-  await requireRole("ORGANIZER", "ADMIN");
+  const user = await requireRole("ORGANIZER", "ADMIN");
 
   const category = await prisma.category.findUnique({ where: { id: absoluteCategoryId } });
   if (!category) return { ok: false, msg: "Категория не найдена" };
@@ -505,7 +505,10 @@ export async function addToAbsolute(
 
   revalidatePath(`/organizer/${category.eventId}`);
   revalidatePath(`/category/${absoluteCategoryId}`);
-  return { ok: true, msg: surcharge ? `Добавлен в абсолютку (+${surcharge} ₽)` : "Добавлен в абсолютку" };
+  return {
+    ok: true,
+    msg: surcharge && seesFinance(user, category.eventId) ? `Добавлен в абсолютку (+${surcharge} ₽)` : "Добавлен в абсолютку",
+  };
 }
 
 /** Отдельная кнопка «Сверстать сетку абсолютки» — тонкая обёртка над buildBracketForCategory. */
