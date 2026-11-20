@@ -27,6 +27,25 @@ function Stat({ n, t }: { n: string; t: string }) {
   );
 }
 
+const SCHEDULE: { mat: number; slots: { when: string; what: string }[] }[] = [
+  { mat: 1, slots: [
+    { when: "с 10:00", what: "2019–2020 года рождения" },
+    { when: "с 12:00", what: "2013–2014 года рождения" },
+    { when: "с 17:00", what: "взрослые" },
+  ] },
+  { mat: 2, slots: [
+    { when: "с 10:00", what: "2017–2018 года рождения" },
+    { when: "13:00", what: "суперсхватка" },
+    { when: "с 13:15", what: "2011–2012 года рождения" },
+    { when: "по окончании", what: "взрослые" },
+  ] },
+  { mat: 3, slots: [
+    { when: "с 10:00", what: "2015–2016 года рождения" },
+    { when: "с 14:30", what: "2009–2010 года рождения" },
+    { when: "по окончании", what: "взрослые" },
+  ] },
+];
+
 export default async function Home() {
   const events = await prisma.event.findMany({
     orderBy: { date: "asc" },
@@ -79,6 +98,33 @@ export default async function Home() {
           ) : (
             <h1 className="mt-6 text-5xl font-black uppercase">Турниры по грэпплингу</h1>
           )}
+        </div>
+      </section>
+
+      {/* РАСПИСАНИЕ ПО КОВРАМ */}
+      <section id="schedule" className="border-t border-white/10 bg-white/[0.02]">
+        <div className="mx-auto max-w-5xl px-6 py-16">
+          <div className={kicker}>Расписание 22 ноября</div>
+          <h2 className="mt-3 text-3xl font-black uppercase tracking-tight">Кто, когда и на каком ковре</h2>
+          <div className="mt-8 grid gap-4 md:grid-cols-3">
+            {SCHEDULE.map((mat) => (
+              <div key={mat.mat} className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+                <div className="text-sm font-bold uppercase tracking-wide text-[#e3863d]">Ковёр №{mat.mat}</div>
+                <ul className="mt-3 space-y-3">
+                  {mat.slots.map((s) => (
+                    <li key={s.what} className="flex gap-3">
+                      <span className="w-28 shrink-0 font-black tabular-nums">{s.when}</span>
+                      <span className="text-[#e7e2d8]">{s.what}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+          <div className="mt-6 space-y-2 text-[#cec8bc]">
+            <p>Взвешивание — отдельно для каждой возрастной категории, за полчаса–час до её начала. Там же выдаём стартовые подарочные наборы.</p>
+            <p>Награждение — сразу по завершении каждой возрастной категории.</p>
+          </div>
         </div>
       </section>
 
