@@ -110,7 +110,8 @@ export default async function OrganizerConsole({ params }: { params: Promise<{ e
         </div>
         <div className="flex items-center gap-3">
           <a href={`/organizer/${event.slug ?? eventId}/offline`} className="text-sm font-semibold text-blue-600">Сетки без интернета →</a>
-          <a href={`/api/offline/xlsx?eventId=${eventId}`} className="text-sm text-blue-600">Сетки в Excel</a>
+          <a href={`/api/offline/entries?eventId=${eventId}`} className="rounded bg-emerald-700 px-3 py-1.5 text-sm font-semibold text-white">Список в Excel</a>
+          <a href={`/api/offline/xlsx?eventId=${eventId}`} className="rounded bg-emerald-700 px-3 py-1.5 text-sm font-semibold text-white">Сетки в Excel</a>
           <Link href={`/standings/${eventId}`} className="text-sm text-blue-600">Командный зачёт →</Link>
           <LockButton eventId={eventId} locked={locked} />
         </div>
