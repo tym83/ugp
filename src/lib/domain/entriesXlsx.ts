@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { categoryLabel } from "./snapshot";
 
 const PAYMENT_RU: Record<string, string> = { PAID: "оплатил", LATER: "оплатит позже", FREE: "бесплатно" };
-const STATUS_RU: Record<string, string> = { ENTERED: "заявлен", ADMITTED: "допущен", OVERWEIGHT: "перевес" };
+const STATUS_RU: Record<string, string> = { ENTERED: "заявлен", ADMITTED: "допущен", OVERWEIGHT: "перевес", WITHDRAWN: "убран" };
 const HEAD_FILL: ExcelJS.Fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE3863D" } };
 
 export async function buildEntriesWorkbook(eventId: string, withMoney: boolean): Promise<Buffer> {
