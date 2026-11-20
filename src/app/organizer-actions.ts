@@ -597,3 +597,20 @@ export async function deleteEntry(entryId: string): Promise<{ ok: boolean; msg: 
   revalidatePath(`/organizer/${entry.eventId}`);
   return { ok: true, msg: "Заявка удалена" };
 }
+
+/** Ковёр категории: сохраняется у категории и проставляется во все её схватки (null — снять). */
+export async function setCategoryMat(categoryId: string, mat: number | null): Promise<{ ok: boolean; msg: string }> {
+  const category = await prisma.category.findUnique({ where: { id: categoryId }, include: { event: true } });
+  if (!category) return { ok: false, msg: "Категория не найдена" };
+  await requireEventRole(category.eventId, "ORGANIZER", "ADMIN");
+  if (mat != null && (!Number.isInteger(mat) || mat < 1 || mat > category.event.matsCount)) {
+    return { ok: false, msg: `Ковёр должен быть от 1 до ${category.event.matsCount}` };
+  }
+  await prisma.$transaction([
+    prisma.category.update({ where: { id: categoryId }, data: { matNumber: mat } }),
+    prisma.match.updateMany({ where: { categoryId }, data: { matNumber: mat } }),
+  ]);
+  revalidatePath(`/organizer/${category.eventId}`);
+  revalidatePath(`/category/${categoryId}`);
+  return { ok: true, msg: mat ? `Ковёр ${mat}` : "Ковёр снят" };
+}

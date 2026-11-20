@@ -131,6 +131,7 @@ model Category {
   ruleFormat      String   @default("SUBMISSION_ONLY")
   bracketType     String   @default("SINGLE_ELIM")
   bronzeMode      String   @default("SINGLE_MATCH_3RD")
+  matNumber       Int?     // ковёр категории; проставляется во все её схватки
   boutSeconds     Int      @default(300)
   isAbsolute      Boolean  @default(false)
   minParticipants Int      @default(3)

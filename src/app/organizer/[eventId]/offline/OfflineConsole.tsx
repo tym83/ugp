@@ -309,6 +309,7 @@ export default function OfflineConsole({ eventId, eventName }: { eventId: string
                       className={`w-full rounded px-2 py-1 text-left ${c.id === catId ? "bg-blue-600 text-white" : "hover:bg-gray-100"}`}
                     >
                       {c.label}
+                      {c.mat ? <span className="ml-1 rounded bg-amber-100 px-1 text-xs font-semibold text-amber-800">ковёр {c.mat}</span> : null}
                       <span className={`ml-1 text-xs ${c.id === catId ? "text-blue-100" : "text-gray-500"}`}>
                         {done}/{c.matches.length}
                         {pendingCats.has(c.id) ? " · не отправлено" : ""}

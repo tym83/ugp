@@ -5,7 +5,7 @@ import { buildBracketAction } from "@/app/actions";
 import { needsMerge, suggestMergeTarget, type MergeCat } from "@/lib/domain/merge";
 import Link from "next/link";
 import WeighInForm from "./WeighInForm";
-import { MergeButton, LockButton, PaymentSelect, DeleteEntryButton } from "./OrganizerButtons";
+import { MergeButton, LockButton, PaymentSelect, DeleteEntryButton, MatSelect } from "./OrganizerButtons";
 import MoveRegistration from "./MoveRegistration";
 import AbsolutePanel from "./AbsolutePanel";
 import EntrySearch from "./EntrySearch";
@@ -235,6 +235,7 @@ export default async function OrganizerConsole({ params }: { params: Promise<{ e
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
+                  <MatSelect categoryId={c.id} mat={c.matNumber} matsCount={event.matsCount} />
                   {c._count.matches > 0 && (
                     <Link
                       href={`/organizer/${event.slug ?? eventId}/bracket/${c.slug ?? c.id}`}

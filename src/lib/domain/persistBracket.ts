@@ -65,6 +65,7 @@ export async function buildBracketForCategory(categoryId: string, opts: { force?
           slotAWinner: m.aFrom ? m.aFrom.winner : true,
           slotBWinner: m.bFrom ? m.bFrom.winner : true,
           status: "PENDING",
+          matNumber: category.matNumber,
         },
       });
       idByKey.set(key(m.round, m.pos, m.isBronze), created.id);
