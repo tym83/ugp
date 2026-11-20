@@ -74,7 +74,7 @@ function addCategorySheet(wb: ExcelJS.Workbook, cat: SnapCategory, name: string)
     { key: "how", width: 16 },
     { key: "note", width: 18 },
   ];
-  ws.getCell("A1").value = cat.label;
+  ws.getCell("A1").value = cat.mat ? `${cat.label} · ковёр ${cat.mat}` : cat.label;
   ws.getCell("A1").font = { bold: true, size: 14 };
   ws.getCell("A2").value = "Выберите победителя в жёлтой колонке — следующие схватки заполнятся сами.";
   ws.getCell("A2").font = { italic: true, color: { argb: "FF666666" } };
@@ -192,7 +192,7 @@ export async function buildBracketWorkbook(snapshot: Snapshot): Promise<Buffer> 
     const name = sheetName(cat.label, used);
     const { places } = addCategorySheet(wb, cat, name);
     const row = summary.getRow(3 + i);
-    row.getCell(1).value = { text: cat.label, hyperlink: `#'${name.replace(/'/g, "''")}'!A1` };
+    row.getCell(1).value = { text: cat.mat ? `${cat.label} · ковёр ${cat.mat}` : cat.label, hyperlink: `#'${name.replace(/'/g, "''")}'!A1` };
     row.getCell(1).font = { color: { argb: "FF1F5FBF" }, underline: true };
     places.forEach((ref, j) => {
       row.getCell(2 + j).value = { formula: `IF(${ref}="","",${ref})` };

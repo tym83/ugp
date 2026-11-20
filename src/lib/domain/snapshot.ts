@@ -41,6 +41,7 @@ export async function buildEventSnapshot(eventId: string): Promise<Snapshot> {
       id: c.id,
       label: categoryLabel(c),
       bracketType: c.bracketType,
+      mat: c.matNumber,
       athletes: Object.fromEntries(
         c.registrations.map((r) => [r.athleteId, { name: r.athlete.fullName, club: r.athlete.club?.name ?? null }]),
       ),

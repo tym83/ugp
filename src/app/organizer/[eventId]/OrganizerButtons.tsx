@@ -1,6 +1,6 @@
 "use client";
 import { useTransition, useState } from "react";
-import { applyMerge, setWeighInLock, setEntryPayment, deleteEntry, type PaymentKind } from "@/app/organizer-actions";
+import { applyMerge, setWeighInLock, setEntryPayment, deleteEntry, setCategoryMat, type PaymentKind } from "@/app/organizer-actions";
 
 export function MergeButton({ sourceId, targetId, targetLabel }: { sourceId: string; targetId: string; targetLabel: string }) {
   const [pending, start] = useTransition();
@@ -102,6 +102,36 @@ export function LockButton({ eventId, locked }: { eventId: string; locked: boole
         {state ? "Взвешивание закрыто" : "Закрыть взвешивание · старт"}
       </button>
       {msg && <span className="text-xs text-gray-500">{msg}</span>}
+    </span>
+  );
+}
+
+/** Ковёр категории: выбирается до или после сборки сетки, применяется ко всем её схваткам. */
+export function MatSelect({ categoryId, mat, matsCount }: { categoryId: string; mat: number | null; matsCount: number }) {
+  const [pending, start] = useTransition();
+  const [value, setValue] = useState(mat ?? 0);
+  const [msg, setMsg] = useState<string | null>(null);
+  return (
+    <span className="inline-flex items-center gap-1">
+      <select
+        value={value}
+        disabled={pending}
+        onChange={(e) => {
+          const n = Number(e.target.value);
+          setValue(n);
+          start(async () => {
+            const r = await setCategoryMat(categoryId, n || null);
+            setMsg(r.ok ? null : r.msg);
+          });
+        }}
+        className={`rounded border px-2 py-1 text-xs ${value ? "border-amber-500 bg-amber-50 font-semibold" : ""}`}
+      >
+        <option value={0}>ковёр —</option>
+        {Array.from({ length: matsCount }, (_, i) => i + 1).map((n) => (
+          <option key={n} value={n}>ковёр {n}</option>
+        ))}
+      </select>
+      {msg && <span className="text-xs text-red-600">{msg}</span>}
     </span>
   );
 }
