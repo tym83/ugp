@@ -9,6 +9,7 @@ import { MergeButton, LockButton, PaymentSelect, DeleteEntryButton, MatSelect } 
 import MoveRegistration from "./MoveRegistration";
 import AbsolutePanel from "./AbsolutePanel";
 import EntrySearch from "./EntrySearch";
+import NewCategoryForm from "./NewCategoryForm";
 import { absoluteRoster, type PaymentKind } from "@/app/organizer-actions";
 
 export const dynamic = "force-dynamic";
@@ -220,7 +221,10 @@ export default async function OrganizerConsole({ params }: { params: Promise<{ e
       )}
 
       <section className="mt-8 space-y-6">
-        <h2 className="text-lg font-semibold">Категории и взвешивание</h2>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-lg font-semibold">Категории и взвешивание</h2>
+          <NewCategoryForm eventPath={event.slug ?? eventId} options={catOptions} />
+        </div>
         {categories.map((c) => {
           const queue = c.registrations.filter((r) => r.status === "ENTERED");
           const generate = buildBracketAction.bind(null, c.id);
@@ -236,14 +240,12 @@ export default async function OrganizerConsole({ params }: { params: Promise<{ e
                 </div>
                 <div className="flex items-center gap-2">
                   <MatSelect categoryId={c.id} mat={c.matNumber} matsCount={event.matsCount} />
-                  {c._count.matches > 0 && (
-                    <Link
-                      href={`/organizer/${event.slug ?? eventId}/bracket/${c.slug ?? c.id}`}
-                      className="rounded border px-3 py-1 text-xs text-blue-700"
-                    >
-                      Правка сетки
-                    </Link>
-                  )}
+                  <Link
+                    href={`/organizer/${event.slug ?? eventId}/bracket/${c.slug ?? c.id}`}
+                    className="rounded border border-blue-600 px-3 py-1 text-xs font-semibold text-blue-700"
+                  >
+                    Состав и сетка
+                  </Link>
                   <form action={generate}>
                     <button className="rounded bg-blue-600 px-3 py-1 text-xs text-white">
                       {c._count.matches ? "Пересобрать сетку" : "Сгенерировать сетку"}
