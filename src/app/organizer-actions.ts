@@ -9,6 +9,8 @@ import { buildBracketForCategory } from "@/lib/domain/persistBracket";
 import { selectTier, priceEntry, type Tier } from "@/lib/domain/pricing";
 import { appendAudit } from "@/lib/domain/audit";
 import { IN_BRACKET } from "@/lib/domain/bracketStatus";
+import { listDropouts } from "../lib/domain/dropouts";
+import { isRefundStatus, type RefundStatus } from "../lib/domain/dropoutRefund";
 
 const ORG_ROLES = ["ORGANIZER", "ADMIN", "MAT_COORDINATOR"] as const;
 
@@ -546,6 +548,80 @@ export async function setEntryPayment(entryId: string, kind: PaymentKind | null)
   return { ok: true, msg: paid ? "Отметка сохранена" : "Отметка снята" };
 }
 
+type EntryStatusResult = { ok: boolean; msg: string; skippedCategories: { id: string; label: string }[] };
+
+// Only tournament withdrawals may be restored by this action.
+async function changeEntryStatus(entryId: string, restore: boolean, reason?: string): Promise<EntryStatusResult> {
+  const entry = await prisma.eventEntry.findUnique({ where: { id: entryId } });
+  if (!entry) return { ok: false, msg: "Заявка не найдена", skippedCategories: [] };
+  const user = await requireEventRole(entry.eventId, "ORGANIZER", "ADMIN");
+  const result = await prisma.$transaction(async (tx) => {
+    const registrations = await tx.registration.findMany({
+      where: {
+        entryId,
+        ...(restore
+          ? { status: "WITHDRAWN", OR: [{ withdrawReason: "снят с турнира" }, { withdrawReason: { startsWith: "entry:" } }] }
+          : { status: { in: [...IN_BRACKET, "OVERWEIGHT"] } }),
+      },
+      include: { category: true },
+    });
+    const touched = new Set<string>();
+    const skipped = new Map<string, string>();
+    const now = new Date();
+    const data = restore
+      ? { status: "ENTERED", withdrawnAt: null, withdrawReason: null, admittedAt: null }
+      : { status: "WITHDRAWN", withdrawnAt: now, withdrawReason: `entry:${reason || "снят с турнира"}` };
+    const changed = [];
+    for (const reg of registrations) {
+      await tx.registration.update({ where: { id: reg.id }, data });
+      changed.push({ id: reg.id, status: reg.status, withdrawnAt: reg.withdrawnAt, withdrawReason: reg.withdrawReason });
+      touched.add(reg.categoryId);
+    }
+    const skippedCategories = Array.from(skipped, ([id, label]) => ({ id, label }));
+    await appendAudit(tx, {
+      actorId: user.id, action: restore ? "entry.restore" : "entry.withdraw", entity: "EventEntry", entityId: entryId,
+      before: { registrations: changed },
+      after: { ...data, registrationIds: changed.map((r) => r.id), skippedCategories },
+    });
+    return { touched: [...touched], count: changed.length, skippedCategories };
+  });
+  revalidatePath(`/organizer/${entry.eventId}`);
+  for (const categoryId of result.touched) revalidatePath(`/category/${categoryId}`);
+  const summary = result.count
+    ? `${restore ? "Возвращено в категории" : "Снято с категорий"}: ${result.count}`
+    : "Нет регистраций для изменения";
+  return {
+    ok: result.skippedCategories.length === 0,
+    msg:
+      summary +
+      (result.skippedCategories.length
+        ? `. Не возвращено в категории с результатами схваток: ${result.skippedCategories.map((c) => c.label).join("; ")}`
+        : "") +
+      (!restore && result.count ? ". Где схватки уже идут, сетка не меняется — оставшиеся схватки отметьте как неявку." : ""),
+    skippedCategories: result.skippedCategories,
+  };
+}
+
+export async function withdrawEntry(entryId: string, reason?: string): Promise<EntryStatusResult> {
+  return changeEntryStatus(entryId, false, reason);
+}
+
+export async function restoreEntry(entryId: string): Promise<EntryStatusResult> {
+  return changeEntryStatus(entryId, true);
+}
+
+export async function markRefund(eventId: string, entryId: string, status: RefundStatus): Promise<{ ok: boolean; msg: string }> {
+  const user = await requireEventRole(eventId, "ORGANIZER", "ADMIN");
+  if (!isRefundStatus(status)) return { ok: false, msg: "Неизвестный статус возврата" };
+  const rows = await listDropouts(eventId);
+  if (!rows.some((row) => row.entryId === entryId)) return { ok: false, msg: "Выбывшая заявка не найдена в этом турнире" };
+  await prisma.$transaction((tx) => appendAudit(tx, {
+    actorId: user.id, action: "refund.mark", entity: "EventEntry", entityId: entryId, after: { status },
+  }));
+  revalidatePath("/organizer/[eventId]", "page");
+  return { ok: true, msg: "Статус возврата сохранён" };
+}
+
 /** Удаление заявки организатором (дубли: человек заявился сам и его же заявил тренер).
  *  Нельзя, если участник уже стоит в сверстанной сетке. Профиль без аккаунта и без других
  *  заявок удаляется вместе с согласиями; снимок заявки пишется в аудит. */
@@ -585,6 +661,7 @@ export async function deleteEntry(entryId: string): Promise<{ ok: boolean; msg: 
       before: {
         athlete: entry.athlete.fullName,
         birthDate: entry.athlete.birthDate,
+        phone: entry.athlete.phone,
         club: entry.athlete.club?.name ?? null,
         source: entry.source,
         priceTotal: entry.priceTotal,

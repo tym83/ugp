@@ -40,6 +40,10 @@ const nextConfig: NextConfig = {
   // Emit a self-contained server bundle (.next/standalone/server.js) for Docker.
   output: "standalone",
 
+  // Caddy compresses responses; compressing here as well double-encodes streamed pages and
+  // intermittently stalls them (Gzip "drain" listener leak in the logs).
+  compress: false,
+
   // Старые адреса раздела «Спонсорам» (раздел переименован в «Партнёрам»).
   async redirects() {
     return [

@@ -2,6 +2,8 @@
 import ExcelJS from "exceljs";
 import { prisma } from "@/lib/prisma";
 import { categoryLabel } from "./snapshot";
+import { listDropouts } from "./dropouts";
+import { REFUND_LABEL } from "./dropoutRefund";
 
 const PAYMENT_RU: Record<string, string> = { PAID: "оплатил", LATER: "оплатит позже", FREE: "бесплатно" };
 const STATUS_RU: Record<string, string> = { ENTERED: "заявлен", ADMITTED: "допущен", OVERWEIGHT: "перевес", WITHDRAWN: "убран" };
@@ -69,5 +71,21 @@ export async function buildEntriesWorkbook(eventId: string, withMoney: boolean):
     });
   }
   ws.autoFilter = { from: { row: 3, column: 1 }, to: { row: 3, column: cols.length } };
+  const dropouts = await listDropouts(eventId);
+  const ds = wb.addWorksheet("Выбывшие", { views: [{ state: "frozen", ySplit: 1 }] });
+  const dropoutHeaders = ["Заявка", "Статус", "ФИО", "Дата рождения", "Клуб", "Телефон", ...(withMoney ? ["Взнос, ₽"] : []), "Оплата", "Когда", "Кто", "Причина", "Возврат"];
+  ds.addRow(dropoutHeaders).eachCell((cell) => { cell.font = { bold: true }; cell.fill = HEAD_FILL; });
+  dropoutHeaders.forEach((label, index) => { ds.getColumn(index + 1).width = label === "ФИО" || label === "Причина" ? 36 : 24; });
+  for (const row of dropouts) {
+    ds.addRow([
+      row.entryId, row.kind === "withdrawn" ? "снят" : "удалён", row.fullName,
+      row.birthDate?.toLocaleDateString("ru-RU", { timeZone: "UTC" }) ?? "",
+      row.club ?? "", row.phone ?? "", ...(withMoney ? [row.priceTotal] : []),
+      PAYMENT_RU[row.paymentKind ?? (row.paid ? "PAID" : "")] ?? "не оплачено",
+      row.at?.toLocaleString("ru-RU", { timeZone: "Asia/Yekaterinburg" }) ?? "",
+      row.by ?? "", row.reason ?? "", REFUND_LABEL[row.refund],
+    ]);
+  }
+  ds.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: dropoutHeaders.length } };
   return Buffer.from(await wb.xlsx.writeBuffer());
 }

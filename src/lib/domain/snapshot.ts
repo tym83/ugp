@@ -21,13 +21,16 @@ export function categoryLabel(c: LabelCat): string {
 }
 
 /** Every generated bracket of the event, with full athlete names (organizer-only data). */
-export async function buildEventSnapshot(eventId: string): Promise<Snapshot> {
+export async function buildEventSnapshot(eventId: string, opts?: { categoryId?: string }): Promise<Snapshot> {
   const event = await prisma.event.findUniqueOrThrow({ where: { id: eventId } });
   const categories = await prisma.category.findMany({
-    where: { eventId, mergedIntoId: null, matches: { some: {} } },
+    where: {
+      eventId,
+      ...(opts?.categoryId !== undefined ? { id: opts.categoryId } : { mergedIntoId: null, matches: { some: {} } }),
+    },
     orderBy: { order: "asc" },
     include: {
-      registrations: { where: { status: { in: IN_BRACKET } }, include: { athlete: { include: { club: true } } } },
+      registrations: { where: { status: { notIn: ["OVERWEIGHT"] } }, include: { athlete: { include: { club: true } } } },
       matches: {
         include: { result: { select: { winType: true } } },
         orderBy: [{ isBronzeMatch: "asc" }, { roundNumber: "asc" }, { positionInRound: "asc" }],
@@ -44,7 +47,10 @@ export async function buildEventSnapshot(eventId: string): Promise<Snapshot> {
       bracketType: c.bracketType,
       mat: c.matNumber,
       athletes: Object.fromEntries(
-        c.registrations.map((r) => [r.athleteId, { name: r.athlete.fullName, club: r.athlete.club?.name ?? null }]),
+        c.registrations.map((r) => [
+          r.athleteId,
+          { name: r.athlete.fullName, club: r.athlete.club?.name ?? null, ...(IN_BRACKET.includes(r.status) ? {} : { withdrawn: true }) },
+        ]),
       ),
       matches: c.matches.map((m) => ({
         id: m.id,

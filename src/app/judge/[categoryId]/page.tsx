@@ -1,6 +1,5 @@
-import { IN_BRACKET } from "@/lib/domain/bracketStatus";
 import { prisma } from "@/lib/prisma";
-import { correctResultAction } from "@/app/actions";
+import CompletedBoutForm from "./CompletedBoutForm";
 import { getCurrentUser, hasRole } from "@/lib/auth/session";
 import { randomUUID } from "crypto";
 import { redirect } from "next/navigation";
@@ -16,6 +15,7 @@ const WIN_TYPES: { v: string; ru: string }[] = [
   { v: "DQ", ru: "Дисквалификация" },
   { v: "NO_SHOW", ru: "Неявка" },
   { v: "INJURY", ru: "Травма" },
+  { v: "WALKOVER", ru: "Без борьбы" },
 ];
 
 export default async function JudgePage({ params }: { params: Promise<{ categoryId: string }> }) {
@@ -30,9 +30,9 @@ export default async function JudgePage({ params }: { params: Promise<{ category
   if (!category) return <main className="p-8">Категория не найдена</main>;
   const catId = category.id;
 
-  const regs = await prisma.registration.findMany({ where: { categoryId: catId, status: { in: IN_BRACKET } }, include: { athlete: true } });
+  const regs = await prisma.registration.findMany({ where: { categoryId: catId }, include: { athlete: true } });
   const nameById = new Map(regs.map((r) => [r.athleteId, r.athlete.fullName]));
-  const matches = await prisma.match.findMany({ where: { categoryId: catId }, orderBy: [{ roundNumber: "asc" }, { positionInRound: "asc" }] });
+  const matches = await prisma.match.findMany({ where: { categoryId: catId }, include: { result: true }, orderBy: [{ roundNumber: "asc" }, { positionInRound: "asc" }] });
 
   const ready = matches.filter((m) => m.slotAAthleteId && m.slotBAthleteId && m.status !== "COMPLETED");
   const done = matches.filter((m) => m.status === "COMPLETED");
@@ -67,26 +67,23 @@ export default async function JudgePage({ params }: { params: Promise<{ category
       <ul className="text-sm space-y-2">
         {done.map((m) => {
           const a = m.slotAAthleteId, b = m.slotBAthleteId;
-          const other = m.winnerAthleteId === a ? b : a; // предполагаемый «другой» участник
           return (
             <li key={m.id} className="text-gray-700 border-b pb-2">
               Круг {m.roundNumber}{m.isBronzeMatch ? " (3-е)" : ""}: <b>{nm(m.winnerAthleteId)}</b>
               {a && b && <span className="text-gray-400"> ({nm(a)} / {nm(b)})</span>}
-              {isHeadJudge && a && b && other && (
-                <form action={correctResultAction} className="mt-1 flex flex-wrap items-center gap-2">
-                  <input type="hidden" name="matchId" value={m.id} />
-                  <input type="hidden" name="categoryId" value={catId} />
-                  <span className="text-xs text-gray-500">гл. судья:</span>
-                  <select name="winnerAthleteId" className="border rounded px-1 py-0.5 text-xs" defaultValue={m.winnerAthleteId ?? ""}>
-                    <option value={a}>{nm(a)}</option>
-                    <option value={b}>{nm(b)}</option>
-                  </select>
-                  <select name="winType" className="border rounded px-1 py-0.5 text-xs" defaultValue="SUBMISSION">
-                    {WIN_TYPES.map((w) => <option key={w.v} value={w.v}>{w.ru}</option>)}
-                  </select>
-                  <input name="reason" placeholder="причина" className="border rounded px-1 py-0.5 text-xs w-28" />
-                  <button className="rounded border border-amber-500 text-amber-700 px-2 py-0.5 text-xs">Исправить</button>
-                </form>
+              {isHeadJudge && a && b && m.result && (
+                <CompletedBoutForm
+                  matchId={m.id}
+                  aId={a}
+                  bId={b}
+                  aName={nm(a)}
+                  bName={nm(b)}
+                  winnerAthleteId={m.winnerAthleteId ?? ""}
+                  winType={m.result.winType}
+                  scoreA={m.result.scoreA}
+                  scoreB={m.result.scoreB}
+                  winTypes={WIN_TYPES}
+                />
               )}
             </li>
           );

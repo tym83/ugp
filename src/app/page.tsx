@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { isHiddenEvent } from "@/lib/domain/hiddenEvent";
 import Link from "next/link";
 import Countdown from "@/components/Countdown";
 import ContactCard from "@/components/ContactCard";
@@ -46,23 +47,24 @@ const SCHEDULE: { mat: number; slots: { when: string; what: string }[] }[] = [
   ] },
 ];
 
+function RegBtn({ big, canReg, regHref }: { big?: boolean; canReg: boolean; regHref: string }) {
+  return canReg ? (
+    <Link href={regHref} className={`rounded bg-[#e3863d] font-black uppercase tracking-wide text-black hover:brightness-110 ${big ? "px-8 py-4 text-lg" : "px-6 py-3"}`}>
+      Зарегистрироваться
+    </Link>
+  ) : null;
+}
+
 export default async function Home() {
-  const events = await prisma.event.findMany({
+  const events = (await prisma.event.findMany({
     orderBy: { date: "asc" },
     include: { _count: { select: { entries: true, categories: true } } },
-  });
+  })).filter((event) => !isHiddenEvent(event));
   const ev = events.find((e) => e.status === "REG_OPEN") ?? events.find((e) => e.status === "LIVE") ?? events[0];
   const st = ev ? STATUS[ev.status] ?? { text: ev.status, cls: "bg-white/15 text-white" } : null;
   const evPath = ev ? (ev.slug ?? ev.id) : "";
   const regHref = ev ? `/register/${evPath}` : "/login";
   const canReg = ev?.status === "REG_OPEN";
-
-  const RegBtn = ({ big }: { big?: boolean }) =>
-    canReg ? (
-      <Link href={regHref} className={`rounded bg-[#e3863d] font-black uppercase tracking-wide text-black hover:brightness-110 ${big ? "px-8 py-4 text-lg" : "px-6 py-3"}`}>
-        Зарегистрироваться
-      </Link>
-    ) : null;
 
   return (
     <main className="bg-[#0d0b08] text-[#f4f0e8]">
@@ -88,7 +90,7 @@ export default async function Home() {
                 <div className="mt-4 text-[#e7e2d8]"><Countdown target={new Date(ev.registrationClosesAt).toISOString()} /></div>
               )}
               <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
-                <RegBtn big />
+                <RegBtn big canReg={canReg} regHref={regHref} />
                 <Link href={`/event/${evPath}#divisions`} className="rounded border border-white/30 bg-white/5 px-7 py-4 font-bold uppercase tracking-wide backdrop-blur hover:bg-white/15">
                   Сетки и категории
                 </Link>
@@ -307,7 +309,7 @@ export default async function Home() {
             <ContactCard />
           </div>
           <div className="mt-8 flex flex-wrap items-center gap-3">
-            <RegBtn big />
+            <RegBtn big canReg={canReg} regHref={regHref} />
             <Link href="/partners" className="rounded border border-white/25 px-6 py-4 font-bold uppercase tracking-wide hover:bg-white/10">Стать партнёром</Link>
           </div>
         </div>

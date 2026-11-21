@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 import { appendAudit } from "./audit";
 import { advanceWinner } from "./persistBracket";
+import { clearedResultSlots } from "./resultSlots";
 
 export type SubmitResultInput = {
   matchId: string;
@@ -154,5 +155,56 @@ export async function correctResult(input: CorrectResultInput) {
     await advanceWinner(tx, match.id);
   });
 
+  return { ok: true };
+}
+
+/** Undo a recorded bout atomically, including advancement and audit history. */
+export async function undoResult(input: { matchId: string; actorUserId: string; reason?: string }) {
+  await prisma.$transaction(async (tx) => {
+    const match = await tx.match.findUnique({ where: { id: input.matchId }, include: { result: true } });
+    if (!match || match.status !== "COMPLETED" || !match.result) throw new Error("Нечего отменять");
+
+    const dependents = await tx.match.findMany({
+      where: { OR: [{ slotAFromMatchId: match.id }, { slotBFromMatchId: match.id }] },
+      include: { result: true },
+    });
+    const played = dependents.find((d) => d.status === "COMPLETED" && d.result);
+    if (played) {
+      const label = `Круг ${played.roundNumber}, схватка ${played.positionInRound}${played.isBronzeMatch ? " (за 3-е место)" : ""}`;
+      throw new Error(`Сначала отмените результат схватки «${label}», куда ушёл победитель`);
+    }
+
+    await tx.result.delete({ where: { matchId: match.id } });
+    await tx.match.update({
+      where: { id: match.id, version: match.version },
+      data: { status: "PENDING", winnerAthleteId: null, loserAthleteId: null, endedAt: null, version: { increment: 1 } },
+    });
+    for (const dependent of dependents) {
+      await tx.match.update({
+        where: { id: dependent.id, version: dependent.version },
+        data: {
+          ...clearedResultSlots(match.id, dependent),
+          status: "PENDING",
+          winnerAthleteId: null,
+          loserAthleteId: null,
+          endedAt: null,
+          version: { increment: 1 },
+        },
+      });
+    }
+    await appendAudit(tx, {
+      actorId: input.actorUserId,
+      action: "RESULT_UNDO",
+      entity: "Match",
+      entityId: match.id,
+      before: {
+        winner: match.winnerAthleteId,
+        loser: match.loserAthleteId,
+        winType: match.result.winType,
+        score: [match.result.scoreA, match.result.scoreB],
+      },
+      after: { reason: input.reason ?? null },
+    });
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
   return { ok: true };
 }

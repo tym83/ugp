@@ -27,7 +27,7 @@ export type SnapCategory = {
   label: string;
   bracketType: string;
   mat?: number | null;
-  athletes: Record<string, { name: string; club: string | null }>;
+  athletes: Record<string, { name: string; club: string | null; withdrawn?: boolean }>;
   matches: SnapMatch[];
 };
 
