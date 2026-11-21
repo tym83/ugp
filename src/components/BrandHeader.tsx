@@ -36,6 +36,11 @@ export default async function BrandHeader() {
               {role && <span className="hidden rounded bg-[#e3863d]/20 px-2 py-0.5 text-xs font-semibold uppercase tracking-wide text-[#e3863d] sm:inline">{ROLE_LABEL[role] ?? role}</span>}
               <span className="max-w-[10rem] truncate text-sm font-semibold">{user.fullName}</span>
             </Link>
+            {roles.some((r) => r === "ORGANIZER" || r === "ADMIN" || r === "MAT_COORDINATOR") && (
+              <Link href="/organizer/help" className="text-sm text-[#cec8bc] underline-offset-4 hover:text-[#e3863d] hover:underline">
+                Инструкция
+              </Link>
+            )}
             <form action={signOutAction}>
               <button className="rounded border border-white/20 px-3 py-1.5 text-sm text-[#cec8bc] hover:bg-white/10">Выход</button>
             </form>

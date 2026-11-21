@@ -14,19 +14,18 @@ export default async function DropoutsSection({ eventId, showMoney }: { eventId:
         <div className="mt-3 overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead><tr>
-              {["Заявка", "Статус", "ФИО", "Дата рождения", "Клуб", "Телефон", ...(showMoney ? ["Взнос"] : []), "Оплата", "Когда", "Кто", "Причина", "Возврат"].map((label) => <th key={label} className="px-3 py-2">{label}</th>)}
+              {["Статус", "ФИО", "Год", "Клуб", "Телефон", ...(showMoney ? ["Взнос"] : []), "Оплата", "Когда", "Кто", "Причина", "Возврат"].map((label) => <th key={label} className="px-3 py-2">{label}</th>)}
             </tr></thead>
             <tbody className="divide-y">{rows.map((row) => (
               <tr key={row.entryId} className="align-top">
-                <td className="px-3 py-2 text-xs">{row.entryId}</td>
                 <td className="px-3 py-2">{row.kind === "withdrawn" ? "снят" : "удалён"}</td>
                 <td className="px-3 py-2">{row.fullName}</td>
-                <td className="px-3 py-2">{row.birthDate?.toLocaleDateString("ru-RU", { timeZone: "UTC" }) ?? "—"}</td>
+                <td className="px-3 py-2">{row.birthDate?.getUTCFullYear() ?? "—"}</td>
                 <td className="px-3 py-2">{row.club ?? "—"}</td>
                 <td className="px-3 py-2">{row.phone ?? "—"}</td>
                 {showMoney && <td className="px-3 py-2 whitespace-nowrap">{row.priceTotal} ₽</td>}
                 <td className="px-3 py-2">{PAYMENT_LABEL[row.paymentKind ?? (row.paid ? "PAID" : "")] ?? "не оплачено"}</td>
-                <td className="px-3 py-2">{row.at?.toLocaleString("ru-RU", { timeZone: "Asia/Yekaterinburg" }) ?? "—"}</td>
+                <td className="px-3 py-2 whitespace-nowrap">{row.at?.toLocaleString("ru-RU", { timeZone: "Asia/Yekaterinburg", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) ?? "—"}</td>
                 <td className="px-3 py-2">{row.by ?? "—"}</td>
                 <td className="px-3 py-2">{row.reason ?? "—"}</td>
                 <td className="px-3 py-2"><RefundSelect eventId={eventId} entryId={row.entryId} status={row.refund} /></td>
