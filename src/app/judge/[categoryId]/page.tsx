@@ -1,3 +1,4 @@
+import { IN_BRACKET } from "@/lib/domain/bracketStatus";
 import { prisma } from "@/lib/prisma";
 import { correctResultAction } from "@/app/actions";
 import { getCurrentUser, hasRole } from "@/lib/auth/session";
@@ -29,7 +30,7 @@ export default async function JudgePage({ params }: { params: Promise<{ category
   if (!category) return <main className="p-8">Категория не найдена</main>;
   const catId = category.id;
 
-  const regs = await prisma.registration.findMany({ where: { categoryId: catId, status: "ADMITTED" }, include: { athlete: true } });
+  const regs = await prisma.registration.findMany({ where: { categoryId: catId, status: { in: IN_BRACKET } }, include: { athlete: true } });
   const nameById = new Map(regs.map((r) => [r.athleteId, r.athlete.fullName]));
   const matches = await prisma.match.findMany({ where: { categoryId: catId }, orderBy: [{ roundNumber: "asc" }, { positionInRound: "asc" }] });
 

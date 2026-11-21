@@ -8,6 +8,7 @@ import { canTransition } from "@/lib/data/preset";
 import { buildBracketForCategory } from "@/lib/domain/persistBracket";
 import { selectTier, priceEntry, type Tier } from "@/lib/domain/pricing";
 import { appendAudit } from "@/lib/domain/audit";
+import { IN_BRACKET } from "@/lib/domain/bracketStatus";
 
 const ORG_ROLES = ["ORGANIZER", "ADMIN", "MAT_COORDINATOR"] as const;
 
@@ -258,14 +259,14 @@ export async function swapSeeds(
   if (blocked) return { ok: false, msg: blocked };
 
   const [r1, r2] = await Promise.all([
-    prisma.registration.findFirst({ where: { categoryId, athleteId: athleteId1, status: "ADMITTED" } }),
-    prisma.registration.findFirst({ where: { categoryId, athleteId: athleteId2, status: "ADMITTED" } }),
+    prisma.registration.findFirst({ where: { categoryId, athleteId: athleteId1, status: { in: IN_BRACKET } } }),
+    prisma.registration.findFirst({ where: { categoryId, athleteId: athleteId2, status: { in: IN_BRACKET } } }),
   ]);
   if (!r1 || !r2) return { ok: false, msg: "Регистрация не найдена" };
 
   // Если seed не проставлен — берём текущий порядок (индекс) как базовый посев.
   const ordered = await prisma.registration.findMany({
-    where: { categoryId, status: "ADMITTED" },
+    where: { categoryId, status: { in: IN_BRACKET } },
     orderBy: { seed: "asc" },
   });
   const seedOf = (id: string) => {
@@ -298,7 +299,7 @@ export async function moveAthleteSeed(
   if (blocked) return { ok: false, msg: blocked };
 
   const ordered = await prisma.registration.findMany({
-    where: { categoryId, status: "ADMITTED" },
+    where: { categoryId, status: { in: IN_BRACKET } },
     orderBy: { seed: "asc" },
   });
   const target = ordered.find((r) => r.athleteId === athleteId);
@@ -336,7 +337,7 @@ export async function findBracketConflicts(
   await requireRole("ORGANIZER", "ADMIN");
 
   const regs = await prisma.registration.findMany({
-    where: { categoryId, status: "ADMITTED" },
+    where: { categoryId, status: { in: IN_BRACKET } },
     include: { athlete: { include: { club: true } } },
     orderBy: { seed: "asc" },
   });

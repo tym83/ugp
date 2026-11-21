@@ -166,8 +166,20 @@ function addCategorySheet(wb: ExcelJS.Workbook, cat: SnapCategory, name: string)
     const fr = final ? rowOf.get(final.id)! : null;
     setPlace(3, "1 место", fr ? `IF(E${fr}="","",E${fr})` : `""`, final?.winner ? label(final.winner) : "");
     setPlace(4, "2 место", fr ? `IF(F${fr}="","",F${fr})` : `""`, final?.loser ? label(final.loser) : "");
-    const br = bronze ? rowOf.get(bronze.id)! : null;
-    setPlace(5, "3 место", br ? `IF(E${br}="","",E${br})` : `""`, bronze?.winner ? label(bronze.winner) : "");
+    if (bronze) {
+      const br = rowOf.get(bronze.id)!;
+      setPlace(5, "3 место", `IF(E${br}="","",E${br})`, bronze.winner ? label(bronze.winner) : "");
+    } else {
+      // на троих схватки за 3-е нет: 3-е — проигравший полуфинала, когда сыгран финал
+      const semi = main.find((m) => m.round === lastRound - 1 && !(m.status === "COMPLETED" && (!m.a || !m.b)));
+      const sr = semi ? rowOf.get(semi.id)! : null;
+      setPlace(
+        5,
+        "3 место",
+        sr && fr ? `IF(E${fr}="","",IF(F${sr}="","",F${sr}))` : `""`,
+        final?.winner && semi?.loser ? label(semi.loser) : "",
+      );
+    }
   }
   return { sheet: name, places };
 }

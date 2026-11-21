@@ -125,8 +125,9 @@ export function generateSingleElim(
     prevRoundMatches = cnt;
   }
 
-  // Матч за 3-е место: проигравшие полуфиналов (предпоследний круг, 2 матча)
-  if (bronzeMode === "SINGLE_MATCH_3RD" && rounds >= 2) {
+  // Матч за 3-е место: проигравшие полуфиналов (предпоследний круг, 2 матча).
+  // На троих полуфинал один (второй — проход), 3-е место — проигравший полуфинала без боя.
+  if (bronzeMode === "SINGLE_MATCH_3RD" && rounds >= 2 && n >= 4) {
     const semiRound = rounds - 1;
     // полуфиналов должно быть ровно 2
     const semis = matches.filter((m) => m.round === semiRound);

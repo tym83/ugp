@@ -1,3 +1,4 @@
+import { IN_BRACKET } from "@/lib/domain/bracketStatus";
 import { prisma } from "@/lib/prisma";
 import { buildBracketAction } from "@/app/actions";
 import { getCurrentUser, hasRole } from "@/lib/auth/session";
@@ -38,7 +39,7 @@ export default async function CategoryPage({ params }: { params: Promise<{ id: s
   const id = category.id; // реальный id для запросов/действий
 
   const regs = await prisma.registration.findMany({
-    where: { categoryId: id, status: "ADMITTED" },
+    where: { categoryId: id, status: { in: IN_BRACKET } },
     include: { athlete: { include: { club: true } }, entry: { select: { paid: true } } },
     orderBy: { seed: "asc" },
   });

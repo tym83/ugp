@@ -84,6 +84,12 @@ export function placementsFromCategory(
   if (bronze?.winnerAthleteId) {
     const third = place(bronze.winnerAthleteId, 3);
     if (third) out.push(third);
+  } else if (!matches.some((m) => m.isBronzeMatch) && final?.winnerAthleteId) {
+    // без схватки за 3-е (на троих): 3-е — проигравшие полуфиналов
+    for (const m of nonBronze.filter((x) => x.roundNumber === finalRound - 1 && x.status === "COMPLETED")) {
+      const third = place(m.loserAthleteId, 3);
+      if (third) out.push(third);
+    }
   }
   return out;
 }

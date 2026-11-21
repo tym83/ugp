@@ -7,6 +7,7 @@ import { requireEventRole } from "@/lib/auth/session";
 import { buildBracketForCategory } from "@/lib/domain/persistBracket";
 import { selectTier, priceEntry, type Tier } from "@/lib/domain/pricing";
 import { appendAudit } from "@/lib/domain/audit";
+import { IN_BRACKET, inBracket } from "@/lib/domain/bracketStatus";
 
 type Res = { ok: boolean; msg: string };
 
@@ -48,8 +49,8 @@ export async function saveBracket(categoryId: string): Promise<Res> {
   const { category } = await orgCategory(categoryId);
   const blocked = await playedReason(categoryId);
   if (blocked) return { ok: false, msg: blocked };
-  const n = await prisma.registration.count({ where: { categoryId, status: "ADMITTED" } });
-  if (n === 0) return { ok: false, msg: "В категории нет допущенных участников" };
+  const n = await prisma.registration.count({ where: { categoryId, status: { in: IN_BRACKET } } });
+  if (n === 0) return { ok: false, msg: "В категории нет участников" };
   await buildBracketForCategory(categoryId);
   refresh(category.eventId, categoryId);
   return { ok: true, msg: n === 1 ? "Сохранено: участник один, схваток нет" : `Сетка сохранена (${n} уч.)` };
@@ -74,7 +75,7 @@ export async function searchEventAthletes(categoryId: string, q: string): Promis
       fullName: e.athlete.fullName,
       birthYear: e.athlete.birthDate.getUTCFullYear(),
       club: e.athlete.club?.name ?? null,
-      inCategory: e.registrations.some((r) => r.categoryId === categoryId && r.status === "ADMITTED"),
+      inCategory: e.registrations.some((r) => r.categoryId === categoryId && inBracket(r.status)),
     }));
 }
 

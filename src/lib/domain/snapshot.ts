@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { levelLabel } from "./levelLabel";
+import { IN_BRACKET } from "./bracketStatus";
 import type { Snapshot } from "./offlineBracket";
 
 type LabelCat = {
@@ -26,7 +27,7 @@ export async function buildEventSnapshot(eventId: string): Promise<Snapshot> {
     where: { eventId, mergedIntoId: null, matches: { some: {} } },
     orderBy: { order: "asc" },
     include: {
-      registrations: { where: { status: "ADMITTED" }, include: { athlete: { include: { club: true } } } },
+      registrations: { where: { status: { in: IN_BRACKET } }, include: { athlete: { include: { club: true } } } },
       matches: {
         include: { result: { select: { winType: true } } },
         orderBy: [{ isBronzeMatch: "asc" }, { roundNumber: "asc" }, { positionInRound: "asc" }],

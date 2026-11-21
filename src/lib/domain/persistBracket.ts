@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { IN_BRACKET } from "./bracketStatus";
 import type { Prisma } from "@prisma/client";
 import { generateBracket, type Participant } from "./bracket";
 
@@ -16,7 +17,7 @@ export async function buildBracketForCategory(categoryId: string, opts: { force?
   }
 
   const regs = await prisma.registration.findMany({
-    where: { categoryId, status: "ADMITTED" },
+    where: { categoryId, status: { in: IN_BRACKET } },
     include: { athlete: true },
     orderBy: { seed: "asc" },
   });
