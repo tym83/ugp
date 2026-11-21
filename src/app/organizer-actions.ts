@@ -8,6 +8,7 @@ import { canTransition } from "@/lib/data/preset";
 import { buildBracketForCategory } from "@/lib/domain/persistBracket";
 import { selectTier, priceEntry, type Tier } from "@/lib/domain/pricing";
 import { appendAudit } from "@/lib/domain/audit";
+import { categoryLabel } from "@/lib/domain/snapshot";
 import { IN_BRACKET } from "@/lib/domain/bracketStatus";
 import { listDropouts } from "../lib/domain/dropouts";
 import { isRefundStatus, type RefundStatus } from "../lib/domain/dropoutRefund";
@@ -51,82 +52,128 @@ function toCat(c: CategoryRow): Cat {
   };
 }
 
-export type WeighInResult = { ok: boolean; status: string; msg: string };
+export type WeighInCategory = { categoryId: string; label: string };
+export type WeighInResult = { ok: boolean; status: string; msg: string; suggestion?: WeighInCategory | null };
 
-/** Взвесить и допустить: пишем фактический вес, создаём попытку, валидируем вес.
- *  Подходит → ADMITTED. Перевес → пытаемся переклассифицировать в ближайшую подходящую
- *  категорию (тот же event/discipline/sex) с play-up. Нет подходящей → OVERWEIGHT. */
+/** Record every weigh-in; only a fitting weight grants automatic admission. */
 export async function weighInAndAdmit(registrationId: string, actualWeight: number): Promise<WeighInResult> {
   await requireRole(...ORG_ROLES);
-
+  if (!Number.isFinite(actualWeight) || actualWeight <= 0) {
+    return { ok: false, status: "ERROR", msg: "Неверный вес" };
+  }
   const reg = await prisma.registration.findUnique({
-    where: { id: registrationId },
-    include: { category: true, athlete: true },
+    where: { id: registrationId }, include: { category: true, athlete: true },
   });
   if (!reg) return { ok: false, status: "ERROR", msg: "Регистрация не найдена" };
-
   const event = await prisma.event.findUnique({ where: { id: reg.category.eventId } });
-  if (event && isWeighInLocked(event.status)) {
+  if (!event || isWeighInLocked(event.status)) {
     return { ok: false, status: reg.status, msg: "Взвешивание закрыто (турнир уже идёт)" };
   }
-
+  if (reg.status !== "ENTERED") return { ok: false, status: reg.status, msg: "Регистрация уже обработана" };
   const cat = toCat(reg.category);
   const fits = weightFits(actualWeight, cat);
-
+  const now = new Date();
   await prisma.$transaction(async (tx) => {
     await tx.registration.update({
       where: { id: registrationId },
-      data: { actualWeight, weighedAt: new Date() },
+      data: { actualWeight, weighedAt: now,
+        ...(fits ? { status: "ADMITTED", admittedAt: now, effectiveCategoryId: reg.categoryId } : {}),
+      },
     });
-    await tx.weighInAttempt.create({
-      data: { registrationId, weight: actualWeight, ok: fits },
-    });
-  });
-
-  if (fits) {
-    await prisma.registration.update({
-      where: { id: registrationId },
-      data: { status: "ADMITTED", admittedAt: new Date(), effectiveCategoryId: reg.categoryId },
-    });
-    revalidatePath(`/organizer/${reg.category.eventId}`);
-    return { ok: true, status: "ADMITTED", msg: `Допущен (${actualWeight} кг)` };
-  }
-
-  // Перевес — ищем подходящую категорию в том же событии/дисциплине/поле.
-  const birthYear = reg.athlete.birthDate.getUTCFullYear();
-  const info: AthleteInfo = { sex: reg.athlete.sex as "M" | "F", birthYear, weight: actualWeight };
-
-  const siblings = (await prisma.category.findMany({
-    where: {
-      eventId: reg.category.eventId,
-      discipline: reg.category.discipline,
-      sex: reg.category.sex,
-      isAbsolute: false,
-      mergedIntoId: null,
-    },
-  })) as CategoryRow[];
-
-  const candidates = eligibleCategories(info, cat.discipline, siblings.map(toCat), { allowPlayUp: true })
-    // ближайшая по весу сверху
-    .sort((x, y) => (x.weightMax ?? 1e9) - (y.weightMax ?? 1e9));
-  const target = candidates.find((c) => c.id !== reg.categoryId) ?? candidates[0] ?? null;
-
-  if (target) {
-    await prisma.registration.update({
-      where: { id: registrationId },
-      // effectiveCategoryId хранит фактическую категорию; buildBracketForCategory читает categoryId.
-      data: { categoryId: target.id, effectiveCategoryId: target.id, status: "ADMITTED", admittedAt: new Date() },
-    });
-    revalidatePath(`/organizer/${reg.category.eventId}`);
-    return { ok: true, status: "ADMITTED", msg: `Перевес → переведён в другую категорию и допущен` };
-  }
-
-  await prisma.registration.update({
-    where: { id: registrationId },
-    data: { status: "OVERWEIGHT" },
+    await tx.weighInAttempt.create({ data: { registrationId, weight: actualWeight, ok: fits } });
   });
   revalidatePath(`/organizer/${reg.category.eventId}`);
-  return { ok: false, status: "OVERWEIGHT", msg: `Перевес ${actualWeight} кг — подходящей категории нет` };
+  revalidatePath(`/category/${reg.categoryId}`);
+  if (fits) return { ok: true, status: "ADMITTED", msg: `Допущен (${actualWeight} кг)` };
+
+  const underweight = cat.weightMin != null && actualWeight <= cat.weightMin;
+  const info: AthleteInfo = {
+    sex: reg.athlete.sex as "M" | "F", birthYear: reg.athlete.birthDate.getUTCFullYear(),
+    weight: actualWeight, level: cat.level,
+  };
+  const siblings = await prisma.category.findMany({
+    where: { eventId: reg.category.eventId, discipline: cat.discipline, sex: cat.sex,
+      level: cat.level, isAbsolute: false, mergedIntoId: null, id: { not: reg.categoryId } },
+  });
+  const cap = (c: Cat) => c.isOpenTop ? Infinity : c.weightMax ?? Infinity;
+  const candidates = eligibleCategories(info, cat.discipline, siblings.map(toCat), { allowPlayUp: true })
+    .filter((c) => underweight ? cap(c) < cap(cat) : cap(c) > cap(cat))
+    .sort((x, y) => underweight ? cap(y) - cap(x) : cap(x) - cap(y));
+  const target = siblings.find((c) => c.id === candidates[0]?.id);
+  return {
+    ok: false, status: "NEEDS_DECISION",
+    msg: underweight
+      ? `Недовес: ${actualWeight} кг, категория свыше ${cat.weightMin} кг`
+      : `Перевес: ${actualWeight} кг при лимите до ${cat.weightMax} кг`,
+    suggestion: target ? { categoryId: target.id, label: categoryLabel(target) } : null,
+  };
+}
+
+/** Load manual destinations only when the organizer opens the selector. */
+export async function weighInCategoryOptions(registrationId: string): Promise<WeighInCategory[]> {
+  await requireRole(...ORG_ROLES);
+  const reg = await prisma.registration.findUnique({ where: { id: registrationId }, include: { category: true } });
+  if (!reg) return [];
+  const categories = await prisma.category.findMany({
+    where: { eventId: reg.category.eventId, discipline: reg.category.discipline,
+      mergedIntoId: null, id: { not: reg.categoryId } },
+    orderBy: { order: "asc" },
+  });
+  return categories.map((c) => ({ categoryId: c.id, label: categoryLabel(c) }));
+}
+
+/** Apply an explicit organizer decision without rebuilding either bracket. */
+export async function resolveWeighIn(
+  registrationId: string, decision: "KEEP" | "MOVE" | "WITHDRAW", targetCategoryId?: string,
+): Promise<WeighInResult> {
+  const user = await requireRole(...ORG_ROLES);
+  const result = await prisma.$transaction(async (tx) => {
+    const fail = (msg: string) => ({ ok: false as const, status: "ERROR", msg });
+    if (!["KEEP", "MOVE", "WITHDRAW"].includes(decision)) return fail("Неизвестное решение");
+    const reg = await tx.registration.findUnique({ where: { id: registrationId }, include: { category: true } });
+    if (!reg) return fail("Регистрация не найдена");
+    const event = await tx.event.findUnique({ where: { id: reg.category.eventId } });
+    if (!event || isWeighInLocked(event.status)) return fail("Взвешивание закрыто (турнир уже идёт)");
+    if (reg.status !== "ENTERED" || reg.actualWeight == null || !reg.weighedAt) {
+      return fail("Сначала взвесьте участника с необработанной регистрацией");
+    }
+    let target = reg.category;
+    const notes: string[] = [];
+    if (decision === "MOVE") {
+      if (!targetCategoryId || targetCategoryId === reg.categoryId) return fail("Выберите другую категорию");
+      const found = await tx.category.findUnique({ where: { id: targetCategoryId } });
+      if (!found || found.eventId !== reg.category.eventId || found.discipline !== reg.category.discipline || found.mergedIntoId) {
+        return fail("Выберите необъединённую категорию этого турнира и той же дисциплины");
+      }
+      target = found;
+      for (const category of [reg.category, target]) {
+        const results = await tx.match.count({ where: { categoryId: category.id, result: { isNot: null } } });
+        if (results) return fail(`В категории «${categoryLabel(category)}» уже есть результаты — перевод невозможен`);
+        const matches = await tx.match.count({ where: { categoryId: category.id } });
+        if (matches || category.bracketVersion > 0) notes.push(`В категории «${categoryLabel(category)}» уже есть сетка — пересоберите её`);
+      }
+    }
+    const now = new Date();
+    const data = decision === "WITHDRAW"
+      ? { status: "WITHDRAWN", withdrawnAt: now, withdrawReason: "перевес на взвешивании" }
+      : { status: "ADMITTED", admittedAt: now, categoryId: target.id, effectiveCategoryId: target.id };
+    await tx.registration.update({ where: { id: registrationId }, data });
+    await appendAudit(tx, {
+      actorId: user.id, action: "weighin.decision", entity: "Registration", entityId: registrationId,
+      before: { categoryId: reg.categoryId, effectiveCategoryId: reg.effectiveCategoryId, status: reg.status,
+        admittedAt: reg.admittedAt, withdrawnAt: reg.withdrawnAt, withdrawReason: reg.withdrawReason },
+      after: { decision, ...data },
+    });
+    const msg = decision === "WITHDRAW" ? "Снят с категории"
+      : decision === "KEEP" ? "Допущен в своей категории" : `Переведён в «${categoryLabel(target)}» и допущен`;
+    return { ok: true as const, status: data.status, msg: [msg, ...notes].join(". "),
+      eventId: reg.category.eventId, categoryIds: [...new Set([reg.categoryId, target.id])] };
+  });
+  if (result.ok) {
+    revalidatePath(`/organizer/${result.eventId}`);
+    for (const id of result.categoryIds) revalidatePath(`/category/${id}`);
+  }
+  return { ok: result.ok, status: result.status, msg: result.msg };
 }
 
 /** Блокировка/разблокировка взвешивания на уровне события. В схеме нет отдельного поля —

@@ -4,7 +4,7 @@ import { levelLabel } from "@/lib/domain/levelLabel";
 import { buildBracketAction } from "@/app/actions";
 import { needsMerge, suggestMergeTarget, type MergeCat } from "@/lib/domain/merge";
 import Link from "next/link";
-import WeighInForm from "./WeighInForm";
+import WeighInForm, { WeighInNotice } from "./WeighInForm";
 import { MergeButton, LockButton, PaymentSelect, DeleteEntryButton, EntryWithdrawalButton, MatSelect } from "./OrganizerButtons";
 import MoveRegistration from "./MoveRegistration";
 import AbsolutePanel from "./AbsolutePanel";
@@ -110,6 +110,7 @@ export default async function OrganizerConsole({ params }: { params: Promise<{ e
 
   return (
     <main className="mx-auto max-w-5xl p-6">
+      <WeighInNotice />
       <div className="flex items-center justify-between">
         <div>
           <Link href={`/event/${event.slug ?? eventId}`} className="text-sm text-blue-600">← {event.name}</Link>
