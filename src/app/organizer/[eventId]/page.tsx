@@ -37,7 +37,9 @@ export default async function OrganizerConsole({ params }: { params: Promise<{ e
     },
   });
 
-  const catLabel = (c: (typeof categories)[number]) =>
+  const catLabel = (
+    c: Pick<(typeof categories)[number], "ageGroupLabel" | "level" | "sex" | "discipline" | "isAbsolute" | "isOpenTop" | "weightMin" | "weightMax">
+  ) =>
     `${c.ageGroupLabel}${levelLabel(c.level) ? " · " + levelLabel(c.level) : ""} · ${c.sex === "M" ? "муж" : "жен"} · ${c.discipline} · ${
       c.isAbsolute ? "абс" : c.isOpenTop ? `св.${c.weightMin}` : `до${c.weightMax}`
     }`;
@@ -83,7 +85,7 @@ export default async function OrganizerConsole({ params }: { params: Promise<{ e
     },
     orderBy: [{ paid: "asc" }, { createdAt: "asc" }], // неоплаченные сверху
   });
-  // Опции для переноса заявки между категориями (все категории события).
+  // Options for the new-category form (all categories of the event).
   const catOptions = categories.map((c) => ({ id: c.id, label: catLabel(c) }));
   // Отметки до появления paymentKind считаем реальной оплатой.
   const kindOf = (e: { paid: boolean; paymentKind: string | null }) =>
@@ -110,6 +112,7 @@ export default async function OrganizerConsole({ params }: { params: Promise<{ e
           <p className="text-sm text-gray-500">Статус: {event.status}</p>
         </div>
         <div className="flex items-center gap-3">
+          <Link href={`/organizer/${event.slug ?? eventId}/help`} className="text-sm text-blue-600">Инструкция</Link>
           <a href={`/organizer/${event.slug ?? eventId}/offline`} className="text-sm font-semibold text-blue-600">Сетки без интернета →</a>
           <a href={`/api/offline/entries?eventId=${eventId}`} className="rounded bg-emerald-700 px-3 py-1.5 text-sm font-semibold text-white">Список в Excel</a>
           <a href={`/api/offline/xlsx?eventId=${eventId}`} className="rounded bg-emerald-700 px-3 py-1.5 text-sm font-semibold text-white">Сетки в Excel</a>
@@ -170,7 +173,7 @@ export default async function OrganizerConsole({ params }: { params: Promise<{ e
                     <td className="px-3 py-2">
                       <div className="space-y-1">
                         {e.registrations.map((r) => (
-                          <MoveRegistration key={r.id} regId={r.id} currentCatId={r.categoryId} options={catOptions} />
+                          <MoveRegistration key={r.id} regId={r.id} currentCatId={r.categoryId} currentLabel={catLabel(r.category)} eventId={eventId} />
                         ))}
                         {e.registrations.length === 0 && <span className="text-gray-300">—</span>}
                       </div>

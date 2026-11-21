@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
 import { revalidatePath } from "next/cache";
 import { athleteAccess } from "@/lib/auth/athleteAccess";
+import { levelLabel } from "@/lib/domain/levelLabel";
 import { z } from "zod";
 
 export type EditResult = { ok: boolean; msg: string };
@@ -94,4 +95,24 @@ export async function moveRegistration(registrationId: string, categoryId: strin
   revalidatePath(`/category/${oldCatId}`);
   revalidatePath(`/category/${categoryId}`);
   return { ok: true, msg: "Заявка перенесена" };
+}
+
+/** Options for the move-registration select: non-merged categories of the event ordered by `order`.
+ *  Label format matches `catLabel` on the organizer console page. Organizer/admin only. */
+export async function categoryOptions(eventId: string): Promise<{ id: string; label: string }[]> {
+  const user = await getCurrentUser();
+  if (!user) return [];
+  const roles = new Set(user.memberships.map((m) => m.role));
+  if (!roles.has("ORGANIZER") && !roles.has("ADMIN")) return [];
+
+  const categories = await prisma.category.findMany({
+    where: { eventId, mergedIntoId: null },
+    orderBy: { order: "asc" },
+  });
+  return categories.map((c) => ({
+    id: c.id,
+    label: `${c.ageGroupLabel}${levelLabel(c.level) ? " · " + levelLabel(c.level) : ""} · ${c.sex === "M" ? "муж" : "жен"} · ${c.discipline} · ${
+      c.isAbsolute ? "абс" : c.isOpenTop ? `св.${c.weightMin}` : `до${c.weightMax}`
+    }`,
+  }));
 }

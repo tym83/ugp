@@ -3,6 +3,7 @@
 // into the next bouts, so the workbook works as a stand-alone paper-free fallback.
 import ExcelJS from "exceljs";
 import type { Snapshot, SnapCategory, SnapMatch } from "./offlineBracket";
+import { inBracket } from "./bracketStatus";
 
 const WIN_TYPES = ["Сдача", "По очкам", "Решением", "Дисквалификация", "Неявка", "Травма"];
 const WIN_TYPE_RU: Record<string, string> = {
@@ -182,6 +183,38 @@ function addCategorySheet(wb: ExcelJS.Workbook, cat: SnapCategory, name: string)
     }
   }
   return { sheet: name, places };
+}
+
+export type CategoryParticipant = {
+  fullName: string;
+  birthYear: number;
+  club: string | null;
+  weight: number | null;
+  status: string;
+};
+
+export async function buildCategoryWorkbook(
+  snapshot: Snapshot,
+  category: SnapCategory,
+  participants: readonly CategoryParticipant[],
+): Promise<Buffer> {
+  const wb = new ExcelJS.Workbook();
+  wb.created = new Date(snapshot.takenAt);
+  wb.calcProperties.fullCalcOnLoad = true;
+  const ws = wb.addWorksheet("Участники", { views: [{ state: "frozen", ySplit: 1 }] });
+  ws.columns = [{ width: 6 }, { width: 40 }, { width: 16 }, { width: 32 }, { width: 12 }, { width: 18 }];
+  ws.addRow(["№", "ФИО", "Год рождения", "Клуб", "Вес", "Статус"]);
+  ws.getRow(1).eachCell((cell) => {
+    cell.font = { bold: true };
+    cell.fill = HEAD_FILL;
+  });
+  participants.filter((p) => inBracket(p.status)).forEach((p, i) => {
+    ws.addRow([i + 1, p.fullName, p.birthYear, p.club, p.weight, p.status === "ADMITTED" ? "допущен" : "не взвешен"]);
+  });
+  if (category.matches.length) {
+    addCategorySheet(wb, category, sheetName(category.label, new Set(["участники"])));
+  }
+  return Buffer.from(await wb.xlsx.writeBuffer());
 }
 
 export async function buildBracketWorkbook(snapshot: Snapshot): Promise<Buffer> {

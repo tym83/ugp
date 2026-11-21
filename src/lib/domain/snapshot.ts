@@ -21,10 +21,13 @@ export function categoryLabel(c: LabelCat): string {
 }
 
 /** Every generated bracket of the event, with full athlete names (organizer-only data). */
-export async function buildEventSnapshot(eventId: string): Promise<Snapshot> {
+export async function buildEventSnapshot(eventId: string, opts?: { categoryId?: string }): Promise<Snapshot> {
   const event = await prisma.event.findUniqueOrThrow({ where: { id: eventId } });
   const categories = await prisma.category.findMany({
-    where: { eventId, mergedIntoId: null, matches: { some: {} } },
+    where: {
+      eventId,
+      ...(opts?.categoryId !== undefined ? { id: opts.categoryId } : { mergedIntoId: null, matches: { some: {} } }),
+    },
     orderBy: { order: "asc" },
     include: {
       registrations: { where: { status: { in: IN_BRACKET } }, include: { athlete: { include: { club: true } } } },

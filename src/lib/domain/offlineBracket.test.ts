@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import ExcelJS from "exceljs";
 import { generateBracket, type Bracket } from "./bracket";
 import { applyResult, canUndo, isPlayable, placesOf, rebase, type SnapCategory, type SnapMatch, type Snapshot } from "./offlineBracket";
-import { buildBracketWorkbook, orderedMatches } from "./bracketXlsx";
+import { buildBracketWorkbook, buildCategoryWorkbook, orderedMatches } from "./bracketXlsx";
 
 /** Turn a generated bracket into snapshot matches, resolving BYEs like persistBracket does. */
 export function toSnap(b: Bracket): SnapMatch[] {
@@ -147,6 +147,45 @@ describe("offline bracket", () => {
 });
 
 describe("bracket workbook", () => {
+  it.each([true, false])("exports category participants with matches=%s", async (hasMatches) => {
+    const cat = category(4);
+    if (!hasMatches) cat.matches = [];
+    const snapshot: Snapshot = {
+      eventId: "e", eventName: "Турнир", takenAt: new Date().toISOString(), categories: [cat, category(3)],
+    };
+    const buf = await buildCategoryWorkbook(snapshot, cat, [
+      { fullName: "Иван Иванов", birthYear: 2001, club: "Клуб", weight: 74.5, status: "ENTERED" },
+      { fullName: "Убранный участник", birthYear: 2000, club: null, weight: 80, status: "WITHDRAWN" },
+      { fullName: "Пётр Петров", birthYear: 2002, club: null, weight: null, status: "ADMITTED" },
+      { fullName: "Перевес", birthYear: 2000, club: null, weight: 90, status: "OVERWEIGHT" },
+    ]);
+    const wb = new ExcelJS.Workbook();
+    await wb.xlsx.load(buf as unknown as ArrayBuffer);
+    expect(wb.worksheets.map((w) => w.name)).toEqual(hasMatches ? ["Участники", cat.label] : ["Участники"]);
+    const ws = wb.getWorksheet("Участники")!;
+    expect(ws.rowCount).toBe(3);
+    const values = (row: number) => Array.from({ length: 6 }, (_, i) => ws.getCell(row, i + 1).value);
+    expect(values(1)).toEqual(["№", "ФИО", "Год рождения", "Клуб", "Вес", "Статус"]);
+    expect(values(2)).toEqual([1, "Иван Иванов", 2001, "Клуб", 74.5, "не взвешен"]);
+    expect(values(3)).toEqual([2, "Пётр Петров", 2002, null, null, "допущен"]);
+    if (hasMatches) {
+      const bracket = wb.getWorksheet(cat.label)!;
+      expect(bracket.getCell("E7").dataValidation.formulae).toEqual(["$C$7:$D$7"]);
+      expect((bracket.getCell("C10").value as ExcelJS.CellFormulaValue).formula).toContain("E7");
+    }
+  });
+
+  it("exports an empty roster and reserves its sheet name", async () => {
+    const cat = { ...category(4), label: "Участники" };
+    const buf = await buildCategoryWorkbook({
+      eventId: "e", eventName: "Турнир", takenAt: new Date().toISOString(), categories: [cat],
+    }, cat, []);
+    const wb = new ExcelJS.Workbook();
+    await wb.xlsx.load(buf as unknown as ArrayBuffer);
+    expect(wb.worksheets.map((w) => w.name)).toEqual(["Участники", "Участники 2"]);
+    expect(wb.getWorksheet("Участники")!.rowCount).toBe(1);
+  });
+
   it("has a sheet per category, winner dropdowns and formulas feeding later bouts", async () => {
     const cats = [category(4), category(3), category(5, "ROUND_ROBIN")];
     const buf = await buildBracketWorkbook({ eventId: "e", eventName: "Турнир", takenAt: new Date().toISOString(), categories: cats });

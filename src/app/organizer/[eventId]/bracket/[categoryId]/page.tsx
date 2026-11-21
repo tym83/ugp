@@ -45,7 +45,15 @@ export default async function CategoryRosterPage({
     <main className="mx-auto max-w-3xl space-y-5 p-6">
       <div>
         <Link href={`/organizer/${event.slug ?? event.id}`} className="text-sm text-blue-600">← Пульт организатора</Link>
-        <h1 className="mt-2 text-2xl font-bold">Состав и сетка</h1>
+        <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
+          <h1 className="text-2xl font-bold">Состав и сетка</h1>
+          <a
+            href={`/api/offline/category-xlsx?categoryId=${encodeURIComponent(catId)}`}
+            className="rounded bg-emerald-700 px-3 py-1.5 text-sm font-semibold text-white"
+          >
+            Скачать Excel
+          </a>
+        </div>
         <p className="text-sm text-gray-500">
           {categoryLabel(category)}
           {category.matNumber ? ` · ковёр ${category.matNumber}` : ""} ·{" "}
