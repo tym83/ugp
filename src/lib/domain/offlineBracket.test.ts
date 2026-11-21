@@ -148,7 +148,7 @@ describe("offline bracket", () => {
 
 describe("bracket workbook", () => {
   it.each([true, false])("exports category participants with matches=%s", async (hasMatches) => {
-    const cat = category(4);
+    const cat: SnapCategory = { ...category(4), discipline: "gi" };
     if (!hasMatches) cat.matches = [];
     const snapshot: Snapshot = {
       eventId: "e", eventName: "Турнир", takenAt: new Date().toISOString(), categories: [cat, category(3)],
@@ -209,6 +209,58 @@ describe("bracket workbook", () => {
     expect((ws.getCell("C9").value as ExcelJS.CellFormulaValue).formula).toContain("F7");
     expect(ws.getCell("E7").dataValidation?.formulae).toEqual(["$C$7:$D$7"]);
     expect((ws.getCell("C3").value as ExcelJS.CellFormulaValue).formula).toBe('IF(E10="","",E10)');
+  });
+
+  it("prints each discipline separately before the combined sheet", async () => {
+    const cats: SnapCategory[] = [
+      { ...playAll(category(4)), discipline: "gi", label: "Все категории — ги" },
+      { ...category(3), discipline: "nogi" },
+      { ...category(5, "ROUND_ROBIN"), discipline: "gi" },
+      category(6),
+    ];
+    const buf = await buildBracketWorkbook({ eventId: "e", eventName: "Турнир", takenAt: new Date().toISOString(), categories: cats });
+    const wb = new ExcelJS.Workbook();
+    await wb.xlsx.load(buf as unknown as ArrayBuffer);
+    expect(wb.worksheets.map((ws) => ws.name)).toEqual([
+      "Призёры", "Все категории — ги", "Все категории — ноу-ги", "Все категории",
+      "Все категории — ги 2", "Тест 3", "Тест 5", "Тест 6",
+    ]);
+    const all = wb.getWorksheet("Все категории")!;
+    for (const [name, sources] of [
+      ["Все категории — ги", ["Все категории — ги 2", "Тест 5"]],
+      ["Все категории — ноу-ги", ["Тест 3"]],
+      ["Все категории", ["Все категории — ги 2", "Тест 3", "Тест 5", "Тест 6"]],
+    ] as const) {
+      const print = wb.getWorksheet(name)!;
+      const links: string[] = [];
+      const formulaSources = new Set<string>();
+      print.eachRow((row) => {
+        if (row.getCell(1).hyperlink) links.push(row.getCell(1).hyperlink);
+        row.eachCell((cell) => {
+          if (cell.formula) formulaSources.add(cell.formula.match(/'([^']+)'!/)![1]);
+        });
+      });
+      expect(links).toEqual(sources.map((source) => `#'${source}'!A1`));
+      expect([...formulaSources]).toEqual(sources);
+      expect(print.getCell("A1").value).toEqual(all.getCell("A1").value);
+      expect(print.getRow(1).height).toBe(30);
+      expect(print.model).toMatchObject({ sheetProtection: { sheet: true, formatColumns: true }, rowBreaks: [] });
+      expect(print.pageSetup).toMatchObject({ paperSize: 9, orientation: "portrait", fitToWidth: 1, fitToHeight: 0 });
+      expect(print.pageSetup.printArea).toMatch(/^A1:F\d+$/);
+    }
+    const gi = wb.getWorksheet("Все категории — ги")!;
+    expect(gi.getCell("E10").formula).toBe(`IF('Все категории — ги 2'!E7="","",'Все категории — ги 2'!E7)`);
+    expect(gi.getCell("E10").result).toBe("Спортсмен p1 (Клуб)");
+  });
+
+  it.each(["gi", "nogi"] as const)("skips the absent discipline when only %s exists", async (discipline) => {
+    const cat = { ...category(4), discipline };
+    const buf = await buildBracketWorkbook({ eventId: "e", eventName: "Турнир", takenAt: new Date().toISOString(), categories: [cat] });
+    const wb = new ExcelJS.Workbook();
+    await wb.xlsx.load(buf as unknown as ArrayBuffer);
+    expect(wb.worksheets.map((ws) => ws.name)).toEqual([
+      "Призёры", discipline === "gi" ? "Все категории — ги" : "Все категории — ноу-ги", "Все категории", cat.label,
+    ]);
   });
 
   it("links every printed bout and place with cached values and escapes reserved sheet names", async () => {

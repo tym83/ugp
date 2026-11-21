@@ -45,6 +45,7 @@ export async function buildEventSnapshot(eventId: string, opts?: { categoryId?: 
     categories: categories.map((c) => ({
       id: c.id,
       label: categoryLabel(c),
+      discipline: c.discipline === "gi" || c.discipline === "nogi" ? c.discipline : undefined,
       bracketType: c.bracketType,
       placesOverride: parsePlacesOverride(c.placesOverride),
       mat: c.matNumber,

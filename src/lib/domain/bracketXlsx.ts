@@ -232,31 +232,22 @@ export async function buildCategoryWorkbook(
   return Buffer.from(await wb.xlsx.writeBuffer());
 }
 
-export async function buildBracketWorkbook(snapshot: Snapshot): Promise<Buffer> {
-  const wb = new ExcelJS.Workbook();
-  wb.created = new Date(snapshot.takenAt);
-  wb.calcProperties.fullCalcOnLoad = true;
-  const summary = wb.addWorksheet("Призёры", { views: [{ state: "frozen", ySplit: 2 }] });
-  summary.columns = [{ width: 60 }, { width: 40 }, { width: 40 }, { width: 40 }];
-  summary.getCell("A1").value = `${snapshot.eventName} — призёры (обновляются по листам категорий)`;
-  summary.getCell("A1").font = { bold: true, size: 14 };
-  const sh = summary.getRow(2);
-  sh.values = ["Категория", "1 место", "2 место", "3 место"];
-  sh.eachCell((c) => {
-    c.font = { bold: true };
-    c.fill = HEAD_FILL;
-  });
-
-  const print = wb.addWorksheet("Все категории", {
-    pageSetup: {
-      paperSize: 9,
-      orientation: "portrait",
-      fitToPage: true,
-      fitToWidth: 1,
-      fitToHeight: 0,
-      margins: { left: 0.25, right: 0.25, top: 0.25, bottom: 0.25, header: 0, footer: 0 },
-    },
-  });
+async function fillPrintSheet(
+  wb: ExcelJS.Workbook,
+  categories: SnapCategory[],
+  categoryNames: Map<SnapCategory, string>,
+  name: string,
+  filter: (category: SnapCategory) => boolean,
+): Promise<void> {
+  const print = wb.getWorksheet(name)!;
+  print.pageSetup = {
+    paperSize: 9,
+    orientation: "portrait",
+    fitToPage: true,
+    fitToWidth: 1,
+    fitToHeight: 0,
+    margins: { left: 0.25, right: 0.25, top: 0.25, bottom: 0.25, header: 0, footer: 0 },
+  };
   print.columns = [{ width: 5 }, { width: 16 }, { width: 30 }, { width: 30 }, { width: 30 }, { width: 16 }];
   print.mergeCells("A1:F1");
   print.getCell("A1").value = "Лист только для печати и просмотра. Победителей вводите на листах категорий — здесь всё обновится само.";
@@ -265,19 +256,9 @@ export async function buildBracketWorkbook(snapshot: Snapshot): Promise<Buffer> 
   print.getRow(1).height = 30;
   let printRow = 3;
 
-  const used = new Set<string>(["призёры", "все категории"]);
-  snapshot.categories.forEach((cat, i) => {
-    const name = sheetName(cat.label, used);
-    const { places } = addCategorySheet(wb, cat, name);
-    const row = summary.getRow(3 + i);
-    row.getCell(1).value = { text: cat.mat ? `${cat.label} · ковёр ${cat.mat}` : cat.label, hyperlink: `#'${name.replace(/'/g, "''")}'!A1` };
-    row.getCell(1).font = { color: { argb: "FF1F5FBF" }, underline: true };
-    places.forEach((ref, j) => {
-      row.getCell(2 + j).value = { formula: `IF(${ref}="","",${ref})` };
-    });
-
-    const source = wb.getWorksheet(name)!;
-    const quotedName = `'${name.replace(/'/g, "''")}'`;
+  categories.filter(filter).forEach((cat) => {
+    const source = wb.getWorksheet(categoryNames.get(cat)!)!;
+    const quotedName = `'${source.name.replace(/'/g, "''")}'`;
     // Reuse the snapshot-derived values, including cached feeder placeholders and byes.
     const reference = (address: string, preserveBlank = false): ExcelJS.CellFormulaValue => {
       const cell = source.getCell(address);
@@ -288,7 +269,10 @@ export async function buildBracketWorkbook(snapshot: Snapshot): Promise<Buffer> 
       };
     };
     print.mergeCells(`A${printRow}:F${printRow}`);
-    print.getCell(printRow, 1).value = row.getCell(1).value;
+    print.getCell(printRow, 1).value = {
+      text: cat.mat ? `${cat.label} · ковёр ${cat.mat}` : cat.label,
+      hyperlink: `#${quotedName}!A1`,
+    };
     print.getCell(printRow, 1).font = { bold: true, size: 14, color: { argb: "FF1F5FBF" }, underline: true };
     print.getRow(printRow++).height = 24;
     print.getCell(printRow++, 1).value = "Участники: ";
@@ -323,5 +307,51 @@ export async function buildBracketWorkbook(snapshot: Snapshot): Promise<Buffer> 
   });
   print.pageSetup.printArea = `A1:F${printRow - 1}`;
   await print.protect("", { selectLockedCells: true, selectUnlockedCells: true, formatColumns: true });
+}
+
+export async function buildBracketWorkbook(snapshot: Snapshot): Promise<Buffer> {
+  const wb = new ExcelJS.Workbook();
+  wb.created = new Date(snapshot.takenAt);
+  wb.calcProperties.fullCalcOnLoad = true;
+  const summary = wb.addWorksheet("Призёры", { views: [{ state: "frozen", ySplit: 2 }] });
+  summary.columns = [{ width: 60 }, { width: 40 }, { width: 40 }, { width: 40 }];
+  summary.getCell("A1").value = `${snapshot.eventName} — призёры (обновляются по листам категорий)`;
+  summary.getCell("A1").font = { bold: true, size: 14 };
+  const sh = summary.getRow(2);
+  sh.values = ["Категория", "1 место", "2 место", "3 место"];
+  sh.eachCell((c) => {
+    c.font = { bold: true };
+    c.fill = HEAD_FILL;
+  });
+
+  const printSheets: { name: string; filter: (category: SnapCategory) => boolean }[] = [];
+  for (const discipline of ["gi", "nogi"] as const) {
+    if (snapshot.categories.some((cat) => cat.discipline === discipline)) {
+      printSheets.push({
+        name: discipline === "gi" ? "Все категории — ги" : "Все категории — ноу-ги",
+        filter: (cat) => cat.discipline === discipline,
+      });
+    }
+  }
+  printSheets.push({ name: "Все категории", filter: () => true });
+  // Reserve print sheets before category sheets to preserve order and avoid name collisions.
+  printSheets.forEach(({ name }) => wb.addWorksheet(name));
+
+  const used = new Set(wb.worksheets.map((sheet) => sheet.name.toLowerCase()));
+  const categoryNames = new Map<SnapCategory, string>();
+  snapshot.categories.forEach((cat, i) => {
+    const name = sheetName(cat.label, used);
+    const { places } = addCategorySheet(wb, cat, name);
+    categoryNames.set(cat, name);
+    const row = summary.getRow(3 + i);
+    row.getCell(1).value = { text: cat.mat ? `${cat.label} · ковёр ${cat.mat}` : cat.label, hyperlink: `#'${name.replace(/'/g, "''")}'!A1` };
+    row.getCell(1).font = { color: { argb: "FF1F5FBF" }, underline: true };
+    places.forEach((ref, j) => {
+      row.getCell(2 + j).value = { formula: `IF(${ref}="","",${ref})` };
+    });
+  });
+  for (const { name, filter } of printSheets) {
+    await fillPrintSheet(wb, snapshot.categories, categoryNames, name, filter);
+  }
   return Buffer.from(await wb.xlsx.writeBuffer());
 }
