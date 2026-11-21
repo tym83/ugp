@@ -1,16 +1,19 @@
 // Извлечение мест (1/2/3) из завершённых матчей категории → Placement[] для командного зачёта.
 // Чистая функция: клубы приходят картами (athleteId → clubId/clubName), чтобы не тянуть БД.
 
+import { rankRoundRobin, parsePlacesOverride } from "./roundRobin";
 import type { Placement } from "./teamscore";
 
 /** Минимальная форма категории для определения мест. */
 export type PlacementCat = {
+  placesOverride?: string | null;
   isAbsolute: boolean;
   bracketType: "SINGLE_ELIM" | "ROUND_ROBIN" | string;
 };
 
 /** Минимальная форма матча (строка БД). */
 export type PlacementMatch = {
+  winType?: string | null;
   roundNumber: number;
   positionInRound: number;
   isBronzeMatch: boolean;
@@ -26,7 +29,7 @@ export type ClubOf = (athleteId: string) => { clubId: string; clubName: string }
 
 /** Определить призёров (1/2/3) категории по завершённым матчам.
  *  SINGLE_ELIM: победитель финала = 1, проигравший финала = 2, победитель бронзы = 3.
- *  ROUND_ROBIN: ранжирование по числу побед (1/2/3). */
+ *  ROUND_ROBIN: rank by wins and submissions, withholding unresolved places. */
 export function placementsFromCategory(
   cat: PlacementCat,
   matches: PlacementMatch[],
@@ -40,22 +43,15 @@ export function placementsFromCategory(
   };
 
   if (cat.bracketType === "ROUND_ROBIN") {
-    const wins = new Map<string, number>();
-    const seen = new Set<string>();
-    for (const m of matches.filter((x) => x.isRoundRobin)) {
-      for (const id of [m.slotAAthleteId, m.slotBAthleteId]) if (id) seen.add(id);
-      if (m.status === "COMPLETED" && m.winnerAthleteId) {
-        wins.set(m.winnerAthleteId, (wins.get(m.winnerAthleteId) ?? 0) + 1);
-      }
-    }
-    const ranked = Array.from(seen)
-      .map((id) => ({ id, w: wins.get(id) ?? 0 }))
-      .sort((a, b) => b.w - a.w);
+    const rr = matches.filter((m) => m.isRoundRobin);
+    if (!rr.length || rr.some((m) => m.status !== "COMPLETED")) return [];
+    const ranked = rankRoundRobin(rr.map((m) => ({ a: m.slotAAthleteId, b: m.slotBAthleteId, winner: m.winnerAthleteId, status: m.status, winType: m.winType })), parsePlacesOverride(cat.placesOverride));
+    const tied = new Set(ranked.tiedGroups.flat());
     const out: Placement[] = [];
     ([1, 2, 3] as const).forEach((p, i) => {
-      const r = ranked[i];
-      if (r) {
-        const pl = place(r.id, p);
+      const id = ranked.order[i];
+      if (id && !tied.has(id)) {
+        const pl = place(id, p);
         if (pl) out.push(pl);
       }
     });

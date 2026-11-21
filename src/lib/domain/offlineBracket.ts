@@ -3,6 +3,8 @@
 // replayed in order", so it converges with the server once the outbox is flushed.
 // Advancement mirrors persistBracket.advanceWinner exactly.
 
+import { rankRoundRobin } from "./roundRobin";
+
 export type SnapMatch = {
   id: string;
   round: number;
@@ -23,6 +25,7 @@ export type SnapMatch = {
 };
 
 export type SnapCategory = {
+  placesOverride?: string[] | null;
   id: string;
   label: string;
   bracketType: string;
@@ -105,7 +108,7 @@ export function rebase(
       continue;
     }
     try {
-      cats.set(cat.id, { ...cat, matches: applyResult(cat.matches, item.matchId, item.winnerAthleteId, item.winType) });
+      cats.set(cat.id, { ...cat, placesOverride: null, matches: applyResult(cat.matches, item.matchId, item.winnerAthleteId, item.winType) });
       pending.push(item);
     } catch (e) {
       conflicts.push({ ...item, reason: (e as Error).message, serverWinner: m.winner });
@@ -121,15 +124,11 @@ export function rebase(
 /** Medal places of a category from its (local) matches. */
 export function placesOf(cat: SnapCategory): { first: string | null; second: string | null; third: string[] } {
   if (cat.bracketType === "ROUND_ROBIN") {
-    const wins = new Map<string, number>();
-    for (const m of cat.matches) {
-      for (const id of [m.a, m.b]) if (id && !wins.has(id)) wins.set(id, 0);
-      if (m.status === "COMPLETED" && m.winner) wins.set(m.winner, (wins.get(m.winner) ?? 0) + 1);
-    }
-    const done = cat.matches.length > 0 && cat.matches.every((m) => m.status === "COMPLETED");
-    if (!done) return { first: null, second: null, third: [] };
-    const ranked = [...wins.entries()].sort((x, y) => y[1] - x[1]).map(([id]) => id);
-    return { first: ranked[0] ?? null, second: ranked[1] ?? null, third: ranked[2] ? [ranked[2]] : [] };
+    const ranking = rankRoundRobin(cat.matches, cat.placesOverride);
+    const complete = cat.matches.length > 0 && cat.matches.every((m) => m.status === "COMPLETED");
+    const tied = new Set(ranking.tiedGroups.flat());
+    const at = (i: number) => complete && !tied.has(ranking.order[i]) ? ranking.order[i] ?? null : null;
+    return { first: at(0), second: at(1), third: at(2) ? [at(2)!] : [] };
   }
   const main = cat.matches.filter((m) => !m.bronze);
   if (!main.length) return { first: null, second: null, third: [] };

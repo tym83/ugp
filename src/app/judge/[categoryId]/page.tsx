@@ -4,6 +4,9 @@ import { getCurrentUser, hasRole } from "@/lib/auth/session";
 import { randomUUID } from "crypto";
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import RoundRobinStandings from "@/components/RoundRobinStandings";
+import { rankRoundRobin, parsePlacesOverride } from "@/lib/domain/roundRobin";
+import ManualPlacesForm from "./ManualPlacesForm";
 import BoutForm from "./BoutForm";
 
 export const dynamic = "force-dynamic";
@@ -25,15 +28,19 @@ export default async function JudgePage({ params }: { params: Promise<{ category
   if (!hasRole(user, "REFEREE", "MAT_COORDINATOR", "ORGANIZER", "ADMIN")) {
     return <main className="p-8">Нужна роль судьи или организатора.</main>;
   }
-  const isHeadJudge = hasRole(user, "ORGANIZER", "ADMIN");
+
   const category = await prisma.category.findFirst({ where: { OR: [{ slug: categoryId }, { id: categoryId }] } });
   if (!category) return <main className="p-8">Категория не найдена</main>;
   const catId = category.id;
+  const isHeadJudge = hasRole(user, "ADMIN") || user.memberships.some((m) => m.role === "ORGANIZER" && (m.scope === "PLATFORM" || m.eventId === category.eventId));
 
   const regs = await prisma.registration.findMany({ where: { categoryId: catId }, include: { athlete: true } });
   const nameById = new Map(regs.map((r) => [r.athleteId, r.athlete.fullName]));
   const matches = await prisma.match.findMany({ where: { categoryId: catId }, include: { result: true }, orderBy: [{ roundNumber: "asc" }, { positionInRound: "asc" }] });
 
+  const rrMatches = matches.map((m) => ({ a: m.slotAAthleteId, b: m.slotBAthleteId, winner: m.winnerAthleteId, status: m.status, winType: m.result?.winType }));
+  const override = parsePlacesOverride(category.placesOverride);
+  const ranking = rankRoundRobin(rrMatches, override);
   const ready = matches.filter((m) => m.slotAAthleteId && m.slotBAthleteId && m.status !== "COMPLETED");
   const done = matches.filter((m) => m.status === "COMPLETED");
   const nm = (id: string | null) => (id ? nameById.get(id) ?? "—" : "—");
@@ -44,6 +51,10 @@ export default async function JudgePage({ params }: { params: Promise<{ category
       <h1 className="text-xl font-bold mt-2">Судейский пульт</h1>
       <p className="text-sm text-gray-500 mb-4">{category.ageGroupLabel} · {category.discipline} · схватка {category.boutSeconds}s</p>
 
+      {category.bracketType === "ROUND_ROBIN" && <>
+        <RoundRobinStandings matches={rrMatches} override={override} names={Object.fromEntries(nameById)} />
+        {isHeadJudge && matches.length === 3 && matches.every((m) => m.status === "COMPLETED") && !ranking.decided && <ManualPlacesForm categoryId={catId} athletes={ranking.order.map((id) => ({ id, name: nm(id) }))} />}
+      </>}
       <h2 className="font-semibold mb-2">Готовы к вводу ({ready.length})</h2>
       <div className="space-y-4">
         {ready.map((m) => (

@@ -16,7 +16,7 @@ export default async function StandingsPage({ params }: { params: Promise<{ even
   const categories = await prisma.category.findMany({
     where: { eventId, mergedIntoId: null },
     include: {
-      matches: true,
+      matches: { include: { result: { select: { winType: true } } } },
       registrations: { include: { athlete: { include: { club: true } } } },
     },
   });
@@ -28,8 +28,8 @@ export default async function StandingsPage({ params }: { params: Promise<{ even
       if (r.athlete.club) clubByAthlete.set(r.athleteId, { clubId: r.athlete.club.id, clubName: r.athlete.club.name });
     }
     const pl = placementsFromCategory(
-      { isAbsolute: cat.isAbsolute, bracketType: cat.bracketType },
-      cat.matches,
+      { isAbsolute: cat.isAbsolute, bracketType: cat.bracketType, placesOverride: cat.placesOverride },
+      cat.matches.map((m) => ({ ...m, winType: m.result?.winType })),
       (id) => clubByAthlete.get(id) ?? null
     );
     placements.push(...pl);

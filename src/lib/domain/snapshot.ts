@@ -1,3 +1,4 @@
+import { parsePlacesOverride } from "./roundRobin";
 import { prisma } from "@/lib/prisma";
 import { levelLabel } from "./levelLabel";
 import { IN_BRACKET } from "./bracketStatus";
@@ -45,6 +46,7 @@ export async function buildEventSnapshot(eventId: string, opts?: { categoryId?: 
       id: c.id,
       label: categoryLabel(c),
       bracketType: c.bracketType,
+      placesOverride: parsePlacesOverride(c.placesOverride),
       mat: c.matNumber,
       athletes: Object.fromEntries(
         c.registrations.map((r) => [

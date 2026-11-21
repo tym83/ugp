@@ -1,9 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const mocks = vi.hoisted(() => ({ match: vi.fn(), dependents: vi.fn(), update: vi.fn(), remove: vi.fn(), audit: vi.fn() }));
+const mocks = vi.hoisted(() => ({ categoryUpdate: vi.fn(), match: vi.fn(), dependents: vi.fn(), update: vi.fn(), remove: vi.fn(), audit: vi.fn() }));
 vi.mock("@/lib/prisma", () => ({ prisma: {
   $transaction: async (run: (tx: unknown) => unknown) => run({
     match: { findUnique: mocks.match, findMany: mocks.dependents, update: mocks.update },
+    category: { update: mocks.categoryUpdate },
     result: { delete: mocks.remove },
   }),
 } }));
@@ -13,7 +14,7 @@ vi.mock("./persistBracket", () => ({ advanceWinner: vi.fn() }));
 import { undoResult } from "./results";
 
 const match = {
-  id: "source", version: 3, status: "COMPLETED", winnerAthleteId: "winner", loserAthleteId: "loser",
+  id: "source", categoryId: "cat", version: 3, status: "COMPLETED", winnerAthleteId: "winner", loserAthleteId: "loser",
   result: { winType: "POINTS", scoreA: 4, scoreB: 2 },
 };
 const dependent = {
@@ -45,6 +46,7 @@ describe("undoResult", () => {
 
   it("removes the result, reopens the bout, clears advancement and audits the previous result", async () => {
     await undoResult({ matchId: "source", actorUserId: "judge", reason: "Ошибка" });
+    expect(mocks.categoryUpdate).toHaveBeenCalledExactlyOnceWith({ where: { id: "cat" }, data: { placesOverride: null } });
     expect(mocks.remove).toHaveBeenCalledExactlyOnceWith({ where: { matchId: "source" } });
     expect(mocks.update).toHaveBeenNthCalledWith(1, {
       where: { id: "source", version: 3 },

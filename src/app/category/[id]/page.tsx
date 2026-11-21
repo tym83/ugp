@@ -1,3 +1,5 @@
+import RoundRobinStandings from "@/components/RoundRobinStandings";
+import { parsePlacesOverride } from "@/lib/domain/roundRobin";
 import { IN_BRACKET } from "@/lib/domain/bracketStatus";
 import { prisma } from "@/lib/prisma";
 import { buildBracketAction } from "@/app/actions";
@@ -46,6 +48,7 @@ export default async function CategoryPage({ params }: { params: Promise<{ id: s
   });
   const matches = await prisma.match.findMany({
     where: { categoryId: id },
+    include: { result: { select: { winType: true } } },
     orderBy: [{ isBronzeMatch: "asc" }, { roundNumber: "asc" }, { positionInRound: "asc" }],
   });
   const regs = allRegs.filter((r) => IN_BRACKET.includes(r.status));
@@ -112,7 +115,10 @@ export default async function CategoryPage({ params }: { params: Promise<{ id: s
       {matches.length > 0 && (
         <section className="mt-6">
           <h2 className="mb-3 text-sm font-bold uppercase tracking-[0.25em] text-[#e3863d]">Сетка</h2>
-          <div className="flex gap-6 overflow-x-auto pb-2">
+          {category.bracketType === "ROUND_ROBIN" ? <>
+            <ol className="space-y-3">{matches.map((m, i) => <li key={m.id}>Схватка {i + 1}: {nameById.get(m.slotAAthleteId ?? "") ?? "—"} — {nameById.get(m.slotBAthleteId ?? "") ?? "—"} · Победитель: {nameById.get(m.winnerAthleteId ?? "") ?? "—"}</li>)}</ol>
+            <RoundRobinStandings publicView matches={matches.map((m) => ({ a: m.slotAAthleteId, b: m.slotBAthleteId, winner: m.winnerAthleteId, status: m.status, winType: m.result?.winType }))} override={parsePlacesOverride(category.placesOverride)} names={Object.fromEntries(nameById)} />
+          </> : <div className="flex gap-6 overflow-x-auto pb-2">
             {rounds.map((rn) => (
               <div key={rn} className="min-w-[220px]">
                 <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-[#cec8bc]">Круг {rn}</div>
@@ -142,7 +148,7 @@ export default async function CategoryPage({ params }: { params: Promise<{ id: s
                 ))}
               </div>
             )}
-          </div>
+          </div>}
         </section>
       )}
     </div>

@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   category: vi.fn(),
+  categoryUpdate: vi.fn(),
   authorize: vi.fn(),
   matchFindUnique: vi.fn(),
   matchFindMany: vi.fn(),
@@ -39,6 +40,7 @@ vi.mock("@/lib/prisma", () => ({
     },
     $transaction: async (run: (tx: unknown) => unknown) =>
       run({
+        category: { update: mocks.categoryUpdate },
         match: { updateMany: mocks.matchUpdateMany, update: mocks.matchUpdate },
         registration: { update: mocks.regUpdate },
       }),

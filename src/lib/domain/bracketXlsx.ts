@@ -1,3 +1,4 @@
+import { rankRoundRobin } from "./roundRobin";
 // Excel workbook of all brackets: one sheet per category. The winner of each bout is picked
 // from a dropdown, and formulas carry winners (and semifinal losers, for the bronze bout)
 // into the next bouts, so the workbook works as a stand-alone paper-free fallback.
@@ -145,22 +146,36 @@ function addCategorySheet(wb: ExcelJS.Workbook, cat: SnapCategory, name: string)
     places.push(`'${name.replace(/'/g, "''")}'!C${row}`);
   };
   if (rr) {
-    // Round robin: place = rank by wins, ties broken by order of appearance (decide manually if needed).
-    const ids = Object.keys(cat.athletes).filter((id) => !cat.athletes[id].withdrawn);
-    const startCol = 10; // J
-    ws.getCell(HEADER_ROW, startCol).value = "Участник";
-    ws.getCell(HEADER_ROW, startCol + 1).value = "Побед";
-    ws.getColumn(startCol).width = 38;
+    // Score preserves wins as the primary criterion; equal scores remain unresolved.
+    const ids = [...new Set(ms.flatMap((m) => [m.a, m.b]).filter((id): id is string => !!id))];
+    const first = HEADER_ROW + 1;
+    const last = HEADER_ROW + ms.length;
+    ws.getCell(HEADER_ROW, 10).value = "Участник";
+    ws.getCell(HEADER_ROW, 11).value = "Побед";
+    ws.getCell(HEADER_ROW, 12).value = "Сдачей";
+    ws.getCell(HEADER_ROW, 13).value = "Баллы";
+    ws.getColumn(10).width = 38;
     ids.forEach((id, i) => {
-      const r = HEADER_ROW + 1 + i;
-      ws.getCell(r, startCol).value = label(id);
-      ws.getCell(r, startCol + 1).value = { formula: `COUNTIF($E$${HEADER_ROW + 1}:$E$${HEADER_ROW + ms.length},J${r})` };
+      const r = first + i;
+      ws.getCell(r, 10).value = label(id);
+      ws.getCell(r, 11).value = { formula: `COUNTIF($E$${first}:$E$${last},J${r})` };
+      ws.getCell(r, 12).value = { formula: `COUNTIFS($E$${first}:$E$${last},J${r},$G$${first}:$G$${last},"Сдача")` };
+      ws.getCell(r, 13).value = { formula: `K${r}*100+L${r}` };
     });
-    const range = `$K$${HEADER_ROW + 1}:$K$${HEADER_ROW + ids.length}`;
-    const names = `$J$${HEADER_ROW + 1}:$J$${HEADER_ROW + ids.length}`;
-    [1, 2, 3].forEach((p, i) =>
-      setPlace(3 + i, `${p} место`, `IFERROR(INDEX(${names},MATCH(LARGE(${range},${p}),${range},0)),"")`, ""),
-    );
+    const range = `$M$${first}:$M$${HEADER_ROW + ids.length}`;
+    const names = `$J$${first}:$J$${HEADER_ROW + ids.length}`;
+    const ranking = rankRoundRobin(ms, cat.placesOverride);
+    const validOverride = cat.placesOverride && ranking.decided && ranking.order.every((id, i) => id === cat.placesOverride![i]);
+    // An exported manual decision applies only while the recorded results remain unchanged.
+    const unchanged = ms.flatMap((m, i) => [`E${first + i}=${q(label(m.winner))}`, `G${first + i}=${q(m.winType ? WIN_TYPE_RU[m.winType] ?? m.winType : "")}`]).join(",");
+    [1, 2, 3].forEach((p, i) => {
+      const automatic = `IF(COUNTIF(${range},LARGE(${range},${p}))>1,"ничья — решает судья",INDEX(${names},MATCH(LARGE(${range},${p}),${range},0)))`;
+      const decision = validOverride ? `IF(AND(${unchanged}),${q(label(ranking.order[i]))},${automatic})` : automatic;
+      const complete = ms.length > 0 && ms.every((m) => m.status === "COMPLETED");
+      const tied = ranking.tiedGroups.some((group) => group.includes(ranking.order[i]));
+      const cached = complete ? tied ? "ничья — решает судья" : label(ranking.order[i]) : "";
+      setPlace(3 + i, `${p} место`, `IFERROR(IF(COUNTIF($E$${first}:$E$${last},"?*")<${ms.length},"",${decision}),"")`, cached);
+    });
   } else {
     const final = ms.find((m) => !m.bronze && m.round === lastRound);
     const bronze = ms.find((m) => m.bronze);
