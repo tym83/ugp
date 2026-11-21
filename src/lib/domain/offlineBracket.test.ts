@@ -82,6 +82,15 @@ describe("offline bracket", () => {
     expect(placesOf(done).first).toBe("p1");
   });
 
+  it("three athletes: no bronze bout, the semifinal loser is third", () => {
+    const cat = category(3);
+    expect(cat.matches.some((m) => m.bronze)).toBe(false);
+    const done = playAll(cat);
+    expect(done.matches.every((m) => m.status === "COMPLETED")).toBe(true);
+    const p = placesOf(done);
+    expect([p.first, p.second, p.third]).toEqual(["p1", "p2", ["p3"]]);
+  });
+
   it("round robin ranks by wins", () => {
     const done = playAll(category(4, "ROUND_ROBIN"));
     const p = placesOf(done);

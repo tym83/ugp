@@ -50,7 +50,7 @@ export default function RosterPanel({ categoryId, hasBracket, locked, rows }: Pr
 
   const active = rows.filter((r) => r.status !== "WITHDRAWN");
   const removed = rows.filter((r) => r.status === "WITHDRAWN");
-  const admitted = rows.filter((r) => r.status === "ADMITTED").length;
+  const admitted = rows.filter((r) => r.status === "ADMITTED" || r.status === "ENTERED").length;
   const editable = !hasBracket && !locked;
 
   return (
@@ -71,7 +71,7 @@ export default function RosterPanel({ categoryId, hasBracket, locked, rows }: Pr
           </>
         ) : (
           <>
-            <span className="text-sm">Сетки нет. Допущено: {admitted}.</span>
+            <span className="text-sm">Сетки нет. В сетку пойдут: {admitted}.</span>
             <button
               disabled={pending || !!locked || admitted === 0}
               onClick={() => run(() => saveBracket(categoryId))}
@@ -96,7 +96,7 @@ export default function RosterPanel({ categoryId, hasBracket, locked, rows }: Pr
                 </td>
                 <td className={`px-2 text-xs ${r.status === "ADMITTED" ? "text-green-700" : "text-amber-700"}`}>{STATUS_RU[r.status] ?? r.status}</td>
                 <td className="whitespace-nowrap text-right">
-                  {editable && r.status !== "ADMITTED" && (
+                  {editable && r.status === "OVERWEIGHT" && (
                     <button disabled={pending} onClick={() => run(() => addAthleteToCategory(categoryId, r.athleteId, null))} className="mr-2 rounded border px-2 py-0.5 text-xs text-blue-700">
                       допустить
                     </button>

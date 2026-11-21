@@ -136,9 +136,14 @@ export function placesOf(cat: SnapCategory): { first: string | null; second: str
   const lastRound = Math.max(...main.map((m) => m.round));
   const final = main.find((m) => m.round === lastRound);
   const bronze = cat.matches.find((m) => m.bronze && m.status === "COMPLETED");
+  const done = final?.status === "COMPLETED";
+  // без схватки за 3-е (на троих): 3-е — проигравшие полуфиналов
+  const semiLosers = cat.matches.some((m) => m.bronze)
+    ? []
+    : main.filter((m) => m.round === lastRound - 1 && m.status === "COMPLETED" && m.loser).map((m) => m.loser!);
   return {
-    first: final?.status === "COMPLETED" ? final.winner : null,
-    second: final?.status === "COMPLETED" ? final.loser : null,
-    third: bronze?.winner ? [bronze.winner] : [],
+    first: done ? final!.winner : null,
+    second: done ? final!.loser : null,
+    third: bronze?.winner ? [bronze.winner] : done ? semiLosers : [],
   };
 }
