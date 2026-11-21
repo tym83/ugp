@@ -2,7 +2,7 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { buildBracketForCategory } from "@/lib/domain/persistBracket";
-import { submitResult, correctResult, type SubmitResultInput } from "@/lib/domain/results";
+import { submitResult, correctResult, undoResult, type SubmitResultInput } from "@/lib/domain/results";
 import { requireEventRole, hasRole } from "@/lib/auth/session";
 
 async function eventIdOfCategory(categoryId: string): Promise<string> {
@@ -57,25 +57,51 @@ export async function submitResultAction(formData: FormData) {
   revalidatePath(`/category/${categoryId}`);
 }
 
-/** Коррекция финализированного результата — только гл. судья (ORGANIZER/ADMIN) этого события. */
+/** Correct a finalized result; authorization failures remain exceptions. */
 export async function correctResultAction(formData: FormData) {
   const matchId = String(formData.get("matchId"));
   const match = await prisma.match.findUnique({
     where: { id: matchId },
     include: { category: { select: { eventId: true } } },
   });
-  if (!match) throw new Error("Матч не найден");
+  if (!match) return { ok: false, msg: "Матч не найден" };
   const user = await requireEventRole(match.category.eventId, "ORGANIZER", "ADMIN");
-  const categoryId = String(formData.get("categoryId"));
-  await correctResult({
-    matchId,
-    winnerAthleteId: String(formData.get("winnerAthleteId")),
-    winType: String(formData.get("winType") || "SUBMISSION") as SubmitResultInput["winType"],
-    scoreA: formData.get("scoreA") ? Number(formData.get("scoreA")) : undefined,
-    scoreB: formData.get("scoreB") ? Number(formData.get("scoreB")) : undefined,
-    reason: formData.get("reason") ? String(formData.get("reason")) : undefined,
-    headJudgeUserId: user.id,
+  try {
+    await correctResult({
+      matchId,
+      winnerAthleteId: String(formData.get("winnerAthleteId")),
+      winType: String(formData.get("winType") || "SUBMISSION") as SubmitResultInput["winType"],
+      scoreA: formData.get("scoreA") ? Number(formData.get("scoreA")) : undefined,
+      scoreB: formData.get("scoreB") ? Number(formData.get("scoreB")) : undefined,
+      reason: formData.get("reason") ? String(formData.get("reason")) : undefined,
+      headJudgeUserId: user.id,
+    });
+  } catch (error) {
+    return { ok: false, msg: error instanceof Error ? error.message : "Не удалось исправить результат" };
+  }
+  revalidatePath(`/judge/${match.categoryId}`);
+  revalidatePath(`/category/${match.categoryId}`);
+  return { ok: true, msg: "Результат исправлен" };
+}
+
+export async function undoResultAction(formData: FormData) {
+  const matchId = String(formData.get("matchId"));
+  const match = await prisma.match.findUnique({
+    where: { id: matchId },
+    include: { category: { select: { eventId: true } } },
   });
-  revalidatePath(`/judge/${categoryId}`);
-  revalidatePath(`/category/${categoryId}`);
+  if (!match) return { ok: false, msg: "Нечего отменять" };
+  const user = await requireEventRole(match.category.eventId, "ORGANIZER", "ADMIN");
+  try {
+    await undoResult({
+      matchId,
+      actorUserId: user.id,
+      reason: formData.get("reason") ? String(formData.get("reason")) : undefined,
+    });
+  } catch (error) {
+    return { ok: false, msg: error instanceof Error ? error.message : "Не удалось отменить результат" };
+  }
+  revalidatePath(`/judge/${match.categoryId}`);
+  revalidatePath(`/category/${match.categoryId}`);
+  return { ok: true, msg: "Результат отменён" };
 }

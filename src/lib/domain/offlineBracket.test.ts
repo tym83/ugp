@@ -191,7 +191,14 @@ describe("bracket workbook", () => {
     const buf = await buildBracketWorkbook({ eventId: "e", eventName: "Турнир", takenAt: new Date().toISOString(), categories: cats });
     const wb = new ExcelJS.Workbook();
     await wb.xlsx.load(buf as unknown as ArrayBuffer);
-    expect(wb.worksheets.map((w) => w.name)).toEqual(["Призёры", "Тест 4", "Тест 3", "Тест 5"]);
+    expect(wb.worksheets.map((w) => w.name)).toEqual(["Призёры", "Все категории", "Тест 4", "Тест 3", "Тест 5"]);
+
+    const print = wb.getWorksheet("Все категории")!;
+    expect(print.getCell("E10").formula).toBe('IF(\'Тест 4\'!E7="","",\'Тест 4\'!E7)');
+    expect(print.model).toMatchObject({ sheetProtection: { sheet: true, formatColumns: true } });
+    expect(print.pageSetup).toMatchObject({ paperSize: 9, orientation: "portrait", fitToWidth: 1, fitToHeight: 0 });
+    expect(print.pageSetup.printTitlesRow).toBeUndefined();
+    expect(print.model).toMatchObject({ rowBreaks: [] });
 
     const ws = wb.getWorksheet("Тест 4")!;
     const order = orderedMatches(cats[0]);
@@ -202,5 +209,53 @@ describe("bracket workbook", () => {
     expect((ws.getCell("C9").value as ExcelJS.CellFormulaValue).formula).toContain("F7");
     expect(ws.getCell("E7").dataValidation?.formulae).toEqual(["$C$7:$D$7"]);
     expect((ws.getCell("C3").value as ExcelJS.CellFormulaValue).formula).toBe('IF(E10="","",E10)');
+  });
+
+  it("links every printed bout and place with cached values and escapes reserved sheet names", async () => {
+    const cats = [
+      { ...playAll(category(4)), label: "Клуб 'Победа' 4", mat: 2 },
+      { ...category(3), label: "Все категории" },
+      category(5, "ROUND_ROBIN"),
+    ];
+    const buf = await buildBracketWorkbook({ eventId: "e", eventName: "Турнир", takenAt: new Date().toISOString(), categories: cats });
+    const wb = new ExcelJS.Workbook();
+    await wb.xlsx.load(buf as unknown as ArrayBuffer);
+    expect(wb.worksheets.map((ws) => ws.name)).toEqual(["Призёры", "Все категории", "Клуб 'Победа' 4", "Все категории 2", "Тест 5"]);
+    const print = wb.getWorksheet("Все категории")!;
+    expect(print.getCell("A1").text).toBe("Лист только для печати и просмотра. Победителей вводите на листах категорий — здесь всё обновится само.");
+    let row = 3;
+    cats.forEach((cat, i) => {
+      const source = wb.worksheets[i + 2];
+      const quoted = `'${source.name.replace(/'/g, "''")}'`;
+      expect(print.getCell(row++, 1).value).toEqual({
+        text: cat.mat ? `${cat.label} · ковёр ${cat.mat}` : cat.label,
+        hyperlink: `#${quoted}!A1`,
+      });
+      expect(print.getCell(row++, 1).text).toBe("Участники: ");
+      Object.values(cat.athletes).forEach((athlete) => {
+        expect(print.getCell(row, 1).value).toBe(athlete.name);
+        expect(print.getCell(row++, 4).value).toBe(athlete.club);
+      });
+      expect(print.getRow(row++).values).toEqual([undefined, "№", "Круг", "Участник A", "Участник B", "Победитель", "Как"]);
+      orderedMatches(cat).forEach((_, index) => {
+        ["A", "B", "C", "D", "E", "G"].forEach((col, j) => {
+          const address = `${col}${7 + index}`;
+          const ref = `${quoted}!${address}`;
+          const cell = print.getCell(row, j + 1);
+          expect(cell.formula).toBe(j >= 2 ? `IF(${ref}="","",${ref})` : ref);
+          const original = source.getCell(address);
+          // ExcelJS omits empty-string cached results when reading XLSX.
+          expect(cell.result ?? "").toBe((original.type === ExcelJS.ValueType.Formula ? original.result : original.value) ?? "");
+        });
+        row++;
+      });
+      [3, 4, 5].forEach((placeRow, j) => {
+        expect(print.getCell(row, 1).value).toBe(`${j + 1} место`);
+        expect(print.getCell(row, 3).formula).toBe(`IF(${quoted}!C${placeRow}="","",${quoted}!C${placeRow})`);
+        expect(print.getCell(row++, 3).result ?? "").toBe(source.getCell(`C${placeRow}`).result ?? "");
+      });
+      expect(print.getRow(row++).actualCellCount).toBe(0);
+    });
+    expect(print.getCell("E10").result).toBe("Спортсмен p1 (Клуб)");
   });
 });

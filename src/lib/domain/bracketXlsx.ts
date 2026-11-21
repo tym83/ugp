@@ -146,7 +146,7 @@ function addCategorySheet(wb: ExcelJS.Workbook, cat: SnapCategory, name: string)
   };
   if (rr) {
     // Round robin: place = rank by wins, ties broken by order of appearance (decide manually if needed).
-    const ids = Object.keys(cat.athletes);
+    const ids = Object.keys(cat.athletes).filter((id) => !cat.athletes[id].withdrawn);
     const startCol = 10; // J
     ws.getCell(HEADER_ROW, startCol).value = "Участник";
     ws.getCell(HEADER_ROW, startCol + 1).value = "Побед";
@@ -232,7 +232,25 @@ export async function buildBracketWorkbook(snapshot: Snapshot): Promise<Buffer> 
     c.fill = HEAD_FILL;
   });
 
-  const used = new Set<string>(["призёры"]);
+  const print = wb.addWorksheet("Все категории", {
+    pageSetup: {
+      paperSize: 9,
+      orientation: "portrait",
+      fitToPage: true,
+      fitToWidth: 1,
+      fitToHeight: 0,
+      margins: { left: 0.25, right: 0.25, top: 0.25, bottom: 0.25, header: 0, footer: 0 },
+    },
+  });
+  print.columns = [{ width: 5 }, { width: 16 }, { width: 30 }, { width: 30 }, { width: 30 }, { width: 16 }];
+  print.mergeCells("A1:F1");
+  print.getCell("A1").value = "Лист только для печати и просмотра. Победителей вводите на листах категорий — здесь всё обновится само.";
+  print.getCell("A1").alignment = { wrapText: true };
+  print.getCell("A1").font = { italic: true, size: 10 };
+  print.getRow(1).height = 30;
+  let printRow = 3;
+
+  const used = new Set<string>(["призёры", "все категории"]);
   snapshot.categories.forEach((cat, i) => {
     const name = sheetName(cat.label, used);
     const { places } = addCategorySheet(wb, cat, name);
@@ -242,6 +260,53 @@ export async function buildBracketWorkbook(snapshot: Snapshot): Promise<Buffer> 
     places.forEach((ref, j) => {
       row.getCell(2 + j).value = { formula: `IF(${ref}="","",${ref})` };
     });
+
+    const source = wb.getWorksheet(name)!;
+    const quotedName = `'${name.replace(/'/g, "''")}'`;
+    // Reuse the snapshot-derived values, including cached feeder placeholders and byes.
+    const reference = (address: string, preserveBlank = false): ExcelJS.CellFormulaValue => {
+      const cell = source.getCell(address);
+      const ref = `${quotedName}!${address}`;
+      return {
+        formula: preserveBlank ? `IF(${ref}="","",${ref})` : ref,
+        result: (cell.type === ExcelJS.ValueType.Formula ? cell.result : cell.value) as string | number ?? "",
+      };
+    };
+    print.mergeCells(`A${printRow}:F${printRow}`);
+    print.getCell(printRow, 1).value = row.getCell(1).value;
+    print.getCell(printRow, 1).font = { bold: true, size: 14, color: { argb: "FF1F5FBF" }, underline: true };
+    print.getRow(printRow++).height = 24;
+    print.getCell(printRow++, 1).value = "Участники: ";
+    Object.values(cat.athletes).filter((a) => !a.withdrawn).forEach((athlete) => {
+      print.mergeCells(`A${printRow}:C${printRow}`);
+      print.mergeCells(`D${printRow}:F${printRow}`);
+      print.getCell(printRow, 1).value = athlete.name;
+      print.getCell(printRow++, 4).value = athlete.club ?? "";
+    });
+    const header = print.getRow(printRow++);
+    header.values = ["№", "Круг", "Участник A", "Участник B", "Победитель", "Как"];
+    header.eachCell((cell) => {
+      cell.font = { bold: true };
+      cell.fill = HEAD_FILL;
+    });
+    orderedMatches(cat).forEach((_, index) => {
+      const target = print.getRow(printRow++);
+      ["A", "B", "C", "D", "E", "G"].forEach((column, j) => {
+        target.getCell(j + 1).value = reference(`${column}${HEADER_ROW + 1 + index}`, j >= 2);
+        target.getCell(j + 1).alignment = { wrapText: true, vertical: "middle" };
+      });
+      target.height = 30;
+    });
+    [3, 4, 5].forEach((placeRow, j) => {
+      print.mergeCells(`A${printRow}:B${printRow}`);
+      print.getCell(printRow, 1).value = `${j + 1} место`;
+      print.getCell(printRow, 1).font = { bold: true };
+      print.mergeCells(`C${printRow}:F${printRow}`);
+      print.getCell(printRow++, 3).value = reference(`C${placeRow}`, true);
+    });
+    printRow++;
   });
+  print.pageSetup.printArea = `A1:F${printRow - 1}`;
+  await print.protect("", { selectLockedCells: true, selectUnlockedCells: true, formatColumns: true });
   return Buffer.from(await wb.xlsx.writeBuffer());
 }

@@ -213,7 +213,8 @@ export default function OfflineConsole({ eventId, eventName }: { eventId: string
     fd.set("winType", c.winType);
     fd.set("reason", "офлайн-пульт организатора");
     try {
-      await correctResultAction(fd);
+      const result = await correctResultAction(fd);
+      if (!result.ok) throw new Error(result.msg);
       dropConflict(c.cmid);
       sync();
     } catch (e) {

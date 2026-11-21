@@ -1,10 +1,13 @@
 import { prisma } from "@/lib/prisma";
 import { requirePageRole } from "@/lib/auth/session";
 import { findBracketConflicts } from "@/app/organizer-actions";
+import { buildSlotEditRows, type SlotAthlete, type SlotMatchLite } from "@/app/roster-actions";
+import { inBracket } from "@/lib/domain/bracketStatus";
 import { categoryLabel } from "@/lib/domain/snapshot";
 import Link from "next/link";
 import BracketEdit from "../../BracketEdit";
 import RosterPanel, { type RosterRow } from "../../RosterPanel";
+import SlotEditor from "../../SlotEditor";
 
 export const dynamic = "force-dynamic";
 
@@ -39,7 +42,40 @@ export default async function CategoryRosterPage({
     weight: r.actualWeight ?? r.declaredWeight,
     status: r.status,
   }));
-  const { seeds, conflicts } = hasBracket ? await findBracketConflicts(catId) : { seeds: [], conflicts: [] };
+  const { seeds, conflicts } = hasBracket && !played ? await findBracketConflicts(catId) : { seeds: [], conflicts: [] };
+
+  // Данные для «Правки сетки по схваткам»: схватки с результатами или без.
+  const matches = hasBracket
+    ? await prisma.match.findMany({
+        where: { categoryId: catId },
+        include: { result: { select: { id: true, winType: true } } },
+        orderBy: [{ roundNumber: "asc" }, { positionInRound: "asc" }],
+      })
+    : [];
+  const slotRows = await buildSlotEditRows(
+    matches.map(
+      (m): SlotMatchLite => ({
+        id: m.id,
+        roundNumber: m.roundNumber,
+        positionInRound: m.positionInRound,
+        isBronzeMatch: m.isBronzeMatch,
+        isRoundRobin: m.isRoundRobin,
+        status: m.status,
+        slotAAthleteId: m.slotAAthleteId,
+        slotBAthleteId: m.slotBAthleteId,
+        slotAFromMatchId: m.slotAFromMatchId,
+        slotBFromMatchId: m.slotBFromMatchId,
+        winnerAthleteId: m.winnerAthleteId,
+        hasResult: !!m.result,
+        winType: m.result?.winType ?? null,
+      }),
+    ),
+  );
+  const slotted = [...new Set(matches.flatMap((m) => [m.slotAAthleteId, m.slotBAthleteId].filter((v): v is string => !!v)))];
+  const slotAthletes: SlotAthlete[] = category.registrations
+    .filter((r) => inBracket(r.status))
+    .map((r) => ({ athleteId: r.athleteId, fullName: r.athlete.fullName }));
+  const athleteNames: Record<string, string> = Object.fromEntries(category.registrations.map((r) => [r.athleteId, r.athlete.fullName]));
 
   return (
     <main className="mx-auto max-w-3xl space-y-5 p-6">
@@ -63,9 +99,16 @@ export default async function CategoryRosterPage({
       <RosterPanel
         categoryId={catId}
         hasBracket={hasBracket}
-        locked={played ? "В категории уже есть результаты схваток — состав и сетку менять нельзя." : null}
+        locked={played ? "В категории уже есть результаты: состав можно менять, сетку — только по схваткам ниже." : null}
         rows={rows}
+        slotted={slotted}
       />
+      {hasBracket && (
+        <section>
+          <h2 className="mb-2 font-semibold">Правка сетки по схваткам</h2>
+          <SlotEditor athletes={slotAthletes} names={athleteNames} rows={slotRows} />
+        </section>
+      )}
       {hasBracket && !played && (
         <section>
           <h2 className="mb-2 font-semibold">Расстановка в сетке</h2>

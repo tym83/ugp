@@ -38,8 +38,9 @@ export default async function CategoryPage({ params }: { params: Promise<{ id: s
   if (!category) return <main className="p-8">Категория не найдена</main>;
   const id = category.id; // реальный id для запросов/действий
 
-  const regs = await prisma.registration.findMany({
-    where: { categoryId: id, status: { in: IN_BRACKET } },
+  // names for bracket slots come from every registration (withdrawn athletes keep their played bouts)
+  const allRegs = await prisma.registration.findMany({
+    where: { categoryId: id },
     include: { athlete: { include: { club: true } }, entry: { select: { paid: true } } },
     orderBy: { seed: "asc" },
   });
@@ -47,8 +48,9 @@ export default async function CategoryPage({ params }: { params: Promise<{ id: s
     where: { categoryId: id },
     orderBy: [{ isBronzeMatch: "asc" }, { roundNumber: "asc" }, { positionInRound: "asc" }],
   });
+  const regs = allRegs.filter((r) => IN_BRACKET.includes(r.status));
   const nameById = new Map(
-    regs.map((r) => [r.athleteId, maskName(r.athlete.fullName, isMinor(r.athlete.birthDate))]),
+    allRegs.map((r) => [r.athleteId, maskName(r.athlete.fullName, isMinor(r.athlete.birthDate))]),
   );
   const slotName = (athleteId: string | null, fromId: string | null, winner: boolean) => {
     if (athleteId) return nameById.get(athleteId) ?? "?";

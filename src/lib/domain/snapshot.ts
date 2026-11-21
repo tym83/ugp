@@ -30,7 +30,7 @@ export async function buildEventSnapshot(eventId: string, opts?: { categoryId?: 
     },
     orderBy: { order: "asc" },
     include: {
-      registrations: { where: { status: { in: IN_BRACKET } }, include: { athlete: { include: { club: true } } } },
+      registrations: { where: { status: { notIn: ["OVERWEIGHT"] } }, include: { athlete: { include: { club: true } } } },
       matches: {
         include: { result: { select: { winType: true } } },
         orderBy: [{ isBronzeMatch: "asc" }, { roundNumber: "asc" }, { positionInRound: "asc" }],
@@ -47,7 +47,10 @@ export async function buildEventSnapshot(eventId: string, opts?: { categoryId?: 
       bracketType: c.bracketType,
       mat: c.matNumber,
       athletes: Object.fromEntries(
-        c.registrations.map((r) => [r.athleteId, { name: r.athlete.fullName, club: r.athlete.club?.name ?? null }]),
+        c.registrations.map((r) => [
+          r.athleteId,
+          { name: r.athlete.fullName, club: r.athlete.club?.name ?? null, ...(IN_BRACKET.includes(r.status) ? {} : { withdrawn: true }) },
+        ]),
       ),
       matches: c.matches.map((m) => ({
         id: m.id,

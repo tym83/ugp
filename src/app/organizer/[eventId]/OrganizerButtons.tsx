@@ -1,6 +1,6 @@
 "use client";
 import { useTransition, useState } from "react";
-import { applyMerge, setWeighInLock, setEntryPayment, deleteEntry, setCategoryMat, type PaymentKind } from "@/app/organizer-actions";
+import { applyMerge, setWeighInLock, setEntryPayment, deleteEntry, withdrawEntry, restoreEntry, setCategoryMat, type PaymentKind } from "@/app/organizer-actions";
 
 export function MergeButton({ sourceId, targetId, targetLabel }: { sourceId: string; targetId: string; targetLabel: string }) {
   const [pending, start] = useTransition();
@@ -132,6 +132,37 @@ export function MatSelect({ categoryId, mat, matsCount }: { categoryId: string; 
         ))}
       </select>
       {msg && <span className="text-xs text-red-600">{msg}</span>}
+    </span>
+  );
+}
+
+export function EntryWithdrawalButton({ entryId, withdrawn }: { entryId: string; withdrawn: boolean }) {
+  const [pending, start] = useTransition();
+  const [confirming, setConfirming] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+  const submit = () => start(async () => {
+    try {
+      const result = await (withdrawn ? restoreEntry(entryId) : withdrawEntry(entryId));
+      setMsg(result.msg);
+      setConfirming(false);
+    } catch {
+      setMsg("Не удалось изменить заявку. Попробуйте ещё раз.");
+    }
+  });
+  return (
+    <span className="inline-flex flex-col gap-1 text-xs">
+      {confirming && !withdrawn ? <>
+        <span>Снять участника с турнира?</span>
+        <span className="inline-flex gap-2">
+          <button disabled={pending} onClick={submit} className="rounded bg-gray-600 px-2 py-0.5 text-white disabled:opacity-50">{pending ? "…" : "да"}</button>
+          <button disabled={pending} onClick={() => setConfirming(false)} className="text-gray-500">нет</button>
+        </span>
+      </> : (
+        <button disabled={pending} onClick={withdrawn ? submit : () => { setMsg(null); setConfirming(true); }} className="text-gray-600 disabled:opacity-50">
+          {pending ? "…" : withdrawn ? "вернуть" : "снять с турнира"}
+        </button>
+      )}
+      {msg && <span role="status" className="text-gray-500">{msg}</span>}
     </span>
   );
 }

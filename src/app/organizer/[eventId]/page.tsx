@@ -5,11 +5,13 @@ import { buildBracketAction } from "@/app/actions";
 import { needsMerge, suggestMergeTarget, type MergeCat } from "@/lib/domain/merge";
 import Link from "next/link";
 import WeighInForm from "./WeighInForm";
-import { MergeButton, LockButton, PaymentSelect, DeleteEntryButton, MatSelect } from "./OrganizerButtons";
+import { MergeButton, LockButton, PaymentSelect, DeleteEntryButton, EntryWithdrawalButton, MatSelect } from "./OrganizerButtons";
 import MoveRegistration from "./MoveRegistration";
 import AbsolutePanel from "./AbsolutePanel";
 import EntrySearch from "./EntrySearch";
+import CategoryFilter from "./CategoryFilter";
 import NewCategoryForm from "./NewCategoryForm";
+import DropoutsSection from "./DropoutsSection";
 import { absoluteRoster, type PaymentKind } from "@/app/organizer-actions";
 
 export const dynamic = "force-dynamic";
@@ -95,6 +97,9 @@ export default async function OrganizerConsole({ params }: { params: Promise<{ e
   const paidSum = reallyPaid.reduce((s, e) => s + e.priceTotal, 0);
   const laterCount = entries.filter((e) => kindOf(e) === "LATER").length;
   const freeCount = entries.filter((e) => kindOf(e) === "FREE").length;
+  const isWithdrawn = (e: (typeof entries)[number]) =>
+    e.registrations.length > 0 && e.registrations.every((r) => r.status === "WITHDRAWN");
+  const withdrawnCount = entries.filter(isWithdrawn).length;
   const totalSum = entries.reduce((s, e) => s + e.priceTotal, 0);
   // Возможные дубли: совпали фамилия и имя (в любом порядке) — человек заявился сам и его заявил тренер.
   const nameKey = (n: string) => n.toLowerCase().replace(/ё/g, "е").split(/\s+/).slice(0, 2).sort().join(" ");
@@ -127,6 +132,7 @@ export default async function OrganizerConsole({ params }: { params: Promise<{ e
           <span className="text-sm text-gray-500">
             реально оплачено {paidCount} из {entries.length}{showMoney && <> · {paidSum} / {totalSum} ₽</>}
             {laterCount > 0 && <> · оплатят позже {laterCount}</>}
+            {withdrawnCount > 0 && <> · снято {withdrawnCount}</>}
             {freeCount > 0 && <> · бесплатно {freeCount}</>}
             {dupCount > 0 && <> · <span className="text-red-600">возможных дублей {dupCount}</span></>}
           </span>
@@ -150,10 +156,11 @@ export default async function OrganizerConsole({ params }: { params: Promise<{ e
               </thead>
               <tbody className="divide-y">
                 {entries.map((e) => (
-                  <tr key={e.id} data-entry-name={e.athlete.fullName} className={e.paid ? "align-top" : "align-top bg-amber-50"}>
+                  <tr key={e.id} data-entry-name={e.athlete.fullName} className={`align-top${e.paid ? "" : " bg-amber-50"}${isWithdrawn(e) ? " opacity-60" : ""}`}>
                     <td className="px-3 py-2">
                       <div className="font-medium">
                         {e.athlete.fullName}
+                        {isWithdrawn(e) && <span className="ml-2 rounded bg-gray-200 px-1.5 py-0.5 text-xs text-gray-600">снят</span>}
                         {isDup(e) && <span className="ml-2 rounded bg-red-100 px-1.5 py-0.5 text-[10px] font-semibold text-red-700">дубль?</span>}
                       </div>
                       <div className="text-xs text-gray-500">
@@ -162,6 +169,7 @@ export default async function OrganizerConsole({ params }: { params: Promise<{ e
                       <div className="mt-1 flex items-center gap-3">
                         <Link href={`/participant/${e.athlete.id}/edit?next=/organizer/${eventId}`} className="text-blue-600 text-xs">изменить</Link>
                         <DeleteEntryButton entryId={e.id} paid={e.paid} />
+                        <EntryWithdrawalButton entryId={e.id} withdrawn={isWithdrawn(e)} />
                       </div>
                     </td>
                     <td className="px-3 py-2 whitespace-nowrap">
@@ -190,6 +198,8 @@ export default async function OrganizerConsole({ params }: { params: Promise<{ e
           </>
         )}
       </section>
+
+      <DropoutsSection eventId={eventId} showMoney={showMoney} />
 
       {suggestions.length > 0 && (
         <section className="mt-6">
@@ -228,11 +238,32 @@ export default async function OrganizerConsole({ params }: { params: Promise<{ e
           <h2 className="text-lg font-semibold">Категории и взвешивание</h2>
           <NewCategoryForm eventPath={event.slug ?? eventId} options={catOptions} />
         </div>
+        <CategoryFilter
+          containerId={`category-list-${eventId}`}
+          ageGroups={[...new Set(categories.map((c) => c.ageGroupLabel))]}
+          matsCount={event.matsCount}
+        />
+        <div id={`category-list-${eventId}`} className="space-y-6">
         {categories.map((c) => {
           const queue = c.registrations.filter((r) => r.status === "ENTERED");
           const generate = buildBracketAction.bind(null, c.id);
           return (
-            <div key={c.id} className="rounded border">
+            <div
+              key={c.id}
+              className="rounded border"
+              data-cat={catLabel(c)}
+              data-age={c.ageGroupLabel}
+              data-sex={c.sex}
+              data-disc={c.discipline}
+              data-level={c.level}
+              data-wmin={c.weightMin ?? ""}
+              data-wmax={c.weightMax ?? ""}
+              data-open={c.isOpenTop ? "1" : "0"}
+              data-abs={c.isAbsolute ? "1" : "0"}
+              data-mat={c.matNumber ?? ""}
+              data-count={c.registrations.filter((r) => r.status === "ENTERED" || r.status === "ADMITTED").length}
+              data-bracket={c._count.matches > 0 ? "1" : "0"}
+            >
               <div className="flex items-center justify-between bg-gray-50 px-3 py-2">
                 <div>
                   <Link href={`/category/${c.id}`} className="font-medium text-blue-700">{catLabel(c)}</Link>
@@ -279,6 +310,7 @@ export default async function OrganizerConsole({ params }: { params: Promise<{ e
             </div>
           );
         })}
+        </div>
       </section>
     </main>
   );
