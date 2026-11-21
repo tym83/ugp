@@ -25,6 +25,7 @@ export type SnapMatch = {
 };
 
 export type SnapCategory = {
+  discipline?: "gi" | "nogi";
   placesOverride?: string[] | null;
   id: string;
   label: string;
