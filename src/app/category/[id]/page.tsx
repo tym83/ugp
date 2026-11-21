@@ -2,7 +2,7 @@ import RoundRobinStandings from "@/components/RoundRobinStandings";
 import { parsePlacesOverride } from "@/lib/domain/roundRobin";
 import { IN_BRACKET } from "@/lib/domain/bracketStatus";
 import { prisma } from "@/lib/prisma";
-import { buildBracketAction } from "@/app/actions";
+import RebuildBracketButton from "@/components/RebuildBracketButton";
 import { getCurrentUser, hasRole } from "@/lib/auth/session";
 import Link from "next/link";
 import type { Metadata } from "next";
@@ -65,7 +65,6 @@ export default async function CategoryPage({ params }: { params: Promise<{ id: s
   const user = await getCurrentUser();
   const isStaff = hasRole(user, "ORGANIZER", "ADMIN", "MAT_COORDINATOR");
   const isReferee = hasRole(user, "REFEREE", "MAT_COORDINATOR", "ORGANIZER", "ADMIN");
-  const generate = buildBracketAction.bind(null, id);
 
   return (
     <main className="min-h-screen bg-[#0d0b08] text-[#f4f0e8]">
@@ -83,11 +82,7 @@ export default async function CategoryPage({ params }: { params: Promise<{ id: s
       {(isStaff || isReferee) && (
         <div className="mt-4 flex flex-wrap gap-2">
           {isStaff && (
-            <form action={generate}>
-              <button className="rounded bg-[#e3863d] px-4 py-2 text-sm font-bold uppercase tracking-wide text-black hover:brightness-110">
-                {matches.length ? "Пересобрать сетку" : "Сгенерировать сетку"}
-              </button>
-            </form>
+            <RebuildBracketButton categoryId={id} hasBracket={matches.length > 0} className="rounded bg-[#e3863d] px-4 py-2 text-sm font-bold uppercase tracking-wide text-black hover:brightness-110" />
           )}
           {isReferee && matches.length > 0 && (
             <Link href={`/judge/${category.slug ?? id}`} className="rounded border border-white/25 px-4 py-2 text-sm hover:bg-white/10">Судейский пульт</Link>

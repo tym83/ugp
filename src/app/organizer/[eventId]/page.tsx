@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { requirePageRole, seesFinance } from "@/lib/auth/session";
 import { levelLabel } from "@/lib/domain/levelLabel";
-import { buildBracketAction } from "@/app/actions";
+import RebuildBracketButton from "@/components/RebuildBracketButton";
 import { needsMerge, suggestMergeTarget, type MergeCat } from "@/lib/domain/merge";
 import Link from "next/link";
 import WeighInForm, { WeighInNotice } from "./WeighInForm";
@@ -247,7 +247,6 @@ export default async function OrganizerConsole({ params }: { params: Promise<{ e
         <div id={`category-list-${eventId}`} className="space-y-6">
         {categories.map((c) => {
           const queue = c.registrations.filter((r) => r.status === "ENTERED");
-          const generate = buildBracketAction.bind(null, c.id);
           return (
             <div
               key={c.id}
@@ -281,11 +280,7 @@ export default async function OrganizerConsole({ params }: { params: Promise<{ e
                   >
                     Состав и сетка
                   </Link>
-                  <form action={generate}>
-                    <button className="rounded bg-blue-600 px-3 py-1 text-xs text-white">
-                      {c._count.matches ? "Пересобрать сетку" : "Сгенерировать сетку"}
-                    </button>
-                  </form>
+                  <RebuildBracketButton categoryId={c.id} hasBracket={c._count.matches > 0} className="rounded bg-blue-600 px-3 py-1 text-xs text-white" />
                 </div>
               </div>
 
