@@ -3,6 +3,8 @@ import { IN_BRACKET } from "./bracketStatus";
 import type { Prisma } from "@prisma/client";
 import { generateBracket, type Participant } from "./bracket";
 
+import { bracketTypeForEntrants } from "./roundRobin";
+
 type Tx = Prisma.TransactionClient;
 
 /** Сгенерировать и сохранить сетку категории из допущенных регистраций.
@@ -28,11 +30,12 @@ export async function buildBracketForCategory(categoryId: string, opts: { force?
     seed: r.seed ?? i + 1,
   }));
 
+  const bracketType = bracketTypeForEntrants(participants.length);
   const bracket =
     regs.length >= 2
       ? generateBracket(
           participants,
-          category.bracketType as "SINGLE_ELIM" | "ROUND_ROBIN",
+          bracketType,
           { bronzeMode: category.bronzeMode as "SINGLE_MATCH_3RD" | "TWO_BRONZE" | "NONE" }
         )
       : null;
@@ -45,7 +48,7 @@ export async function buildBracketForCategory(categoryId: string, opts: { force?
     if (!bracket) {
       await tx.category.update({
         where: { id: categoryId },
-        data: { status: "GENERATED", bracketVersion: { increment: 1 }, frozenAt: new Date() },
+        data: { bracketType, placesOverride: null, status: "GENERATED", bracketVersion: { increment: 1 }, frozenAt: new Date() },
       });
       return;
     }
@@ -89,7 +92,7 @@ export async function buildBracketForCategory(categoryId: string, opts: { force?
 
     await tx.category.update({
       where: { id: categoryId },
-      data: { status: "GENERATED", bracketVersion: { increment: 1 } },
+      data: { bracketType, placesOverride: null, status: "GENERATED", bracketVersion: { increment: 1 } },
     });
   });
 
@@ -100,7 +103,7 @@ export async function buildBracketForCategory(categoryId: string, opts: { force?
  *  Работает внутри переданной транзакции. Пропускает пустые фидеры (BYE без проигравшего). */
 export async function advanceWinner(tx: Tx, matchId: string) {
   const m = await tx.match.findUnique({ where: { id: matchId } });
-  if (!m || !m.winnerAthleteId) return;
+  if (!m || m.isRoundRobin || !m.winnerAthleteId) return;
   const dependents = await tx.match.findMany({
     where: { OR: [{ slotAFromMatchId: matchId }, { slotBFromMatchId: matchId }] },
   });

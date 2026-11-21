@@ -25,6 +25,8 @@ async function orgCategory(categoryId: string) {
 function refresh(eventId: string, categoryId: string) {
   revalidatePath(`/organizer/${eventId}`, "layout");
   revalidatePath(`/category/${categoryId}`);
+  revalidatePath(`/judge/${categoryId}`);
+  revalidatePath(`/standings/${eventId}`);
 }
 
 /** Сыгранные схватки (не проходы без соперника) или финализированные результаты блокируют правку. */
@@ -47,7 +49,7 @@ export async function dissolveBracket(categoryId: string): Promise<Res> {
   await prisma.$transaction(async (tx) => {
     await tx.result.deleteMany({ where: { match: { categoryId } } });
     await tx.match.deleteMany({ where: { categoryId } });
-    await tx.category.update({ where: { id: categoryId }, data: { status: "OPEN", frozenAt: null } });
+    await tx.category.update({ where: { id: categoryId }, data: { status: "OPEN", frozenAt: null, placesOverride: null } });
     await appendAudit(tx, { actorId: user.id, action: "bracket.dissolve", entity: "Category", entityId: categoryId, before: {} });
   });
   refresh(category.eventId, categoryId);
@@ -381,8 +383,8 @@ export async function mergeIntoCategory(targetCategoryId: string, sourceCategory
       where: { categoryId: sourceCategoryId },
       data: { categoryId: targetCategoryId, effectiveCategoryId: targetCategoryId },
     });
-    await tx.category.update({ where: { id: sourceCategoryId }, data: { mergedIntoId: targetCategoryId, status: "MERGED" } });
-    await tx.category.update({ where: { id: targetCategoryId }, data: { status: "OPEN", frozenAt: null } });
+    await tx.category.update({ where: { id: sourceCategoryId }, data: { mergedIntoId: targetCategoryId, status: "MERGED", placesOverride: null } });
+    await tx.category.update({ where: { id: targetCategoryId }, data: { status: "OPEN", frozenAt: null, placesOverride: null } });
     await appendAudit(tx, {
       actorId: user.id,
       action: "category.merge",
@@ -709,6 +711,7 @@ export async function setSlot(matchId: string, side: SlotSide, athleteId: string
     if (dup) return { ok: false, msg: dup };
   }
   await prisma.$transaction(async (tx) => {
+    await tx.category.update({ where: { id: match.categoryId }, data: { placesOverride: null } });
     const upd = await tx.match.updateMany({
       where: { id: matchId, version: match.version },
       data: { [slotField(side)]: athleteId, version: { increment: 1 } },
@@ -746,6 +749,7 @@ export async function reopenBye(matchId: string, athleteId: string): Promise<Res
   }
   const emptySide: SlotSide = match.slotAAthleteId ? "B" : "A";
   await prisma.$transaction(async (tx) => {
+    await tx.category.update({ where: { id: match.categoryId }, data: { placesOverride: null } });
     const upd = await tx.match.updateMany({
       where: { id: matchId, version: match.version },
       data: {
@@ -798,6 +802,7 @@ export async function walkover(matchId: string): Promise<Res> {
     }
   }
   await prisma.$transaction(async (tx) => {
+    await tx.category.update({ where: { id: match.categoryId }, data: { placesOverride: null } });
     const upd = await tx.match.updateMany({
       where: { id: matchId, version: match.version, status: "PENDING" },
       data: {

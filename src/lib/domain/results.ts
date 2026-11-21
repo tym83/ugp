@@ -45,6 +45,7 @@ export async function submitResult(input: SubmitResultInput) {
       });
       if (upd.count === 0) throw new Error("Конфликт версии матча — обновите и повторите");
 
+      await tx.category.update({ where: { id: match.categoryId }, data: { placesOverride: null } });
       await tx.result.create({
         data: {
           matchId: match.id,
@@ -124,6 +125,7 @@ export async function correctResult(input: CorrectResultInput) {
   };
 
   await prisma.$transaction(async (tx) => {
+    await tx.category.update({ where: { id: match.categoryId }, data: { placesOverride: null } });
     await tx.match.update({
       where: { id: match.id },
       data: {
@@ -175,6 +177,7 @@ export async function undoResult(input: { matchId: string; actorUserId: string; 
     }
 
     await tx.result.delete({ where: { matchId: match.id } });
+    await tx.category.update({ where: { id: match.categoryId }, data: { placesOverride: null } });
     await tx.match.update({
       where: { id: match.id, version: match.version },
       data: { status: "PENDING", winnerAthleteId: null, loserAthleteId: null, endedAt: null, version: { increment: 1 } },

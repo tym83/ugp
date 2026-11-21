@@ -114,6 +114,7 @@ model PriceTier {
 
 // ---------- Категория ----------
 model Category {
+  placesOverride String?
   id              String   @id @default(cuid())
   slug            String?  @unique // человекочитаемый URL: /category/<slug>
   event           Event    @relation(fields: [eventId], references: [id])

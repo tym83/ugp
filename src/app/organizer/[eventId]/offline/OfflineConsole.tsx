@@ -1,4 +1,6 @@
 "use client";
+
+import RoundRobinStandings from "@/components/RoundRobinStandings";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { correctResultAction } from "@/app/actions";
 import {
@@ -434,7 +436,10 @@ function CategoryBracket({
         🥇 {who(places.first)?.name ?? "—"} · 🥈 {who(places.second)?.name ?? "—"} · 🥉{" "}
         {places.third.map((id) => who(id)?.name).join(", ") || "—"}
       </p>
-      <div className="flex gap-4 overflow-x-auto pb-2">
+      {rr ? <>
+        <div className="space-y-3">{cat.matches.map((m, i) => <div key={m.id}><h3>Схватка {i + 1}</h3>{card(m)}</div>)}</div>
+        <RoundRobinStandings matches={cat.matches} override={cat.placesOverride} names={Object.fromEntries(Object.entries(cat.athletes).map(([id, a]) => [id, a.name]))} />
+      </> : <div className="flex gap-4 overflow-x-auto pb-2">
         {rounds.map((r) => (
           <div key={r} className="min-w-[230px] space-y-3">
             <div className="text-xs font-semibold uppercase text-gray-500">{title(r)}</div>
@@ -447,7 +452,7 @@ function CategoryBracket({
             {bronze.map(card)}
           </div>
         )}
-      </div>
+      </div>}
     </div>
   );
 }
