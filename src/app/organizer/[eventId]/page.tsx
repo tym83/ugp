@@ -35,7 +35,7 @@ export default async function OrganizerConsole({ params }: { params: Promise<{ e
     where: { eventId, mergedIntoId: null },
     orderBy: { order: "asc" },
     include: {
-      registrations: { include: { athlete: true }, orderBy: { createdAt: "asc" } },
+      registrations: { include: { athlete: { include: { club: true } } }, orderBy: { createdAt: "asc" } },
       _count: { select: { matches: true } },
     },
   });
@@ -263,6 +263,9 @@ export default async function OrganizerConsole({ params }: { params: Promise<{ e
         <div id={`category-list-${eventId}`} className="space-y-6">
         {categories.map((c) => {
           const queue = c.registrations.filter((r) => r.status === "ENTERED");
+          const admitted = c.registrations
+            .filter((r) => r.status === "ADMITTED")
+            .sort((a, b) => (a.seed ?? Number.MAX_SAFE_INTEGER) - (b.seed ?? Number.MAX_SAFE_INTEGER));
           return (
             <div
               key={c.id}
@@ -318,6 +321,25 @@ export default async function OrganizerConsole({ params }: { params: Promise<{ e
                     ))}
                   </tbody>
                 </table>
+              )}
+
+              {admitted.length > 0 && (
+                <details className="text-sm">
+                  <summary className="cursor-pointer select-none px-3 py-1.5 text-xs text-blue-700">
+                    участники ({admitted.length}) — раскрыть
+                  </summary>
+                  <table className="w-full">
+                    <tbody>
+                      {admitted.map((r) => (
+                        <tr key={r.id} className="border-t">
+                          <td className="px-3 py-1">{r.athlete.fullName}</td>
+                          <td className="px-3 py-1 text-gray-400">{r.actualWeight ?? r.declaredWeight ?? "—"} кг</td>
+                          <td className="px-3 py-1 text-gray-400">{r.athlete.club?.name ?? ""}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </details>
               )}
             </div>
           );
