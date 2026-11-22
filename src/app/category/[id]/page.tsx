@@ -34,8 +34,10 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   };
 }
 
-export default async function CategoryPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function CategoryPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ a?: string | string[] }> }) {
   const { id: catParam } = await params;
+  const { a } = await searchParams;
+  const highlightedAthleteId = Array.isArray(a) ? a[0] : a;
   const category = await prisma.category.findFirst({ where: { OR: [{ slug: catParam }, { id: catParam }] }, include: { event: true } });
   if (!category) return <main className="p-8">Категория не найдена</main>;
   const id = category.id; // реальный id для запросов/действий
@@ -62,6 +64,16 @@ export default async function CategoryPage({ params }: { params: Promise<{ id: s
   };
   const rounds = [...new Set(matches.filter((m) => !m.isBronzeMatch).map((m) => m.roundNumber))].sort((a, b) => a - b);
 
+  const highlightedName = highlightedAthleteId ? nameById.get(highlightedAthleteId) : undefined;
+  const firstMatch = highlightedAthleteId
+    ? matches.find((m) => m.slotAAthleteId === highlightedAthleteId || m.slotBAthleteId === highlightedAthleteId)
+    : undefined;
+  const highlightClass = (athleteId: string | null) =>
+    athleteId && athleteId === highlightedAthleteId ? "bg-[#e3863d]/15 font-bold ring-2 ring-inset ring-[#e3863d] scroll-mt-24" : "";
+  const slotAnchor = (matchId: string, side: "A" | "B") =>
+    firstMatch?.id === matchId && side === (firstMatch.slotAAthleteId === highlightedAthleteId ? "A" : "B")
+      ? `a-${highlightedAthleteId}` : undefined;
+
   const user = await getCurrentUser();
   const isStaff = hasRole(user, "ORGANIZER", "ADMIN", "MAT_COORDINATOR");
   const isReferee = hasRole(user, "REFEREE", "MAT_COORDINATOR", "ORGANIZER", "ADMIN");
@@ -74,6 +86,11 @@ export default async function CategoryPage({ params }: { params: Promise<{ id: s
         {category.ageGroupLabel}{levelLabel(category.level) ? ` · ${levelLabel(category.level)}` : ""} · {category.sex === "M" ? "муж" : "жен"} · {category.discipline} ·{" "}
         {category.isAbsolute ? "абсолютка" : category.isOpenTop ? `свыше ${category.weightMin}` : `до ${category.weightMax}`} кг
       </h1>
+      {highlightedName && (
+        <p className="mt-1 text-sm text-[#e3863d]">
+          Показан участник: {highlightedName} · <Link href={`/category/${encodeURIComponent(catParam)}`} className="underline">снять выделение</Link>
+        </p>
+      )}
       <p className="text-sm text-[#cec8bc]">
         Формат: {category.bracketType === "SINGLE_ELIM" ? "олимпийка" : "круговая"} · правила: {category.ruleFormat} ·
         схватка {category.boutSeconds}s · допущено: {regs.length}
@@ -94,7 +111,7 @@ export default async function CategoryPage({ params }: { params: Promise<{ id: s
         <h2 className="mb-2 text-sm font-bold uppercase tracking-[0.25em] text-[#e3863d]">Участники</h2>
         <ol className="ml-6 list-decimal text-sm">
           {regs.map((r) => (
-            <li key={r.id}>{maskName(r.athlete.fullName, isMinor(r.athlete.birthDate))} <span className="text-[#8a8378]">({r.athlete.club?.name ?? "—"}, {r.actualWeight ?? r.declaredWeight} кг)</span>
+            <li key={r.id} className={highlightClass(r.athleteId)} id={!firstMatch && r.athleteId === highlightedAthleteId ? `a-${highlightedAthleteId}` : undefined}>{maskName(r.athlete.fullName, isMinor(r.athlete.birthDate))} <span className="text-[#8a8378]">({r.athlete.club?.name ?? "—"}, {r.actualWeight ?? r.declaredWeight} кг)</span>
               <span className={"ml-2 rounded px-1.5 py-0.5 text-[10px] font-semibold " + (r.entry?.paid ? "bg-green-500/20 text-green-400" : "bg-amber-500/20 text-amber-400")}>{r.entry?.paid ? "оплачено" : "не оплачено"}</span>
             </li>
           ))}
@@ -111,8 +128,8 @@ export default async function CategoryPage({ params }: { params: Promise<{ id: s
         <section className="mt-6">
           <h2 className="mb-3 text-sm font-bold uppercase tracking-[0.25em] text-[#e3863d]">Сетка</h2>
           {category.bracketType === "ROUND_ROBIN" ? <>
-            <ol className="space-y-3">{matches.map((m, i) => <li key={m.id}>Схватка {i + 1}: {nameById.get(m.slotAAthleteId ?? "") ?? "—"} — {nameById.get(m.slotBAthleteId ?? "") ?? "—"} · Победитель: {nameById.get(m.winnerAthleteId ?? "") ?? "—"}</li>)}</ol>
-            <RoundRobinStandings publicView matches={matches.map((m) => ({ a: m.slotAAthleteId, b: m.slotBAthleteId, winner: m.winnerAthleteId, status: m.status, winType: m.result?.winType }))} override={parsePlacesOverride(category.placesOverride)} names={Object.fromEntries(nameById)} />
+            <ol className="space-y-3">{matches.map((m, i) => <li key={m.id} id={firstMatch?.id === m.id ? `a-${highlightedAthleteId}` : undefined} className={highlightClass(m.slotAAthleteId) || highlightClass(m.slotBAthleteId)}>Схватка {i + 1}: {nameById.get(m.slotAAthleteId ?? "") ?? "—"} — {nameById.get(m.slotBAthleteId ?? "") ?? "—"} · Победитель: {nameById.get(m.winnerAthleteId ?? "") ?? "—"}</li>)}</ol>
+            <RoundRobinStandings highlightedAthleteId={highlightedAthleteId} publicView matches={matches.map((m) => ({ a: m.slotAAthleteId, b: m.slotBAthleteId, winner: m.winnerAthleteId, status: m.status, winType: m.result?.winType }))} override={parsePlacesOverride(category.placesOverride)} names={Object.fromEntries(nameById)} />
           </> : <div className="flex gap-6 overflow-x-auto pb-2">
             {rounds.map((rn) => (
               <div key={rn} className="min-w-[220px]">
@@ -120,10 +137,10 @@ export default async function CategoryPage({ params }: { params: Promise<{ id: s
                 <div className="space-y-3">
                   {matches.filter((m) => m.roundNumber === rn && !m.isBronzeMatch).map((m) => (
                     <div key={m.id} className="rounded border border-white/10 bg-white/5 text-sm">
-                      <div className={`border-b border-white/10 px-2 py-1 ${m.winnerAthleteId && m.winnerAthleteId === m.slotAAthleteId ? "font-bold text-[#e3863d]" : ""}`}>
+                      <div id={slotAnchor(m.id, "A")} className={`border-b border-white/10 px-2 py-1 ${highlightClass(m.slotAAthleteId)} ${m.winnerAthleteId && m.winnerAthleteId === m.slotAAthleteId ? "font-bold text-[#e3863d]" : ""}`}>
                         {slotName(m.slotAAthleteId, m.slotAFromMatchId, m.slotAWinner)}
                       </div>
-                      <div className={`px-2 py-1 ${m.winnerAthleteId && m.winnerAthleteId === m.slotBAthleteId ? "font-bold text-[#e3863d]" : ""}`}>
+                      <div id={slotAnchor(m.id, "B")} className={`px-2 py-1 ${highlightClass(m.slotBAthleteId)} ${m.winnerAthleteId && m.winnerAthleteId === m.slotBAthleteId ? "font-bold text-[#e3863d]" : ""}`}>
                         {slotName(m.slotBAthleteId, m.slotBFromMatchId, m.slotBWinner)}
                       </div>
                       <div className="border-t border-white/10 px-2 py-0.5 text-[10px] text-[#8a8378]">{m.status}{m.matNumber ? ` · ковёр ${m.matNumber}` : ""}</div>
@@ -137,8 +154,8 @@ export default async function CategoryPage({ params }: { params: Promise<{ id: s
                 <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-[#e3863d]">За 3-е место</div>
                 {matches.filter((m) => m.isBronzeMatch).map((m) => (
                   <div key={m.id} className="rounded border border-[#e3863d]/40 bg-white/5 text-sm">
-                    <div className="border-b border-white/10 px-2 py-1">{slotName(m.slotAAthleteId, m.slotAFromMatchId, m.slotAWinner)}</div>
-                    <div className="px-2 py-1">{slotName(m.slotBAthleteId, m.slotBFromMatchId, m.slotBWinner)}</div>
+                    <div id={slotAnchor(m.id, "A")} className={`border-b border-white/10 px-2 py-1 ${highlightClass(m.slotAAthleteId)}`}>{slotName(m.slotAAthleteId, m.slotAFromMatchId, m.slotAWinner)}</div>
+                    <div id={slotAnchor(m.id, "B")} className={`px-2 py-1 ${highlightClass(m.slotBAthleteId)}`}>{slotName(m.slotBAthleteId, m.slotBFromMatchId, m.slotBWinner)}</div>
                   </div>
                 ))}
               </div>

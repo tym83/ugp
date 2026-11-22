@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -196,13 +197,22 @@ export default function RosterPanel({ categoryId, hasBracket, locked, rows, slot
               {found.map((c) => {
                 const other = c.otherCategory;
                 return (
-                  <li key={c.athleteId} className="flex items-center gap-2">
+                  <li key={c.athleteId} className="flex flex-wrap items-center gap-2">
                     <span>{c.fullName} <span className="text-gray-500">{c.birthYear}{c.club ? ` · ${c.club}` : ""}</span></span>
+                    {c.allCategories.length > 0 && (
+                      <span className="inline-flex flex-wrap gap-2 text-xs">
+                        <span className="text-gray-500">сейчас:</span>
+                        {c.allCategories.map((category) => (
+                          <Link key={category.id} href={`/category/${encodeURIComponent(category.id)}?a=${encodeURIComponent(c.athleteId)}#a-${encodeURIComponent(c.athleteId)}`} target="_blank" rel="noopener" className="text-blue-600 hover:underline">
+                            {category.label} →
+                          </Link>
+                        ))}
+                      </span>
+                    )}
                     {c.inCategory ? (
                       <span className="text-xs text-gray-400">уже в категории</span>
                     ) : other ? (
                       <>
-                        <span className="text-xs text-gray-500">сейчас: {c.allCategories.join("; ")}</span>
                         <button disabled={pending} onClick={() => run((force) => moveAthleteHere(categoryId, other.registrationId, force), () => setFound(null))} className="rounded bg-blue-600 px-2 py-0.5 text-xs text-white">
                           перенести сюда
                         </button>

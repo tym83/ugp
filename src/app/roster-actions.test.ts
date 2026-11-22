@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   category: vi.fn(),
+  entryFindMany: vi.fn(),
   categoryUpdate: vi.fn(),
   authorize: vi.fn(),
   matchFindUnique: vi.fn(),
@@ -24,6 +25,7 @@ vi.mock("next/cache", () => ({ revalidatePath: mocks.revalidate }));
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     category: { findUnique: mocks.category },
+    eventEntry: { findMany: mocks.entryFindMany },
     match: {
       findUnique: mocks.matchFindUnique,
       findMany: mocks.matchFindMany,
@@ -59,6 +61,7 @@ vi.mock("@/lib/domain/snapshot", () => ({ categoryLabel: vi.fn((c: { ageGroupLab
 
 import {
   buildSlotEditRows,
+  searchEventAthletes,
   moveAthleteHere,
   reopenBye,
   removeFromCategory,
@@ -360,5 +363,32 @@ describe("roster guards with played results", () => {
     const r = await moveAthleteHere("cat", "regX");
     expect(r.ok).toBe(true);
     expect(mocks.build).not.toHaveBeenCalled();
+  });
+});
+
+
+describe("searchEventAthletes category links", () => {
+  it("returns current and other category IDs and labels, excluding withdrawn registrations", async () => {
+    mocks.category.mockResolvedValue({ id: "current", eventId: "event", discipline: "GI" });
+    mocks.authorize.mockResolvedValue({ id: "organizer" });
+    mocks.entryFindMany.mockResolvedValue([{
+      athleteId: "athlete",
+      athlete: { fullName: "Семёнов Иван", birthDate: new Date("2010-01-01"), club: null },
+      registrations: [
+        { id: "r1", categoryId: "current", status: "ADMITTED", category: { ageGroupLabel: "Current", discipline: "GI" } },
+        { id: "r2", categoryId: "other", status: "ENTERED", category: { ageGroupLabel: "Other", discipline: "GI" } },
+        { id: "r3", categoryId: "overweight", status: "OVERWEIGHT", category: { ageGroupLabel: "Overweight", discipline: "GI" } },
+        { id: "r4", categoryId: "withdrawn", status: "WITHDRAWN", category: { ageGroupLabel: "Withdrawn", discipline: "GI" } },
+      ],
+    }]);
+    const found = await searchEventAthletes("current", " семенов ");
+    expect(found).toHaveLength(1);
+    expect(found[0].allCategories).toEqual([
+      { id: "current", label: "Current" },
+      { id: "other", label: "Other" },
+      { id: "overweight", label: "Overweight" },
+    ]);
+    expect(found[0].inCategory).toBe(true);
+    expect(found[0].otherCategory?.registrationId).toBe("r2");
   });
 });
