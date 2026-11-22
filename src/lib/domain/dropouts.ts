@@ -4,6 +4,9 @@ import { defaultRefundStatus, deletedBelongsToEvent, latestRefundMarks, parseAud
 export type Dropout = {
   entryId: string;
   kind: "withdrawn" | "deleted";
+  athleteId: string | null;
+  /** Категория последней снятой регистрации — предвыбор в селекте возврата. */
+  categoryId: string | null;
   fullName: string;
   birthDate: Date | null;
   club: string | null;
@@ -57,7 +60,8 @@ export async function listDropouts(eventId: string): Promise<Dropout[]> {
       return log.entityId === entry.id && Array.isArray(after.registrationIds) && after.registrationIds.includes(latest.id);
     });
     return {
-      entryId: entry.id, kind: "withdrawn", fullName: entry.athlete.fullName,
+      entryId: entry.id, kind: "withdrawn", athleteId: entry.athlete.id, categoryId: latest.categoryId,
+      fullName: entry.athlete.fullName,
       birthDate: entry.athlete.birthDate, club: entry.athlete.club?.name ?? null, phone: entry.athlete.phone,
       priceTotal: entry.priceTotal, paid: entry.paid, paymentKind: entry.paymentKind,
       at: latest.withdrawnAt, by: audit?.actor?.email ?? null,
@@ -74,7 +78,8 @@ export async function listDropouts(eventId: string): Promise<Dropout[]> {
     const paid = before.paid === true;
     const paymentKind = text(before.paymentKind);
     rows.push({
-      entryId, kind: "deleted", fullName: text(before.athlete) ?? "—",
+      entryId, kind: "deleted", athleteId: null, categoryId: null,
+      fullName: text(before.athlete) ?? "—",
       birthDate: date(before.birthDate), club: text(before.club), phone: text(before.phone),
       priceTotal: typeof before.priceTotal === "number" ? before.priceTotal : 0,
       paid, paymentKind, at: log.ts, by: log.actor?.email ?? null, reason: text(before.reason),
