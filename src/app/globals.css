@@ -30,3 +30,32 @@ h1, h2, h3, h4, .font-display {
 h1, h2 {
   font-weight: 800;
 }
+
+/* brackets-viewer.js — тёмная брендовая тема (страницы категорий). */
+.ugp-bracket {
+  --primary-background: transparent;
+  --secondary-background: #14110c;
+  --match-background: #1c1712;
+  --font-color: #f4f0e8;
+  --text-size: 14px;
+  --hint-color: #8a8378;
+  --label-color: #e3863d;
+  --win-color: #e3863d;
+  --loss-color: #6b6459;
+  --border-color: #332c23;
+  --border-hover-color: #e3863d;
+  --border-selected-color: #e3863d;
+  --connector-color: #4a4238;
+  --connector-border-width: 2px;
+  --match-border-radius: 8px;
+  --round-margin: 36px;
+  background: transparent;
+  color: var(--font-color);
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+}
+.ugp-bracket .participant.bv-highlight {
+  background: rgba(227, 134, 61, 0.18);
+}
+.ugp-bracket .participant.bv-highlight .name {
+  font-weight: 700;
+}
