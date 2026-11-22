@@ -1,4 +1,5 @@
 import RoundRobinStandings from "@/components/RoundRobinStandings";
+import BracketViewer from "@/components/BracketViewer";
 import { parsePlacesOverride } from "@/lib/domain/roundRobin";
 import { IN_BRACKET } from "@/lib/domain/bracketStatus";
 import { prisma } from "@/lib/prisma";
@@ -57,22 +58,43 @@ export default async function CategoryPage({ params, searchParams }: { params: P
   const nameById = new Map(
     allRegs.map((r) => [r.athleteId, maskName(r.athlete.fullName, isMinor(r.athlete.birthDate))]),
   );
-  const slotName = (athleteId: string | null, fromId: string | null, winner: boolean) => {
-    if (athleteId) return nameById.get(athleteId) ?? "?";
-    if (fromId) return winner ? "победитель ▲" : "проигравший ▽";
-    return "— (BYE)";
-  };
-  const rounds = [...new Set(matches.filter((m) => !m.isBronzeMatch).map((m) => m.roundNumber))].sort((a, b) => a - b);
+
 
   const highlightedName = highlightedAthleteId ? nameById.get(highlightedAthleteId) : undefined;
   const firstMatch = highlightedAthleteId
     ? matches.find((m) => m.slotAAthleteId === highlightedAthleteId || m.slotBAthleteId === highlightedAthleteId)
     : undefined;
+
+  // Данные для brackets-viewer.js: одна стадия олимпийки (+ финал за 3-е, если есть).
+  const viewerData = (() => {
+    if (category.bracketType === "ROUND_ROBIN" || matches.length === 0) return null;
+    const opp = (athleteId: string | null, winnerId: string | null) =>
+      athleteId
+        ? { id: athleteId, result: winnerId ? (winnerId === athleteId ? ("win" as const) : ("loss" as const)) : undefined }
+        : { id: null };
+    return {
+      stages: [
+        {
+          id: 0, tournament_id: 0, name: "Сетка", type: "single_elimination", number: 1,
+          settings: { size: Math.max(regs.length, 2), seedOrdering: ["natural"], consolationFinal: matches.some((m) => m.isBronzeMatch) },
+        },
+      ],
+      matches: matches.map((m) => ({
+        id: m.id, stage_id: 0,
+        group_id: m.isBronzeMatch ? 1 : 0,
+        round_id: m.isBronzeMatch ? 1 : m.roundNumber,
+        number: m.positionInRound,
+        status: m.status === "COMPLETED" ? 4 : m.status === "RUNNING" ? 3 : 1,
+        opponent1: opp(m.slotAAthleteId, m.winnerAthleteId),
+        opponent2: opp(m.slotBAthleteId, m.winnerAthleteId),
+        child_count: 0,
+      })),
+      matchGames: [],
+      participants: regs.map((r) => ({ id: r.athleteId, tournament_id: 0, name: nameById.get(r.athleteId) ?? "?" })),
+    };
+  })();
   const highlightClass = (athleteId: string | null) =>
     athleteId && athleteId === highlightedAthleteId ? "bg-[#e3863d]/15 font-bold ring-2 ring-inset ring-[#e3863d] scroll-mt-24" : "";
-  const slotAnchor = (matchId: string, side: "A" | "B") =>
-    firstMatch?.id === matchId && side === (firstMatch.slotAAthleteId === highlightedAthleteId ? "A" : "B")
-      ? `a-${highlightedAthleteId}` : undefined;
 
   const user = await getCurrentUser();
   const isStaff = hasRole(user, "ORGANIZER", "ADMIN", "MAT_COORDINATOR");
@@ -130,37 +152,7 @@ export default async function CategoryPage({ params, searchParams }: { params: P
           {category.bracketType === "ROUND_ROBIN" ? <>
             <ol className="space-y-3">{matches.map((m, i) => <li key={m.id} id={firstMatch?.id === m.id ? `a-${highlightedAthleteId}` : undefined} className={highlightClass(m.slotAAthleteId) || highlightClass(m.slotBAthleteId)}>Схватка {i + 1}: {nameById.get(m.slotAAthleteId ?? "") ?? "—"} — {nameById.get(m.slotBAthleteId ?? "") ?? "—"} · Победитель: {nameById.get(m.winnerAthleteId ?? "") ?? "—"}</li>)}</ol>
             <RoundRobinStandings highlightedAthleteId={highlightedAthleteId} publicView matches={matches.map((m) => ({ a: m.slotAAthleteId, b: m.slotBAthleteId, winner: m.winnerAthleteId, status: m.status, winType: m.result?.winType }))} override={parsePlacesOverride(category.placesOverride)} names={Object.fromEntries(nameById)} />
-          </> : <div className="flex gap-6 overflow-x-auto pb-2">
-            {rounds.map((rn) => (
-              <div key={rn} className="min-w-[220px]">
-                <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-[#cec8bc]">Круг {rn}</div>
-                <div className="space-y-3">
-                  {matches.filter((m) => m.roundNumber === rn && !m.isBronzeMatch).map((m) => (
-                    <div key={m.id} className="rounded border border-white/10 bg-white/5 text-sm">
-                      <div id={slotAnchor(m.id, "A")} className={`border-b border-white/10 px-2 py-1 ${highlightClass(m.slotAAthleteId)} ${m.winnerAthleteId && m.winnerAthleteId === m.slotAAthleteId ? "font-bold text-[#e3863d]" : ""}`}>
-                        {slotName(m.slotAAthleteId, m.slotAFromMatchId, m.slotAWinner)}
-                      </div>
-                      <div id={slotAnchor(m.id, "B")} className={`px-2 py-1 ${highlightClass(m.slotBAthleteId)} ${m.winnerAthleteId && m.winnerAthleteId === m.slotBAthleteId ? "font-bold text-[#e3863d]" : ""}`}>
-                        {slotName(m.slotBAthleteId, m.slotBFromMatchId, m.slotBWinner)}
-                      </div>
-                      <div className="border-t border-white/10 px-2 py-0.5 text-[10px] text-[#8a8378]">{m.status}{m.matNumber ? ` · ковёр ${m.matNumber}` : ""}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ))}
-            {matches.some((m) => m.isBronzeMatch) && (
-              <div className="min-w-[220px]">
-                <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-[#e3863d]">За 3-е место</div>
-                {matches.filter((m) => m.isBronzeMatch).map((m) => (
-                  <div key={m.id} className="rounded border border-[#e3863d]/40 bg-white/5 text-sm">
-                    <div id={slotAnchor(m.id, "A")} className={`border-b border-white/10 px-2 py-1 ${highlightClass(m.slotAAthleteId)}`}>{slotName(m.slotAAthleteId, m.slotAFromMatchId, m.slotAWinner)}</div>
-                    <div id={slotAnchor(m.id, "B")} className={`px-2 py-1 ${highlightClass(m.slotBAthleteId)}`}>{slotName(m.slotBAthleteId, m.slotBFromMatchId, m.slotBWinner)}</div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>}
+          </> : viewerData && <BracketViewer data={viewerData} highlightedAthleteId={highlightedAthleteId} />}
         </section>
       )}
     </div>
