@@ -150,7 +150,7 @@ export default async function OrganizerConsole({ params }: { params: Promise<{ e
                   <th className="px-3 py-2">Участник</th>
                   <th className="px-3 py-2">Телефон</th>
                   <th className="px-3 py-2">Клуб</th>
-                  <th className="px-3 py-2">Категории (перенос)</th>
+                  <th className="px-3 py-2">Категории и допуск</th>
                   {showMoney && <th className="px-3 py-2">Взнос</th>}
                   <th className="px-3 py-2">Оплата</th>
                 </tr>
@@ -180,9 +180,23 @@ export default async function OrganizerConsole({ params }: { params: Promise<{ e
                     </td>
                     <td className="px-3 py-2">{e.athlete.club?.name ?? <span className="text-gray-300">—</span>}</td>
                     <td className="px-3 py-2">
-                      <div className="space-y-1">
+                      <div className="space-y-3">
                         {e.registrations.map((r) => (
-                          <MoveRegistration key={r.id} regId={r.id} currentCatId={r.categoryId} currentLabel={catLabel(r.category)} eventId={eventId} athleteId={e.athleteId} withdrawn={r.status === "WITHDRAWN"} />
+                          <div key={r.id} className="space-y-1">
+                            <MoveRegistration regId={r.id} currentCatId={r.categoryId} currentLabel={catLabel(r.category)} eventId={eventId} athleteId={e.athleteId} withdrawn={r.status === "WITHDRAWN"} />
+                            {r.status === "ENTERED" ? (
+                              locked ? (
+                                <span className="text-xs text-gray-400">взвешивание закрыто</span>
+                              ) : (
+                                <WeighInForm registrationId={r.id} declared={r.actualWeight ?? r.declaredWeight} />
+                              )
+                            ) : (
+                              <span className={`text-xs ${r.status === "ADMITTED" ? "text-green-700" : "text-gray-500"}`}>
+                                {r.status === "ADMITTED" ? "Допущен" : r.status === "WITHDRAWN" ? "Снят" : r.status === "OVERWEIGHT" ? "Перевес" : r.status}
+                                {r.actualWeight != null && ` · ${r.actualWeight} кг`}
+                              </span>
+                            )}
+                          </div>
                         ))}
                         {e.registrations.length === 0 && <span className="text-gray-300">—</span>}
                       </div>
