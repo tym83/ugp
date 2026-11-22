@@ -31,8 +31,9 @@ h1, h2 {
   font-weight: 800;
 }
 
-/* brackets-viewer.js — тёмная брендовая тема (страницы категорий). */
-.ugp-bracket {
+/* brackets-viewer.js — тёмная брендовая тема (страницы категорий).
+ * Специфичность выше дефолтных стилей библиотеки (подключены после globals.css). */
+.brackets-viewer.ugp-bracket {
   --primary-background: transparent;
   --secondary-background: #14110c;
   --match-background: #1c1712;
