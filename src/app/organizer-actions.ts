@@ -597,7 +597,8 @@ export async function setEntryPayment(entryId: string, kind: PaymentKind | null)
 
 type EntryStatusResult = { ok: boolean; msg: string; skippedCategories: { id: string; label: string }[] };
 
-// Only tournament withdrawals may be restored by this action.
+// Возвращает все снятые регистрации заявки независимо от причины снятия:
+// и «снят с турнира», и «перевес на взвешивании», и «убран организатором».
 async function changeEntryStatus(entryId: string, restore: boolean, reason?: string): Promise<EntryStatusResult> {
   const entry = await prisma.eventEntry.findUnique({ where: { id: entryId } });
   if (!entry) return { ok: false, msg: "Заявка не найдена", skippedCategories: [] };
@@ -607,7 +608,7 @@ async function changeEntryStatus(entryId: string, restore: boolean, reason?: str
       where: {
         entryId,
         ...(restore
-          ? { status: "WITHDRAWN", OR: [{ withdrawReason: "снят с турнира" }, { withdrawReason: { startsWith: "entry:" } }] }
+          ? { status: "WITHDRAWN" }
           : { status: { in: [...IN_BRACKET, "OVERWEIGHT"] } }),
       },
       include: { category: true },
@@ -655,6 +656,27 @@ export async function withdrawEntry(entryId: string, reason?: string): Promise<E
 
 export async function restoreEntry(entryId: string): Promise<EntryStatusResult> {
   return changeEntryStatus(entryId, true);
+}
+
+/** Вернуть одну снятую регистрацию обратно в заявку (статус «не взвешен», вес сохраняется). */
+export async function restoreRegistration(registrationId: string): Promise<{ ok: boolean; msg: string }> {
+  const reg = await prisma.registration.findUnique({ where: { id: registrationId }, include: { category: true } });
+  if (!reg) return { ok: false, msg: "Регистрация не найдена" };
+  const user = await requireEventRole(reg.category.eventId, "ORGANIZER", "ADMIN");
+  if (reg.status !== "WITHDRAWN") return { ok: false, msg: "Регистрация не снята" };
+  await prisma.$transaction(async (tx) => {
+    await tx.registration.update({
+      where: { id: registrationId },
+      data: { status: "ENTERED", withdrawnAt: null, withdrawReason: null, admittedAt: null },
+    });
+    await appendAudit(tx, {
+      actorId: user.id, action: "registration.restore", entity: "Registration", entityId: registrationId,
+      before: { status: reg.status, withdrawnAt: reg.withdrawnAt, withdrawReason: reg.withdrawReason },
+    });
+  });
+  revalidatePath(`/organizer/${reg.category.eventId}`);
+  revalidatePath(`/category/${reg.categoryId}`);
+  return { ok: true, msg: "Возвращён" };
 }
 
 export async function markRefund(eventId: string, entryId: string, status: RefundStatus): Promise<{ ok: boolean; msg: string }> {
