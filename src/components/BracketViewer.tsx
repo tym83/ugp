@@ -15,7 +15,7 @@ type RoundNameInfo = {
 
 const roundName = (info: RoundNameInfo): string => {
   if (info.groupType === "final-group") return "За 3-е место";
-  if (info.groupType === "single_bracket") {
+  if (info.groupType === "single-bracket") {
     return info.fractionOfFinal === 1 ? "Финал" : `1/${Math.round(1 / (info.fractionOfFinal ?? 1))}`;
   }
   return "";
