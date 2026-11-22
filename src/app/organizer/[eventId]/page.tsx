@@ -182,7 +182,7 @@ export default async function OrganizerConsole({ params }: { params: Promise<{ e
                     <td className="px-3 py-2">
                       <div className="space-y-1">
                         {e.registrations.map((r) => (
-                          <MoveRegistration key={r.id} regId={r.id} currentCatId={r.categoryId} currentLabel={catLabel(r.category)} eventId={eventId} />
+                          <MoveRegistration key={r.id} regId={r.id} currentCatId={r.categoryId} currentLabel={catLabel(r.category)} eventId={eventId} athleteId={e.athleteId} withdrawn={r.status === "WITHDRAWN"} />
                         ))}
                         {e.registrations.length === 0 && <span className="text-gray-300">—</span>}
                       </div>

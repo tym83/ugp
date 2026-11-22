@@ -75,7 +75,7 @@ export type RosterCandidate = {
   club: string | null;
   inCategory: boolean;
   /** Labels of all categories the athlete is currently in (any discipline) — shown in the result line. */
-  allCategories: string[];
+  allCategories: { id: string; label: string }[];
   /** Заявка этого атлета в другой категории той же дисциплины — можно перенести сюда. */
   otherCategory: { registrationId: string; categoryId: string; label: string } | null;
 };
@@ -111,7 +111,9 @@ export async function searchEventAthletes(categoryId: string, q: string): Promis
         birthYear: e.athlete.birthDate.getUTCFullYear(),
         club: e.athlete.club?.name ?? null,
         inCategory: e.registrations.some((r) => r.categoryId === categoryId && inBracket(r.status)),
-        allCategories: others.map((r) => categoryLabel(r.category)),
+        allCategories: e.registrations
+          .filter((r) => r.status !== "WITHDRAWN")
+          .map((r) => ({ id: r.categoryId, label: categoryLabel(r.category) })),
         otherCategory: other
           ? { registrationId: other.id, categoryId: other.categoryId, label: categoryLabel(other.category) }
           : null,

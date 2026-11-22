@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import { useState, useTransition } from "react";
 import { moveRegistration, categoryOptions } from "@/app/participant-actions";
 
@@ -9,7 +10,7 @@ type Opt = { id: string; label: string };
 const optionsCache = new Map<string, Opt[]>();
 
 /** Move one registration to another category: plain label + «сменить» by default, select with autosave on click. */
-export default function MoveRegistration({ regId, currentCatId, currentLabel, eventId }: { regId: string; currentCatId: string; currentLabel: string; eventId: string }) {
+export default function MoveRegistration({ regId, currentCatId, currentLabel, eventId, athleteId, withdrawn }: { regId: string; currentCatId: string; currentLabel: string; eventId: string; athleteId: string; withdrawn: boolean }) {
   const [editing, setEditing] = useState(false);
   const [options, setOptions] = useState<Opt[] | null>(() => optionsCache.get(eventId) ?? null);
   const [loadError, setLoadError] = useState(false);
@@ -47,10 +48,15 @@ export default function MoveRegistration({ regId, currentCatId, currentLabel, ev
     });
   };
 
+  const bracketLink = !withdrawn && (
+    <Link href={`/category/${encodeURIComponent(currentCatId)}?a=${encodeURIComponent(athleteId)}#a-${encodeURIComponent(athleteId)}`} target="_blank" rel="noopener" className="text-xs text-blue-600 hover:underline">показать сетку ↗</Link>
+  );
+
   if (!editing) {
     return (
       <span className="inline-flex items-center gap-1">
         <span>{currentLabel}</span>
+        {bracketLink}
         {loadError && <span className="text-xs text-red-500">не удалось загрузить категории</span>}
         <button type="button" onClick={open} disabled={pending} className="text-xs text-blue-600 disabled:opacity-50">
           {pending ? "…" : "сменить"}
@@ -71,6 +77,7 @@ export default function MoveRegistration({ regId, currentCatId, currentLabel, ev
           <option key={o.id} value={o.id}>{o.label}</option>
         ))}
       </select>
+      {bracketLink}
       <button type="button" onClick={() => setEditing(false)} className="text-xs text-blue-600">отмена</button>
       {pending && <span className="text-xs text-gray-400">…</span>}
       {msg && <span className="text-xs text-gray-500">{msg}</span>}
