@@ -7,6 +7,7 @@ import Link from "next/link";
 import WeighInForm, { WeighInNotice } from "./WeighInForm";
 import { MergeButton, LockButton, PaymentSelect, DeleteEntryButton, EntryWithdrawalButton, MatSelect } from "./OrganizerButtons";
 import MoveRegistration from "./MoveRegistration";
+import RestoreRegistrationButton from "./RestoreRegistrationButton";
 import AbsolutePanel from "./AbsolutePanel";
 import EntrySearch from "./EntrySearch";
 import CategoryFilter from "./CategoryFilter";
@@ -194,6 +195,7 @@ export default async function OrganizerConsole({ params }: { params: Promise<{ e
                               <span className={`text-xs ${r.status === "ADMITTED" ? "text-green-700" : "text-gray-500"}`}>
                                 {r.status === "ADMITTED" ? "Допущен" : r.status === "WITHDRAWN" ? "Снят" : r.status === "OVERWEIGHT" ? "Перевес" : r.status}
                                 {r.actualWeight != null && ` · ${r.actualWeight} кг`}
+                                {r.status === "WITHDRAWN" && <RestoreRegistrationButton registrationId={r.id} />}
                               </span>
                             )}
                           </div>

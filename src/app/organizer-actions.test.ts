@@ -29,7 +29,7 @@ vi.mock("@/lib/data/preset", () => ({}));
 vi.mock("@/lib/domain/persistBracket", () => ({}));
 vi.mock("@/lib/domain/pricing", () => ({}));
 
-import { restoreEntry, withdrawEntry, weighInAndAdmit, resolveWeighIn, weighInCategoryOptions } from "./organizer-actions";
+import { restoreEntry, restoreRegistration, withdrawEntry, weighInAndAdmit, resolveWeighIn, weighInCategoryOptions } from "./organizer-actions";
 
 const registration = (id: string, status = "ENTERED") => ({
   id, categoryId: id, status, withdrawnAt: null, withdrawReason: null,
@@ -67,16 +67,39 @@ describe("entry withdrawal and restoration", () => {
     expect(mocks.update).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ withdrawReason: "entry:снят с турнира" }) }));
   });
 
-  it("restores only tournament withdrawals", async () => {
+  it("restores every withdrawn registration regardless of the withdrawal reason", async () => {
     await restoreEntry("entry");
     expect(mocks.registrations).toHaveBeenCalledWith(expect.objectContaining({ where: {
       entryId: "entry", status: "WITHDRAWN",
-      OR: [{ withdrawReason: "снят с турнира" }, { withdrawReason: { startsWith: "entry:" } }],
     } }));
     expect(mocks.update).toHaveBeenCalledWith({ where: { id: "open" }, data: {
       status: "ENTERED", withdrawnAt: null, withdrawReason: null, admittedAt: null,
     } });
     expect(mocks.audit).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ action: "entry.restore" }));
+  });
+
+  it("restores a single registration withdrawn at weigh-in", async () => {
+    mocks.reg.mockResolvedValue({
+      id: "reg-w", categoryId: "cat-w", status: "WITHDRAWN",
+      withdrawnAt: new Date("2026-11-21T10:00:00Z"), withdrawReason: "перевес на взвешивании",
+      category: { id: "cat-w", eventId: "event" },
+    });
+    const result = await restoreRegistration("reg-w");
+    expect(mocks.authorize).toHaveBeenCalledWith("event", "ORGANIZER", "ADMIN");
+    expect(mocks.update).toHaveBeenCalledWith({ where: { id: "reg-w" }, data: {
+      status: "ENTERED", withdrawnAt: null, withdrawReason: null, admittedAt: null,
+    } });
+    expect(mocks.audit).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
+      action: "registration.restore", entityId: "reg-w",
+    }));
+    expect(mocks.revalidate.mock.calls).toEqual([["/organizer/event"], ["/category/cat-w"]]);
+    expect(result).toEqual({ ok: true, msg: "Возвращён" });
+  });
+
+  it("refuses to restore a registration that is not withdrawn", async () => {
+    mocks.reg.mockResolvedValue({ id: "reg-a", categoryId: "cat", status: "ADMITTED", category: { id: "cat", eventId: "event" } });
+    expect((await restoreRegistration("reg-a")).ok).toBe(false);
+    expect(mocks.update).not.toHaveBeenCalled();
   });
 
   it("does not mutate anything when event authorization fails", async () => {

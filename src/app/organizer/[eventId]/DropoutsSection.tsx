@@ -1,5 +1,6 @@
 import { listDropouts } from "@/lib/domain/dropouts";
 import RefundSelect from "./RefundSelect";
+import { EntryWithdrawalButton } from "./OrganizerButtons";
 
 const PAYMENT_LABEL: Record<string, string> = { PAID: "оплатил", LATER: "оплатит позже", FREE: "бесплатно" };
 
@@ -18,7 +19,14 @@ export default async function DropoutsSection({ eventId, showMoney }: { eventId:
             </tr></thead>
             <tbody className="divide-y">{rows.map((row) => (
               <tr key={row.entryId} className="align-top">
-                <td className="px-3 py-2">{row.kind === "withdrawn" ? "снят" : "удалён"}</td>
+                <td className="px-3 py-2">
+                  {row.kind === "withdrawn" ? (
+                    <span className="inline-flex flex-col gap-1">
+                      <span>снят</span>
+                      <EntryWithdrawalButton entryId={row.entryId} withdrawn />
+                    </span>
+                  ) : "удалён"}
+                </td>
                 <td className="px-3 py-2">{row.fullName}</td>
                 <td className="px-3 py-2">{row.birthDate?.getUTCFullYear() ?? "—"}</td>
                 <td className="px-3 py-2">{row.club ?? "—"}</td>
