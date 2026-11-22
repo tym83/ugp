@@ -7,3 +7,11 @@ This version has breaking changes — APIs, conventions, and file structure may 
 This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
 
 <!-- END:nextjs-agent-rules -->
+
+# Operations (deploy, production, data fixes)
+
+Before any deploy, production access or data change, read the local runbook
+`~/projects/ugp-ops/HANDOFF-CODEX.md` (kept outside the repository). It has the
+production host, the exact deploy and schema commands, backup rules and the
+current state of work. Also read `SESSION_LOG.md` in this directory (local only,
+never commit it).
