@@ -110,28 +110,28 @@ export default async function OrganizerConsole({ params }: { params: Promise<{ e
   const dupCount = entries.filter(isDup).length;
 
   return (
-    <main className="mx-auto max-w-5xl p-6">
+    <main className="organizer-console mx-auto max-w-6xl p-6">
       <WeighInNotice />
-      <div className="flex items-center justify-between">
+      <div className="oc-card flex flex-wrap items-center justify-between gap-4 p-4">
         <div>
-          <Link href={`/event/${event.slug ?? eventId}`} className="text-sm text-blue-600">← {event.name}</Link>
-          <h1 className="text-2xl font-bold">Пульт организатора</h1>
-          <p className="text-sm text-gray-500">Статус: {event.status}</p>
+          <Link href={`/event/${event.slug ?? eventId}`} className="text-sm text-blue-700 hover:underline">← {event.name}</Link>
+          <h1 className="mt-0.5 text-2xl font-extrabold tracking-tight">Пульт организатора</h1>
+          <p className="oc-muted">Статус: {event.status}</p>
         </div>
-        <div className="flex items-center gap-3">
-          <Link href="/organizer/help" className="text-sm text-blue-600">Инструкция</Link>
-          <a href={`/organizer/${event.slug ?? eventId}/offline`} className="text-sm font-semibold text-blue-600">Сетки без интернета →</a>
-          <a href={`/api/offline/entries?eventId=${eventId}`} className="rounded bg-emerald-700 px-3 py-1.5 text-sm font-semibold text-white">Список в Excel</a>
-          <a href={`/api/offline/xlsx?eventId=${eventId}`} className="rounded bg-emerald-700 px-3 py-1.5 text-sm font-semibold text-white">Сетки в Excel</a>
-          <Link href={`/standings/${eventId}`} className="text-sm text-blue-600">Командный зачёт →</Link>
+        <div className="flex flex-wrap items-center gap-2">
+          <Link href="/organizer/help" className="oc-btn">Инструкция</Link>
+          <Link href={`/standings/${eventId}`} className="oc-btn">Командный зачёт →</Link>
+          <a href={`/organizer/${event.slug ?? eventId}/offline`} className="oc-btn">Сетки без интернета →</a>
+          <a href={`/api/offline/entries?eventId=${eventId}`} className="oc-btn oc-btn-success">Список в Excel</a>
+          <a href={`/api/offline/xlsx?eventId=${eventId}`} className="oc-btn oc-btn-success">Сетки в Excel</a>
           <LockButton eventId={eventId} locked={locked} />
         </div>
       </div>
 
-      <section className="mt-6">
-        <div className="flex items-baseline justify-between">
-          <h2 className="text-lg font-semibold mb-2">Заявки участников</h2>
-          <span className="text-sm text-gray-500">
+      <section className="oc-section">
+        <div className="oc-section-head">
+          <h2>Заявки участников</h2>
+          <span className="oc-muted">
             реально оплачено {paidCount} из {entries.length}{showMoney && <> · {paidSum} / {totalSum} ₽</>}
             {laterCount > 0 && <> · оплатят позже {laterCount}</>}
             {withdrawnCount > 0 && <> · снято {withdrawnCount}</>}
@@ -144,22 +144,22 @@ export default async function OrganizerConsole({ params }: { params: Promise<{ e
         ) : (
           <>
           <EntrySearch tableId="entries-table" />
-          <div className="overflow-x-auto rounded border">
+          <div className="oc-card oc-table-scroll">
             <table id="entries-table" className="w-full text-sm">
               <thead className="bg-gray-50 text-left text-xs uppercase tracking-wide text-gray-500">
                 <tr>
-                  <th className="px-3 py-2">Участник</th>
-                  <th className="px-3 py-2">Телефон</th>
-                  <th className="px-3 py-2">Клуб</th>
-                  <th className="px-3 py-2">Категории и допуск</th>
-                  {showMoney && <th className="px-3 py-2">Взнос</th>}
-                  <th className="px-3 py-2">Оплата</th>
+                  <th className="px-4 py-2.5">Участник</th>
+                  <th className="px-4 py-2.5">Телефон</th>
+                  <th className="px-4 py-2.5">Клуб</th>
+                  <th className="px-4 py-2.5">Категории и допуск</th>
+                  {showMoney && <th className="px-4 py-2.5">Взнос</th>}
+                  <th className="px-4 py-2.5">Оплата</th>
                 </tr>
               </thead>
               <tbody className="divide-y">
                 {entries.map((e) => (
                   <tr key={e.id} data-entry-name={e.athlete.fullName} className={`align-top${e.paid ? "" : " bg-amber-50"}${isWithdrawn(e) ? " opacity-60" : ""}`}>
-                    <td className="px-3 py-2">
+                    <td className="px-4 py-3">
                       <div className="font-medium">
                         {e.athlete.fullName}
                         {isWithdrawn(e) && <span className="ml-2 rounded bg-gray-200 px-1.5 py-0.5 text-xs text-gray-600">снят</span>}
@@ -169,18 +169,18 @@ export default async function OrganizerConsole({ params }: { params: Promise<{ e
                         {e.athlete.birthDate.toLocaleDateString("ru-RU", { timeZone: "UTC" })} · {SOURCE_LABEL[e.source] ?? e.source}
                       </div>
                       <div className="mt-1 flex items-center gap-3">
-                        <Link href={`/participant/${e.athlete.id}/edit?next=/organizer/${eventId}`} className="text-blue-600 text-xs">изменить</Link>
+                        <Link href={`/participant/${e.athlete.id}/edit?next=/organizer/${eventId}`} className="text-xs text-blue-600 hover:underline">изменить</Link>
                         <DeleteEntryButton entryId={e.id} paid={e.paid} />
                         <EntryWithdrawalButton entryId={e.id} withdrawn={isWithdrawn(e)} />
                       </div>
                     </td>
-                    <td className="px-3 py-2 whitespace-nowrap">
+                    <td className="px-4 py-3 whitespace-nowrap">
                       {e.athlete.phone
                         ? <a href={`tel:${e.athlete.phone}`} className="text-blue-600">{e.athlete.phone}</a>
                         : <span className="text-gray-300">—</span>}
                     </td>
-                    <td className="px-3 py-2">{e.athlete.club?.name ?? <span className="text-gray-300">—</span>}</td>
-                    <td className="px-3 py-2">
+                    <td className="px-4 py-3">{e.athlete.club?.name ?? <span className="text-gray-300">—</span>}</td>
+                    <td className="px-4 py-3">
                       <div className="space-y-3">
                         {e.registrations.map((r) => (
                           <div key={r.id} className="space-y-1">
@@ -203,8 +203,8 @@ export default async function OrganizerConsole({ params }: { params: Promise<{ e
                         {e.registrations.length === 0 && <span className="text-gray-300">—</span>}
                       </div>
                     </td>
-                    {showMoney && <td className="px-3 py-2 tabular-nums whitespace-nowrap">{e.priceTotal} ₽</td>}
-                    <td className="px-3 py-2 whitespace-nowrap">
+                    {showMoney && <td className="px-4 py-3 tabular-nums whitespace-nowrap">{e.priceTotal} ₽</td>}
+                    <td className="px-4 py-3 whitespace-nowrap">
                       <PaymentSelect entryId={e.id} kind={kindOf(e)} />
                     </td>
                   </tr>
@@ -219,11 +219,13 @@ export default async function OrganizerConsole({ params }: { params: Promise<{ e
       <DropoutsSection eventId={eventId} showMoney={showMoney} />
 
       {suggestions.length > 0 && (
-        <section className="mt-6">
-          <h2 className="text-lg font-semibold mb-2">Предложения по объединению</h2>
-          <ul className="space-y-1 text-sm">
+        <section className="oc-section">
+          <div className="oc-section-head">
+            <h2>Предложения по объединению</h2>
+          </div>
+          <ul className="oc-card divide-y text-sm">
             {suggestions.map((s) => (
-              <li key={s.source.id} className="flex items-center gap-2">
+              <li key={s.source.id} className="flex flex-wrap items-center gap-2 px-4 py-2.5">
                 <span>
                   {labelById.get(s.source.id)} <span className="text-gray-400">({s.source.count} чел.)</span> →
                 </span>
@@ -235,8 +237,10 @@ export default async function OrganizerConsole({ params }: { params: Promise<{ e
       )}
 
       {absoluteData.length > 0 && (
-        <section className="mt-8 space-y-4">
-          <h2 className="text-lg font-semibold">Абсолютка</h2>
+        <section className="oc-section space-y-4">
+          <div className="oc-section-head">
+            <h2>Абсолютка</h2>
+          </div>
           {absoluteData.map((a) => (
             <AbsolutePanel
               key={a.id}
@@ -250,9 +254,9 @@ export default async function OrganizerConsole({ params }: { params: Promise<{ e
         </section>
       )}
 
-      <section className="mt-8 space-y-6">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-lg font-semibold">Категории и взвешивание</h2>
+      <section className="oc-section space-y-4">
+        <div className="oc-section-head">
+          <h2>Категории и взвешивание</h2>
           <NewCategoryForm eventPath={event.slug ?? eventId} options={catOptions} />
         </div>
         <CategoryFilter
@@ -260,7 +264,7 @@ export default async function OrganizerConsole({ params }: { params: Promise<{ e
           ageGroups={[...new Set(categories.map((c) => c.ageGroupLabel))]}
           matsCount={event.matsCount}
         />
-        <div id={`category-list-${eventId}`} className="space-y-6">
+        <div id={`category-list-${eventId}`} className="space-y-4">
         {categories.map((c) => {
           const queue = c.registrations.filter((r) => r.status === "ENTERED");
           const admitted = c.registrations
@@ -269,7 +273,7 @@ export default async function OrganizerConsole({ params }: { params: Promise<{ e
           return (
             <div
               key={c.id}
-              className="rounded border"
+              className="oc-card overflow-hidden"
               data-cat={catLabel(c)}
               data-age={c.ageGroupLabel}
               data-sex={c.sex}
@@ -283,64 +287,62 @@ export default async function OrganizerConsole({ params }: { params: Promise<{ e
               data-count={c.registrations.filter((r) => r.status === "ENTERED" || r.status === "ADMITTED").length}
               data-bracket={c._count.matches > 0 ? "1" : "0"}
             >
-              <div className="flex items-center justify-between bg-gray-50 px-3 py-2">
-                <div>
-                  <Link href={`/category/${c.id}`} className="font-medium text-blue-700">{catLabel(c)}</Link>
+              <div className="oc-cat-head">
+                <div className="min-w-0">
+                  <Link href={`/category/${c.id}`} className="font-semibold text-blue-700 hover:underline">{catLabel(c)}</Link>
                   <span className="ml-2 text-xs text-gray-500">
                     допущено {admittedCount(c)} / заявлено {c.registrations.length}
-                    {c._count.matches > 0 ? " · сетка есть" : ""}
                   </span>
+                  {c._count.matches > 0 && <span className="oc-chip oc-chip-green">сетка есть</span>}
                 </div>
                 <div className="flex items-center gap-2">
                   <MatSelect categoryId={c.id} mat={c.matNumber} matsCount={event.matsCount} />
                   <Link
                     href={`/organizer/${event.slug ?? eventId}/bracket/${c.slug ?? c.id}`}
-                    className="rounded border border-blue-600 px-3 py-1 text-xs font-semibold text-blue-700"
+                    className="oc-btn"
                   >
                     Состав и сетка
                   </Link>
-                  <RebuildBracketButton categoryId={c.id} hasBracket={c._count.matches > 0} className="rounded bg-blue-600 px-3 py-1 text-xs text-white" />
+                  <RebuildBracketButton categoryId={c.id} hasBracket={c._count.matches > 0} className="oc-btn oc-btn-primary" />
                 </div>
               </div>
 
+              <div className="oc-cat-body">
               {queue.length > 0 && (
-                <table className="w-full text-sm">
-                  <tbody>
-                    {queue.map((r) => (
-                      <tr key={r.id} className="border-t">
-                        <td className="px-3 py-1">{r.athlete.fullName}</td>
-                        <td className="px-3 py-1 text-gray-400">заявл. {r.declaredWeight ?? "—"} кг</td>
-                        <td className="px-3 py-1">
-                          {locked ? (
-                            <span className="text-xs text-gray-400">взвешивание закрыто</span>
-                          ) : (
-                            <WeighInForm registrationId={r.id} declared={r.declaredWeight} />
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                <div>
+                  {queue.map((r) => (
+                    <div key={r.id} className="oc-row">
+                      <span className="min-w-[180px] font-medium">{r.athlete.fullName}</span>
+                      <span className="text-xs text-gray-400">заявл. {r.declaredWeight ?? "—"} кг</span>
+                      <span className="ml-auto">
+                        {locked ? (
+                          <span className="text-xs text-gray-400">взвешивание закрыто</span>
+                        ) : (
+                          <WeighInForm registrationId={r.id} declared={r.declaredWeight} />
+                        )}
+                      </span>
+                    </div>
+                  ))}
+                </div>
               )}
 
               {admitted.length > 0 && (
-                <details className="text-sm">
-                  <summary className="cursor-pointer select-none px-3 py-1.5 text-xs text-blue-700">
-                    участники ({admitted.length}) — раскрыть
+                <details className="oc-more">
+                  <summary>
+                    Участники: {admitted.length} — раскрыть
                   </summary>
-                  <table className="w-full">
-                    <tbody>
-                      {admitted.map((r) => (
-                        <tr key={r.id} className="border-t">
-                          <td className="px-3 py-1">{r.athlete.fullName}</td>
-                          <td className="px-3 py-1 text-gray-400">{r.actualWeight ?? r.declaredWeight ?? "—"} кг</td>
-                          <td className="px-3 py-1 text-gray-400">{r.athlete.club?.name ?? ""}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                  <div>
+                    {admitted.map((r) => (
+                      <div key={r.id} className="oc-row">
+                        <span className="min-w-[180px] font-medium">{r.athlete.fullName}</span>
+                        <span className="text-xs text-gray-400">{r.actualWeight ?? r.declaredWeight ?? "—"} кг</span>
+                        <span className="text-xs text-gray-400">{r.athlete.club?.name ?? ""}</span>
+                      </div>
+                    ))}
+                  </div>
                 </details>
               )}
+              </div>
             </div>
           );
         })}
