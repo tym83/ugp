@@ -60,3 +60,41 @@ h1, h2 {
 .ugp-bracket .participant.bv-highlight .name {
   font-weight: 700;
 }
+
+/* === Пульт организатора: единый визуальный язык (скоп .organizer-console) === */
+.organizer-console { color: #1f2937; }
+
+.organizer-console .oc-section { margin-top: 2.5rem; }
+.organizer-console .oc-section-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 0.25rem 1rem; margin-bottom: 0.75rem; }
+.organizer-console .oc-section-head > h2 { font-size: 1.125rem; font-weight: 700; letter-spacing: -0.01em; }
+.organizer-console .oc-muted { font-size: 0.875rem; color: #6b7280; }
+
+.organizer-console .oc-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 0.75rem; box-shadow: 0 1px 2px rgba(16, 24, 40, 0.06); }
+
+/* Кнопки */
+.organizer-console .oc-btn { display: inline-flex; align-items: center; gap: 0.375rem; white-space: nowrap; border-radius: 0.5rem; border: 1px solid #d1d5db; background: #fff; padding: 0.375rem 0.875rem; font-size: 0.875rem; font-weight: 500; color: #374151; transition: background-color 0.15s, border-color 0.15s; }
+.organizer-console .oc-btn:hover { background: #f9fafb; border-color: #9ca3af; }
+.organizer-console .oc-btn-primary { background: #1d4ed8; border-color: #1d4ed8; color: #fff; }
+.organizer-console .oc-btn-primary:hover { background: #1e40af; border-color: #1e40af; }
+.organizer-console .oc-btn-success { background: #047857; border-color: #047857; color: #fff; }
+.organizer-console .oc-btn-success:hover { background: #065f46; border-color: #065f46; }
+
+/* Таблицы: липкая шапка, hover строк */
+.organizer-console .oc-table-scroll { max-height: 75vh; overflow: auto; }
+.organizer-console .oc-table-scroll thead th { position: sticky; top: 0; z-index: 1; }
+.organizer-console tbody tr { transition: background-color 0.1s; }
+.organizer-console tbody tr:hover { background: #f9fafb; }
+
+/* Поиск по заявкам */
+.organizer-console input[type="search"] { width: 100%; max-width: 22rem; border-radius: 0.5rem; border: 1px solid #d1d5db; padding: 0.45rem 0.75rem; font-size: 0.875rem; background: #fff; color: #374151; }
+.organizer-console input[type="search"]:focus { outline: 2px solid #bfdbfe; border-color: #3b82f6; }
+
+/* Карточка категории */
+.organizer-console .oc-cat-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.5rem 1rem; background: #f9fafb; border-bottom: 1px solid #eef0f3; padding: 0.625rem 1rem; }
+.organizer-console .oc-cat-body > * + * { border-top: 1px solid #f3f4f6; }
+.organizer-console .oc-row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem 1rem; padding: 0.5rem 1rem; font-size: 0.875rem; }
+.organizer-console .oc-chip { display: inline-block; margin-left: 0.5rem; border-radius: 9999px; padding: 0.125rem 0.625rem; font-size: 0.6875rem; font-weight: 600; }
+.organizer-console .oc-chip-green { background: #dcfce7; color: #166534; }
+.organizer-console details.oc-more > summary { cursor: pointer; user-select: none; padding: 0.5rem 1rem; font-size: 0.75rem; font-weight: 600; color: #1d4ed8; }
+.organizer-console details.oc-more > summary:hover { background: #f9fafb; }
+.organizer-console details.oc-more[open] > summary { border-bottom: 1px solid #f3f4f6; }
